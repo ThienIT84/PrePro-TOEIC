@@ -14,7 +14,175 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attempts: {
+        Row: {
+          correct: boolean
+          created_at: string
+          id: string
+          item_id: string
+          response: string | null
+          time_ms: number | null
+          user_id: string
+        }
+        Insert: {
+          correct: boolean
+          created_at?: string
+          id?: string
+          item_id: string
+          response?: string | null
+          time_ms?: number | null
+          user_id: string
+        }
+        Update: {
+          correct?: boolean
+          created_at?: string
+          id?: string
+          item_id?: string
+          response?: string | null
+          time_ms?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          answer: string
+          audio_url: string | null
+          choices: string[] | null
+          created_at: string
+          difficulty: Database["public"]["Enums"]["difficulty"]
+          explain_en: string
+          explain_vi: string
+          id: string
+          question: string
+          tags: string[] | null
+          transcript: string | null
+          type: Database["public"]["Enums"]["drill_type"]
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          audio_url?: string | null
+          choices?: string[] | null
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["difficulty"]
+          explain_en: string
+          explain_vi: string
+          id?: string
+          question: string
+          tags?: string[] | null
+          transcript?: string | null
+          type: Database["public"]["Enums"]["drill_type"]
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          audio_url?: string | null
+          choices?: string[] | null
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["difficulty"]
+          explain_en?: string
+          explain_vi?: string
+          id?: string
+          question?: string
+          tags?: string[] | null
+          transcript?: string | null
+          type?: Database["public"]["Enums"]["drill_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          focus: string[] | null
+          id: string
+          locales: string
+          name: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          target_score: number
+          test_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          focus?: string[] | null
+          id?: string
+          locales?: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          target_score?: number
+          test_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          focus?: string[] | null
+          id?: string
+          locales?: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          target_score?: number
+          test_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          created_at: string
+          due_at: string
+          ease_factor: number
+          id: string
+          interval_days: number
+          item_id: string
+          repetitions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          item_id: string
+          repetitions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          due_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          item_id?: string
+          repetitions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +191,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "user" | "admin"
+      difficulty: "easy" | "medium" | "hard"
+      drill_type: "vocab" | "grammar" | "listening" | "reading" | "mix"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +320,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["user", "admin"],
+      difficulty: ["easy", "medium", "hard"],
+      drill_type: ["vocab", "grammar", "listening", "reading", "mix"],
+    },
   },
 } as const
