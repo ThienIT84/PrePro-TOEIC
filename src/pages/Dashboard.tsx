@@ -242,7 +242,7 @@ const Dashboard = () => {
               {drillTypes.map(drill => (
                 <Link
                   key={drill.type}
-                  to={`/drills/${drill.type}`}
+                  to={`/drills`}
                   className="block group"
                 >
                   <div className={`p-4 rounded-lg border transition-all hover:shadow-md ${drill.bgColor}`}>

@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Drills from "./pages/Drills";
+import Review from "./pages/Review";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +44,54 @@ const AppContent = () => {
           user ? (
             <Layout>
               <Dashboard />
+            </Layout>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/drills" 
+        element={
+          user ? (
+            <Layout>
+              <Drills />
+            </Layout>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/review" 
+        element={
+          user ? (
+            <Layout>
+              <Review />
+            </Layout>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/analytics" 
+        element={
+          user ? (
+            <Layout>
+              <Analytics />
+            </Layout>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/settings" 
+        element={
+          user ? (
+            <Layout>
+              <Settings />
             </Layout>
           ) : (
             <Navigate to="/auth" replace />
