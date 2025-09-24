@@ -28,10 +28,11 @@ const Drills = () => {
   const fetchNewQuestion = async () => {
     setLoading(true);
     try {
+      // Get random question by using random() function
       const { data, error } = await supabase
         .from('items')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('RANDOM()')
         .limit(1)
         .single();
 
@@ -97,6 +98,10 @@ const Drills = () => {
       if (error) {
         console.error('Error recording attempt:', error);
       } else {
+        // If answer is wrong, add to review queue
+        if (!correct) {
+          await addToReviewQueue(currentItem.id);
+        }
         // Update progress
         setDailyProgress(prev => ({ ...prev, completed: prev.completed + 1 }));
         
@@ -105,6 +110,40 @@ const Drills = () => {
           description: correct ? 'Bạn đã trả lời đúng!' : 'Hãy xem giải thích bên dưới.',
           variant: correct ? 'default' : 'destructive',
         });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const addToReviewQueue = async (itemId: string) => {
+    if (!user) return;
+    
+    try {
+      // Check if item already exists in review queue
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('item_id', itemId)
+        .single();
+      
+      // Only add if not already in review queue
+      if (!existingReview) {
+        const { error } = await supabase
+          .from('reviews')
+          .insert({
+            user_id: user.id,
+            item_id: itemId,
+            due_at: new Date().toISOString(), // Due immediately for wrong answers
+            interval_days: 1,
+            ease_factor: 250,
+            repetitions: 0
+          });
+        
+        if (error) {
+          console.error('Error adding to review queue:', error);
+        }
       }
     } catch (error) {
       console.error('Error:', error);

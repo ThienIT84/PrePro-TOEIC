@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Drills from "./pages/Drills";
@@ -31,6 +32,12 @@ const AppContent = () => {
 
   return (
     <Routes>
+      {/* Home route */}
+      <Route 
+        path="/" 
+        element={<Index />} 
+      />
+      
       {/* Public routes */}
       <Route 
         path="/auth" 
@@ -97,12 +104,6 @@ const AppContent = () => {
             <Navigate to="/auth" replace />
           )
         } 
-      />
-      
-      {/* Redirect root to appropriate page */}
-      <Route 
-        path="/" 
-        element={<Navigate to={user ? "/dashboard" : "/auth"} replace />} 
       />
       
       {/* Catch all */}
