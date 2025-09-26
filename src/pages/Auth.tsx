@@ -78,22 +78,27 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 bg-grid-white/5 bg-grid-16"></div>
+      <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-primary/5 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl"></div>
+      
+      <div className="w-full max-w-md relative">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Brain className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              LexiSprint
+              TOEIC Master
             </h1>
           </div>
           <p className="text-muted-foreground">
-            Huấn luyện viên TOEIC AI cá nhân hóa cho người Việt
+            Hệ thống luyện thi TOEIC thông minh với AI
           </p>
         </div>
 
-        <Card className="w-full">
+        <Card className="w-full animate-fade-in shadow-xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Chào mừng!</CardTitle>
             <CardDescription className="text-center">
@@ -197,17 +202,17 @@ const Auth = () => {
         </Card>
 
         {/* Features */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-          <div className="space-y-2">
-            <BookOpen className="h-8 w-8 text-primary mx-auto" />
+        <div className="mt-8 grid grid-cols-3 gap-4 text-center animate-fade-in">
+          <div className="space-y-2 group">
+            <BookOpen className="h-8 w-8 text-primary mx-auto group-hover:scale-110 transition-transform" />
             <p className="text-sm text-muted-foreground">Luyện tập ngắn 5-7 phút</p>
           </div>
-          <div className="space-y-2">
-            <Headphones className="h-8 w-8 text-accent mx-auto" />
+          <div className="space-y-2 group">
+            <Headphones className="h-8 w-8 text-accent mx-auto group-hover:scale-110 transition-transform" />
             <p className="text-sm text-muted-foreground">Giải thích song ngữ</p>
           </div>
-          <div className="space-y-2">
-            <Brain className="h-8 w-8 text-info mx-auto" />
+          <div className="space-y-2 group">
+            <Brain className="h-8 w-8 text-info mx-auto group-hover:scale-110 transition-transform" />
             <p className="text-sm text-muted-foreground">Spaced repetition thông minh</p>
           </div>
         </div>

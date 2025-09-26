@@ -111,32 +111,32 @@ const Dashboard = () => {
       title: t('drill.vocabulary'),
       description: 'TOEIC từ vựng chủ đề',
       icon: Brain,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+      color: 'text-info',
+      bgColor: 'bg-info/10',
     },
     {
       type: 'grammar' as DrillType,
       title: t('drill.grammar'),
       description: 'Ngữ pháp & cấu trúc',
       icon: BookOpen,
-      color: 'text-green-500',
-      bgColor: 'bg-green-50 dark:bg-green-950/20',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
     },
     {
       type: 'listening' as DrillType,
       title: t('drill.listening'),
       description: 'Luyện nghe mini',
       icon: Headphones,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-50 dark:bg-purple-950/20',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       type: 'reading' as DrillType,
       title: t('drill.reading'),
       description: 'Đọc hiểu ngắn',
       icon: FileText,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-50 dark:bg-orange-950/20',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
     },
   ];
 
@@ -172,7 +172,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Streak</CardTitle>
-            <Flame className="h-4 w-4 text-orange-500" />
+            <Flame className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{analytics?.streakDays || 0}</div>
@@ -185,7 +185,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.accuracy')}</CardTitle>
-            <Target className="h-4 w-4 text-green-500" />
+            <Target className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -200,7 +200,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.today_review')}</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
+            <Calendar className="h-4 w-4 text-info" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{reviewCount}</div>
@@ -213,7 +213,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Mục tiêu</CardTitle>
-            <Trophy className="h-4 w-4 text-yellow-500" />
+            <Trophy className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{profile?.target_score || 700}</div>

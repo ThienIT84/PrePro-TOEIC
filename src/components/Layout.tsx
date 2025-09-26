@@ -82,7 +82,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Brain className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                LexiSprint
+                TOEIC Master
               </h1>
               <p className="text-xs text-muted-foreground">AI TOEIC Coach</p>
             </div>

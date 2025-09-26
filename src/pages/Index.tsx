@@ -46,25 +46,34 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 to-primary/10">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              Luyện thi TOEIC thông minh
+      <section className="py-20 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10 relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0 bg-grid-white/10 bg-grid-16 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl"></div>
+        
+        <div className="container mx-auto px-4 text-center relative">
+          <div className="max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6 animate-fade-in">
+              <Brain className="h-4 w-4" />
+              Công nghệ AI tiên tiến
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight animate-fade-in">
+              Luyện thi TOEIC<br />thông minh
             </h1>
-            <p className="text-xl text-muted-foreground mb-8">
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in">
               Hệ thống luyện tập TOEIC với công nghệ spaced repetition, 
               giúp bạn cải thiện điểm số một cách hiệu quả nhất.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
               <Link to="/auth">
-                <Button size="lg" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto group hover:scale-105 transition-transform">
                   Bắt đầu ngay
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
               <Link to="/auth">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto hover:scale-105 transition-transform">
                   Tìm hiểu thêm
                 </Button>
               </Link>
@@ -84,9 +93,9 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <Card className="text-center">
+            <Card className="text-center group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
               <CardHeader>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
                   <BookOpen className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle className="text-xl">Luyện tập hàng ngày</CardTitle>
@@ -98,10 +107,10 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center">
+            <Card className="text-center group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
               <CardHeader>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <RotateCcw className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 group-hover:bg-accent/20 transition-colors">
+                  <RotateCcw className="h-6 w-6 text-accent" />
                 </div>
                 <CardTitle className="text-xl">Spaced Repetition</CardTitle>
               </CardHeader>
@@ -112,10 +121,10 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center">
+            <Card className="text-center group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
               <CardHeader>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <BarChart3 className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-info/10 group-hover:bg-info/20 transition-colors">
+                  <BarChart3 className="h-6 w-6 text-info" />
                 </div>
                 <CardTitle className="text-xl">Thống kê chi tiết</CardTitle>
               </CardHeader>
@@ -126,10 +135,10 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center">
+            <Card className="text-center group hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
               <CardHeader>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <Target className="h-6 w-6 text-primary" />
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-success/10 group-hover:bg-success/20 transition-colors">
+                  <Target className="h-6 w-6 text-success" />
                 </div>
                 <CardTitle className="text-xl">Mục tiêu cá nhân</CardTitle>
               </CardHeader>
@@ -144,19 +153,25 @@ const Index = () => {
       </section>
 
       {/* Stats */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-20 bg-gradient-to-br from-muted/30 via-accent/5 to-primary/5 relative">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">1000+</div>
+            <div className="group">
+              <div className="text-4xl md:text-5xl font-bold text-primary mb-2 group-hover:scale-110 transition-transform">
+                1000+
+              </div>
               <p className="text-muted-foreground">Câu hỏi luyện tập</p>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">95%</div>
+            <div className="group">
+              <div className="text-4xl md:text-5xl font-bold text-success mb-2 group-hover:scale-110 transition-transform">
+                95%
+              </div>
               <p className="text-muted-foreground">Học viên cải thiện điểm số</p>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">150+</div>
+            <div className="group">
+              <div className="text-4xl md:text-5xl font-bold text-accent mb-2 group-hover:scale-110 transition-transform">
+                150+
+              </div>
               <p className="text-muted-foreground">Điểm trung bình cải thiện</p>
             </div>
           </div>
@@ -164,19 +179,20 @@ const Index = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-20">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/5 to-transparent"></div>
+        <div className="container mx-auto px-4 text-center relative">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Sẵn sàng cải thiện điểm TOEIC?
             </h2>
-            <p className="text-muted-foreground mb-8">
+            <p className="text-muted-foreground mb-8 text-lg">
               Tham gia cùng hàng ngàn học viên đã thành công với phương pháp học thông minh
             </p>
             <Link to="/auth">
-              <Button size="lg">
+              <Button size="lg" className="group hover:scale-105 transition-transform">
                 Bắt đầu miễn phí
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </div>
