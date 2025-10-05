@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
@@ -9,10 +10,19 @@ import {
   Settings, 
   LogOut,
   Brain,
-  Globe
+  Globe,
+  Plus,
+  FileText,
+  Shield,
+  Users,
+  History,
+  Trophy,
+  Sparkles,
+  Play
 } from 'lucide-react';
 import { t, getLanguage, setLanguage } from '@/lib/i18n';
 import { Link, useLocation } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +35,11 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
+  const { permissions, getUserRole } = usePermissions();
   const location = useLocation();
   const currentLang = getLanguage();
+  const [signingOut, setSigningOut] = useState(false);
 
   const navigation = [
     { 
@@ -36,12 +48,14 @@ const Layout = ({ children }: LayoutProps) => {
       icon: LayoutDashboard,
       active: location.pathname === '/dashboard'
     },
+    
     { 
-      name: t('nav.drills'), 
-      href: '/drills', 
-      icon: BookOpen,
-      active: location.pathname.startsWith('/drills')
+      name: 'Làm bài thi', 
+      href: '/exam-selection', 
+      icon: Play,
+      active: location.pathname.startsWith('/exam-selection') || location.pathname.startsWith('/exam-session')
     },
+    
     { 
       name: t('nav.review'), 
       href: '/review', 
@@ -54,6 +68,49 @@ const Layout = ({ children }: LayoutProps) => {
       icon: BarChart3,
       active: location.pathname === '/analytics'
     },
+    // Teacher-only navigation items
+    ...(permissions.canCreateQuestions ? [{
+      name: 'Quản lý câu hỏi', 
+      href: '/questions', 
+      icon: Plus,
+      active: location.pathname === '/questions'
+    }] : []),
+    ...(permissions.canCreateQuestions ? [{
+      name: 'Tạo câu hỏi AI', 
+      href: '/question-generator', 
+      icon: Sparkles,
+      active: location.pathname === '/question-generator'
+    }] : []),
+    ...(permissions.canCreateExamSets ? [{
+      name: 'Bộ đề thi', 
+      href: '/exam-sets', 
+      icon: FileText,
+      active: location.pathname === '/exam-sets' || location.pathname.startsWith('/exam-sets/')
+    }] : []),
+    ...(permissions.canManageStudents ? [{
+      name: 'Quản lý quyền', 
+      href: '/role-management', 
+      icon: Shield,
+      active: location.pathname === '/role-management'
+    }] : []),
+    ...(permissions.canManageStudents ? [{
+      name: 'Học viên của tôi', 
+      href: '/students', 
+      icon: Users,
+      active: location.pathname === '/students'
+    }] : []),
+    ...(permissions.canManageStudents ? [{
+      name: 'Kết quả thi học sinh', 
+      href: '/student-exam-results', 
+      icon: Trophy,
+      active: location.pathname === '/student-exam-results'
+    }] : []),
+    { 
+      name: 'Lịch sử bài thi', 
+      href: '/exam-history', 
+      icon: History,
+      active: location.pathname === '/exam-history'
+    },
     { 
       name: t('nav.settings'), 
       href: '/settings', 
@@ -63,7 +120,32 @@ const Layout = ({ children }: LayoutProps) => {
   ];
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      setSigningOut(true);
+      const { error } = await signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể đăng xuất. Vui lòng thử lại.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Thành công",
+          description: "Đã đăng xuất thành công",
+        });
+      }
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra khi đăng xuất",
+        variant: "destructive",
+      });
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const toggleLanguage = () => {
@@ -91,20 +173,29 @@ const Layout = ({ children }: LayoutProps) => {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                item.active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </Link>
-          ))}
+          {loading ? (
+            // Hiển thị skeleton loading khi đang load permissions
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-10 bg-muted rounded-md animate-pulse"></div>
+              ))}
+            </div>
+          ) : (
+            navigation.map((item) => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  item.active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.name}
+              </Link>
+            ))
+          )}
         </nav>
 
         {/* User Menu */}
@@ -120,7 +211,7 @@ const Layout = ({ children }: LayoutProps) => {
                 {profile?.name || user?.email}
               </p>
               <p className="text-xs text-muted-foreground">
-                Mục tiêu: {profile?.target_score || 700}
+                {getUserRole() === 'teacher' ? 'Giáo viên' : getUserRole() === 'student' ? 'Học sinh' : 'Đang tải...'} • Mục tiêu: {profile?.target_score || 700}
               </p>
             </div>
           </div>
@@ -140,10 +231,15 @@ const Layout = ({ children }: LayoutProps) => {
               variant="outline"
               size="sm"
               onClick={handleSignOut}
+              disabled={signingOut}
               className="flex-1"
             >
-              <LogOut className="h-3 w-3 mr-1" />
-              {t('auth.sign_out')}
+              {signingOut ? (
+                <div className="animate-spin rounded-full h-3 w-3 mr-1 border-b-2 border-current"></div>
+              ) : (
+                <LogOut className="h-3 w-3 mr-1" />
+              )}
+              {signingOut ? 'Đang đăng xuất...' : t('auth.sign_out')}
             </Button>
           </div>
         </div>

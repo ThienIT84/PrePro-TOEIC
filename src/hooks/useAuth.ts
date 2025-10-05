@@ -6,19 +6,34 @@ import { Profile } from '@/types';
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    // Khôi phục profile từ localStorage nếu có
+    try {
+      const cachedProfile = localStorage.getItem('cached_profile');
+      return cachedProfile ? JSON.parse(cachedProfile) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        const startTime = performance.now();
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
-          setTimeout(async () => {
+          // Fetch user profile với retry logic
+          let retryCount = 0;
+          const maxRetries = 3;
+          
+          const fetchProfileWithRetry = async () => {
+            const profileStartTime = performance.now();
+            
             try {
               const { data: profileData, error } = await supabase
                 .from('profiles')
@@ -26,34 +41,86 @@ export const useAuth = () => {
                 .eq('user_id', session.user.id)
                 .single();
               
+              const profileEndTime = performance.now();
+              
               if (error && error.code !== 'PGRST116') {
-                console.error('Error fetching profile:', error);
+                // Retry nếu là lỗi network hoặc timeout
+                if (retryCount < maxRetries && (error.code === 'PGRST301' || error.message.includes('timeout'))) {
+                  retryCount++;
+                  setTimeout(fetchProfileWithRetry, 1000 * retryCount); // Exponential backoff
+                  return;
+                }
               } else {
-                setProfile(profileData);
+                setProfile(profileData as Profile);
+                // Cache profile vào localStorage
+                if (profileData) {
+                  localStorage.setItem('cached_profile', JSON.stringify(profileData));
+                }
               }
             } catch (error) {
-              console.error('Error fetching profile:', error);
+              // Retry nếu là lỗi network
+              if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(fetchProfileWithRetry, 1000 * retryCount);
+                return;
+              }
             }
-          }, 0);
+          };
+          
+          // Delay nhỏ để đảm bảo profile đã được tạo bởi trigger
+          setTimeout(fetchProfileWithRetry, 100);
         } else {
           setProfile(null);
+          localStorage.removeItem('cached_profile');
         }
+        
+        const endTime = performance.now();
         setLoading(false);
       }
     );
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Fetch profile for initial session
+      if (session?.user) {
+        const initialProfileStartTime = performance.now();
+        
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          const initialProfileEndTime = performance.now();
+          
+          if (error && error.code !== 'PGRST116') {
+            // Silent error handling
+          } else {
+            setProfile(profileData as Profile);
+            // Cache profile vào localStorage
+            if (profileData) {
+              localStorage.setItem('cached_profile', JSON.stringify(profileData));
+            }
+          }
+        } catch (error) {
+          // Silent error handling
+        }
+      }
+      
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -62,7 +129,7 @@ export const useAuth = () => {
 
   const signUp = async (email: string, password: string, name: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -72,7 +139,10 @@ export const useAuth = () => {
         },
       },
     });
-    return { error };
+    
+    // Profile will be automatically created by the database trigger
+    // No need to manually create it here
+    return { data, error };
   };
 
   const signOut = async () => {
@@ -81,6 +151,8 @@ export const useAuth = () => {
       setUser(null);
       setSession(null);
       setProfile(null);
+      // Clear cached profile
+      localStorage.removeItem('cached_profile');
     }
     return { error };
   };
@@ -100,6 +172,41 @@ export const useAuth = () => {
     return { error };
   };
 
+  const refreshProfile = async () => {
+    if (!user) return { error: new Error('No user logged in') };
+    
+    const refreshStartTime = performance.now();
+    
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      const refreshEndTime = performance.now();
+      
+      if (error && error.code !== 'PGRST116') {
+        return { error };
+      } else {
+        setProfile(profileData as Profile);
+        // Cache profile vào localStorage
+        if (profileData) {
+          localStorage.setItem('cached_profile', JSON.stringify(profileData));
+        }
+        return { error: null };
+      }
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  const clearCacheAndRefresh = async () => {
+    localStorage.removeItem('cached_profile');
+    setProfile(null);
+    await refreshProfile();
+  };
+
   return {
     user,
     session,
@@ -109,5 +216,7 @@ export const useAuth = () => {
     signUp,
     signOut,
     updateProfile,
+    refreshProfile,
+    clearCacheAndRefresh,
   };
 };

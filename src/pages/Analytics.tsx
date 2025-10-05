@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, Target, TrendingUp, Clock, Calendar, CheckCircle } from 'lucide-react';
+import TeacherAnalytics from '@/components/TeacherAnalytics';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface AnalyticsData {
   totalAttempts: number;
@@ -33,6 +36,7 @@ interface AnalyticsData {
 
 const Analytics = () => {
   const { user, profile } = useAuth();
+  const { isTeacher } = usePermissions();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -209,6 +213,15 @@ const Analytics = () => {
   }
 
   const accuracyPercentage = analytics ? (analytics.correctAttempts / analytics.totalAttempts) * 100 || 0 : 0;
+
+  // Show teacher analytics if user is a teacher
+  if (isTeacher()) {
+    return (
+      <ErrorBoundary>
+        <TeacherAnalytics />
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
