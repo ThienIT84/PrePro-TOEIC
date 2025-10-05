@@ -8,12 +8,12 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { t } from '@/lib/i18n';
 import { Clock, BookOpen, RotateCcw, Calendar } from 'lucide-react';
-import type { Item, Review as ReviewType } from '@/types';
+import type { Question, Review as ReviewType } from '@/types';
 
 const Review = () => {
   const { user } = useAuth();
-  const [dueReviews, setDueReviews] = useState<(ReviewType & { item: Item })[]>([]);
-  const [currentReview, setCurrentReview] = useState<(ReviewType & { item: Item }) | null>(null);
+  const [dueReviews, setDueReviews] = useState<(ReviewType & { item: Question })[]>([]);
+  const [currentReview, setCurrentReview] = useState<(ReviewType & { item: Question }) | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string>('');
   const [showResult, setShowResult] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -44,9 +44,9 @@ const Review = () => {
       }
 
       if (data && data.length > 0) {
-        const reviewsWithItems = data.filter(review => review.item) as (ReviewType & { item: Item })[];
-        setDueReviews(reviewsWithItems);
-        setCurrentReview(reviewsWithItems[0]);
+        const reviewsWithQuestions = data.filter(review => review.item) as (ReviewType & { item: Question })[];
+        setDueReviews(reviewsWithQuestions);
+        setCurrentReview(reviewsWithQuestions[0]);
       }
     } catch (error) {
       console.error('Error:', error);

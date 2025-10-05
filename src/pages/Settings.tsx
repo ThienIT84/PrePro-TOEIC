@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,13 +13,15 @@ import { Settings as SettingsIcon, User, Target, Globe, BookOpen } from 'lucide-
 
 const Settings = () => {
   const { user, profile, updateProfile } = useAuth();
+  const { permissions, isTeacher, getUserRole } = usePermissions();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: profile?.name || '',
     target_score: profile?.target_score || 700,
     test_date: profile?.test_date || '',
     focus: profile?.focus || ['grammar', 'vocabulary'],
-    locales: profile?.locales || 'vi'
+    locales: profile?.locales || 'vi',
+    role: profile?.role || 'student',
   });
 
   useEffect(() => {
@@ -28,7 +31,8 @@ const Settings = () => {
         target_score: profile.target_score || 700,
         test_date: profile.test_date || '',
         focus: profile.focus || ['grammar', 'vocabulary'],
-        locales: profile.locales || 'vi'
+        locales: profile.locales || 'vi',
+        role: profile.role || 'student',
       });
     }
   }, [profile]);
@@ -131,6 +135,30 @@ const Settings = () => {
                 disabled
                 className="bg-muted"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Vai trò</Label>
+              <div className="flex items-center space-x-2">
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  disabled={!isTeacher()} // Chỉ teacher mới có thể thay đổi role
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Học sinh</SelectItem>
+                    <SelectItem value="teacher">Giáo viên</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!isTeacher() && (
+                  <span className="text-xs text-muted-foreground">
+                    Chỉ giáo viên mới có thể thay đổi vai trò
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
