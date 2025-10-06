@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Users, 
@@ -29,9 +31,10 @@ import {
   FileText,
   MoreHorizontal,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
-import { StudentProfile } from '@/services/teacherAnalytics';
+import { StudentProfile, teacherAnalyticsService } from '@/services/teacherAnalytics';
 import { toast } from '@/hooks/use-toast';
 
 interface StudentWithStatus extends StudentProfile {
@@ -60,8 +63,9 @@ interface BulkAction {
 }
 
 const StudentListWithFilters = () => {
+  const { user } = useAuth();
   const [students, setStudents] = useState<StudentWithStatus[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     level: 'all',
@@ -75,118 +79,93 @@ const StudentListWithFilters = () => {
   const [isBulkActionOpen, setIsBulkActionOpen] = useState(false);
   const [bulkMessage, setBulkMessage] = useState('');
 
-  // Mock data - in real implementation, you'd fetch from API
+  // Fetch real data from Supabase
   useEffect(() => {
-    const mockStudents: StudentWithStatus[] = [
-      {
-        id: '1',
-        name: 'Nguyễn Văn A',
-        email: 'nguyenvana@email.com',
-        target_score: 800,
-        test_date: '2024-06-01',
-        created_at: '2024-01-01',
-        last_activity: '2024-01-20T10:30:00Z',
-        total_attempts: 150,
-        avg_score: 720,
-        completion_rate: 85,
-        streak_days: 7,
-        weak_areas: ['grammar'],
-        strong_areas: ['vocabulary', 'reading'],
-        level: 'Intermediate',
-        lastScore: 720,
-        targetScore: 800,
-        progress: 65,
-        lastActivityTime: '2h trước',
-        status: 'Active'
-      },
-      {
-        id: '2',
-        name: 'Trần Thị B',
-        email: 'tranthib@email.com',
-        target_score: 600,
-        test_date: '2024-07-01',
-        created_at: '2024-01-15',
-        last_activity: '2024-01-19T15:45:00Z',
-        total_attempts: 80,
-        avg_score: 450,
-        completion_rate: 60,
-        streak_days: 2,
-        weak_areas: ['listening', 'vocabulary'],
-        strong_areas: ['grammar'],
-        level: 'Beginner',
-        lastScore: 450,
-        targetScore: 600,
-        progress: 45,
-        lastActivityTime: '1 ngày trước',
-        status: 'At Risk'
-      },
-      {
-        id: '3',
-        name: 'Lê Văn C',
-        email: 'levanc@email.com',
-        target_score: 900,
-        test_date: '2024-05-01',
-        created_at: '2023-12-01',
-        last_activity: '2024-01-20T13:20:00Z',
-        total_attempts: 200,
-        avg_score: 850,
-        completion_rate: 95,
-        streak_days: 15,
-        weak_areas: [],
-        strong_areas: ['vocabulary', 'grammar', 'listening', 'reading'],
-        level: 'Advanced',
-        lastScore: 850,
-        targetScore: 900,
-        progress: 85,
-        lastActivityTime: '3 giờ trước',
-        status: 'Active'
-      },
-      {
-        id: '4',
-        name: 'Phạm Thị D',
-        email: 'phamthid@email.com',
-        target_score: 700,
-        test_date: '2024-08-01',
-        created_at: '2024-01-10',
-        last_activity: '2024-01-15T09:15:00Z',
-        total_attempts: 120,
-        avg_score: 580,
-        completion_rate: 75,
-        streak_days: 0,
-        weak_areas: ['reading'],
-        strong_areas: ['vocabulary'],
-        level: 'Intermediate',
-        lastScore: 580,
-        targetScore: 700,
-        progress: 55,
-        lastActivityTime: '5 ngày trước',
-        status: 'Inactive'
-      },
-      {
-        id: '5',
-        name: 'Hoàng Văn E',
-        email: 'hoangvane@email.com',
-        target_score: 500,
-        test_date: '2024-09-01',
-        created_at: '2024-01-05',
-        last_activity: '2024-01-20T16:30:00Z',
-        total_attempts: 60,
-        avg_score: 380,
-        completion_rate: 50,
-        streak_days: 3,
-        weak_areas: ['vocabulary', 'grammar'],
-        strong_areas: ['listening'],
-        level: 'Beginner',
-        lastScore: 380,
-        targetScore: 500,
-        progress: 35,
-        lastActivityTime: '1 giờ trước',
-        status: 'At Risk'
-      }
-    ];
+    if (user) {
+      fetchStudentsData();
+    }
+  }, [user]);
 
-    setStudents(mockStudents);
-  }, []);
+  const fetchStudentsData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const analyticsData = await teacherAnalyticsService.getAnalyticsData(user.id);
+      const studentProfiles = analyticsData.students || [];
+      
+      // Transform StudentProfile to StudentWithStatus
+      const transformedStudents: StudentWithStatus[] = studentProfiles.map(student => {
+        // Determine level based on avg_score
+        let level: 'Beginner' | 'Intermediate' | 'Advanced' = 'Beginner';
+        if (student.avg_score >= 700) {
+          level = 'Advanced';
+        } else if (student.avg_score >= 500) {
+          level = 'Intermediate';
+        }
+
+        // Determine status based on last activity and performance
+        let status: 'Active' | 'Inactive' | 'At Risk' = 'Active';
+        const lastActivityDate = new Date(student.last_activity);
+        const now = new Date();
+        const daysSinceActivity = Math.floor((now.getTime() - lastActivityDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceActivity > 7) {
+          status = 'Inactive';
+        } else if (daysSinceActivity > 3 || student.avg_score < 400) {
+          status = 'At Risk';
+        }
+
+        // Calculate progress towards target
+        const progress = student.target_score > 0 
+          ? Math.min(100, Math.round((student.avg_score / student.target_score) * 100))
+          : 0;
+
+        // Format last activity time
+        const lastActivityTime = formatLastActivityTime(student.last_activity);
+
+        return {
+          ...student,
+          level,
+          lastScore: Math.round(student.avg_score),
+          targetScore: student.target_score || 0,
+          progress,
+          lastActivityTime,
+          status
+        };
+      });
+
+      setStudents(transformedStudents);
+    } catch (error) {
+      console.error('Error fetching students data:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể tải dữ liệu học viên. Vui lòng thử lại sau.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatLastActivityTime = (lastActivity: string): string => {
+    const now = new Date();
+    const activityDate = new Date(lastActivity);
+    const diffMs = now.getTime() - activityDate.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes} phút trước`;
+    } else if (diffHours < 24) {
+      return `${diffHours} giờ trước`;
+    } else if (diffDays < 7) {
+      return `${diffDays} ngày trước`;
+    } else {
+      return activityDate.toLocaleDateString('vi-VN');
+    }
+  };
 
   // Filter students based on current filters
   const filteredStudents = useMemo(() => {
@@ -364,6 +343,19 @@ const StudentListWithFilters = () => {
 
   const activeFiltersCount = Object.values(filters).filter(value => value !== 'all' && value !== '').length;
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Đang tải danh sách học viên...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -381,6 +373,14 @@ const StudentListWithFilters = () => {
           <Badge variant="outline">
             {filteredStudents.length} / {students.length} học viên
           </Badge>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchStudentsData}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Làm mới'}
+          </Button>
         </div>
       </div>
 
@@ -605,9 +605,15 @@ const StudentListWithFilters = () => {
                     </td>
                     <td className="p-3">
                       <div className="font-medium">{student.lastScore}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {student.total_attempts} câu hỏi
+                      </div>
                     </td>
                     <td className="p-3">
                       <div className="font-medium">{student.targetScore}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {student.test_date ? `Thi: ${new Date(student.test_date).toLocaleDateString('vi-VN')}` : 'Chưa đặt lịch'}
+                      </div>
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
@@ -629,7 +635,29 @@ const StudentListWithFilters = () => {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         {getStatusIcon(student.status)}
-                        {getStatusBadge(student.status)}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              {getStatusBadge(student.status)}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-sm">
+                                <div className="font-medium mb-1">Thông tin chi tiết:</div>
+                                <div>Streak: {student.streak_days} ngày</div>
+                                <div>Hoàn thành: {student.completion_rate}%</div>
+                                {student.weak_areas.length > 0 && (
+                                  <div>Yếu: {student.weak_areas.join(', ')}</div>
+                                )}
+                                {student.strong_areas.length > 0 && (
+                                  <div>Mạnh: {student.strong_areas.join(', ')}</div>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {student.streak_days > 0 ? `Streak: ${student.streak_days} ngày` : 'Chưa có streak'}
                       </div>
                     </td>
                     <td className="p-3">
@@ -649,10 +677,33 @@ const StudentListWithFilters = () => {
             </table>
           </div>
 
-          {filteredStudents.length === 0 && (
+          {filteredStudents.length === 0 && students.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Chưa có học viên</h3>
+              <p className="mb-4">Bạn chưa có học viên nào được gán.</p>
+              <div className="text-sm">
+                <p>Để xem danh sách học viên, hãy:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Gán học viên cho bạn trong phần quản lý</li>
+                  <li>Liên hệ admin để được gán học viên</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {filteredStudents.length === 0 && students.length > 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2" />
               <p>Không tìm thấy học viên nào phù hợp với bộ lọc</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearFilters}
+                className="mt-2"
+              >
+                Xóa bộ lọc
+              </Button>
             </div>
           )}
         </CardContent>

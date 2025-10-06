@@ -24,6 +24,8 @@ import ExamSets from "./pages/ExamSets";
 import ExamSelection from "./pages/ExamSelection";
 import ExamCustomize from "./pages/ExamCustomize";
 import ExamReview from "./pages/ExamReview";
+import DebugReview from "./pages/DebugReview";
+import TestAuth from "./pages/TestAuth";
 import RoleManagementSimple from "./components/RoleManagementSimple";
 import StudentManagement from "./components/StudentManagement";
 import Layout from "./components/Layout";
@@ -86,6 +88,30 @@ const AppContent = () => {
           user ? (
             <Layout>
               <Review />
+            </Layout>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/debug-review" 
+        element={
+          user ? (
+            <Layout>
+              <DebugReview />
+            </Layout>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/test-auth" 
+        element={
+          user ? (
+            <Layout>
+              <TestAuth />
             </Layout>
           ) : (
             <Navigate to="/auth" replace />

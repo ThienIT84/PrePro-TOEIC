@@ -48,7 +48,7 @@ const Dashboard = () => {
       // Fetch analytics data
       const { data: attempts } = await supabase
         .from('attempts')
-        .select('*, items(*)')
+        .select('*, questions(*)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 

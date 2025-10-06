@@ -30,23 +30,13 @@ import {
   MessageSquare,
   Zap,
   Shield,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react';
 import { AlertItem } from '@/services/teacherAnalytics';
-import { supabase } from '@/integrations/supabase/client';
+import { alertsService, AlertRule } from '@/services/alertsService';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-
-interface AlertRule {
-  id: string;
-  name: string;
-  description: string;
-  type: 'warning' | 'success' | 'info' | 'danger';
-  condition: string;
-  threshold: number;
-  isEnabled: boolean;
-  notificationType: 'in_app' | 'email' | 'both';
-  createdAt: string;
-}
 
 interface AlertSettings {
   emailNotifications: boolean;
@@ -60,6 +50,7 @@ interface AlertSettings {
 }
 
 const AdvancedAlertsSystem = () => {
+  const { user } = useAuth();
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
   const [settings, setSettings] = useState<AlertSettings>({
@@ -79,131 +70,82 @@ const AdvancedAlertsSystem = () => {
   });
 
   useEffect(() => {
-    fetchAlerts();
-    fetchAlertRules();
-  }, []);
+    if (user) {
+      fetchAlerts();
+      fetchAlertRules();
+      createDefaultRulesIfNeeded();
+    }
+  }, [user]);
 
   const fetchAlerts = async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
-      // Mock data - in real implementation, you'd fetch from alerts table
-      const mockAlerts: AlertItem[] = [
-        {
-          id: 'alert_1',
-          type: 'warning',
-          title: 'Student Inactive',
-          message: 'Nguyễn Văn A hasn\'t been active for more than 7 days',
-          student_id: 'student_1',
-          student_name: 'Nguyễn Văn A',
-          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          is_read: false
-        },
-        {
-          id: 'alert_2',
-          type: 'danger',
-          title: 'Low Score Alert',
-          message: 'Trần Thị B scored 45% on recent exam',
-          student_id: 'student_2',
-          student_name: 'Trần Thị B',
-          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          is_read: false
-        },
-        {
-          id: 'alert_3',
-          type: 'success',
-          title: 'Excellent Score!',
-          message: 'Lê Văn C achieved 95% - Great job!',
-          student_id: 'student_3',
-          student_name: 'Lê Văn C',
-          timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-          is_read: true
-        },
-        {
-          id: 'alert_4',
-          type: 'info',
-          title: 'New Student Joined',
-          message: 'Phạm Thị D has joined your class',
-          student_id: 'student_4',
-          student_name: 'Phạm Thị D',
-          timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-          is_read: false
-        }
-      ];
-
-      setAlerts(mockAlerts);
+      const alertsData = await alertsService.getAlerts(user.id);
+      setAlerts(alertsData);
     } catch (error) {
       console.error('Error fetching alerts:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể tải danh sách cảnh báo.',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const fetchAlertRules = async () => {
+    if (!user) return;
+    
     try {
-      // Mock data - in real implementation, you'd fetch from alert_rules table
-      const mockRules: AlertRule[] = [
-        {
-          id: 'rule_1',
-          name: 'Inactive Student Alert',
-          description: 'Alert when student is inactive for more than 7 days',
-          type: 'warning',
-          condition: 'inactive_days',
-          threshold: 7,
-          isEnabled: true,
-          notificationType: 'both',
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 'rule_2',
-          name: 'Low Score Alert',
-          description: 'Alert when student scores below 50%',
-          type: 'danger',
-          condition: 'score_below',
-          threshold: 50,
-          isEnabled: true,
-          notificationType: 'in_app',
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 'rule_3',
-          name: 'Excellent Score Alert',
-          description: 'Alert when student scores above 90%',
-          type: 'success',
-          condition: 'score_above',
-          threshold: 90,
-          isEnabled: true,
-          notificationType: 'both',
-          createdAt: '2024-01-01'
-        },
-        {
-          id: 'rule_4',
-          name: 'New Student Alert',
-          description: 'Alert when new student joins class',
-          type: 'info',
-          condition: 'new_student',
-          threshold: 0,
-          isEnabled: true,
-          notificationType: 'email',
-          createdAt: '2024-01-01'
-        }
-      ];
-
-      setAlertRules(mockRules);
+      const rulesData = await alertsService.getAlertRules(user.id);
+      setAlertRules(rulesData);
     } catch (error) {
       console.error('Error fetching alert rules:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể tải danh sách quy tắc cảnh báo.',
+        variant: 'destructive'
+      });
     }
+  };
+
+  const createDefaultRulesIfNeeded = async () => {
+    if (!user) return;
+    
+    try {
+      await alertsService.createDefaultRules(user.id);
+      // Refresh rules after creating defaults
+      await fetchAlertRules();
+    } catch (error) {
+      console.error('Error creating default rules:', error);
+    }
+  };
+
+  const refreshData = async () => {
+    await Promise.all([
+      fetchAlerts(),
+      fetchAlertRules()
+    ]);
   };
 
   const markAsRead = async (alertId: string) => {
     try {
-      setAlerts(prev => prev.map(alert => 
-        alert.id === alertId ? { ...alert, is_read: true } : alert
-      ));
-      
-      toast({
-        title: 'Thành công',
-        description: 'Đã đánh dấu cảnh báo là đã đọc.'
-      });
+      const success = await alertsService.markAsRead(alertId);
+      if (success) {
+        setAlerts(prev => prev.map(alert => 
+          alert.id === alertId ? { ...alert, is_read: true } : alert
+        ));
+        
+        toast({
+          title: 'Thành công',
+          description: 'Đã đánh dấu cảnh báo là đã đọc.'
+        });
+      } else {
+        throw new Error('Failed to mark as read');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -214,13 +156,20 @@ const AdvancedAlertsSystem = () => {
   };
 
   const markAllAsRead = async () => {
+    if (!user) return;
+    
     try {
-      setAlerts(prev => prev.map(alert => ({ ...alert, is_read: true })));
-      
-      toast({
-        title: 'Thành công',
-        description: 'Đã đánh dấu tất cả cảnh báo là đã đọc.'
-      });
+      const success = await alertsService.markAllAsRead(user.id);
+      if (success) {
+        setAlerts(prev => prev.map(alert => ({ ...alert, is_read: true })));
+        
+        toast({
+          title: 'Thành công',
+          description: 'Đã đánh dấu tất cả cảnh báo là đã đọc.'
+        });
+      } else {
+        throw new Error('Failed to mark all as read');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -232,12 +181,17 @@ const AdvancedAlertsSystem = () => {
 
   const deleteAlert = async (alertId: string) => {
     try {
-      setAlerts(prev => prev.filter(alert => alert.id !== alertId));
-      
-      toast({
-        title: 'Thành công',
-        description: 'Đã xóa cảnh báo.'
-      });
+      const success = await alertsService.deleteAlert(alertId);
+      if (success) {
+        setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+        
+        toast({
+          title: 'Thành công',
+          description: 'Đã xóa cảnh báo.'
+        });
+      } else {
+        throw new Error('Failed to delete alert');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -249,14 +203,22 @@ const AdvancedAlertsSystem = () => {
 
   const toggleRule = async (ruleId: string) => {
     try {
-      setAlertRules(prev => prev.map(rule => 
-        rule.id === ruleId ? { ...rule, isEnabled: !rule.isEnabled } : rule
-      ));
-      
-      toast({
-        title: 'Thành công',
-        description: 'Đã cập nhật quy tắc cảnh báo.'
-      });
+      const rule = alertRules.find(r => r.id === ruleId);
+      if (!rule) return;
+
+      const success = await alertsService.toggleRule(ruleId, !rule.is_enabled);
+      if (success) {
+        setAlertRules(prev => prev.map(r => 
+          r.id === ruleId ? { ...r, is_enabled: !r.is_enabled } : r
+        ));
+        
+        toast({
+          title: 'Thành công',
+          description: 'Đã cập nhật quy tắc cảnh báo.'
+        });
+      } else {
+        throw new Error('Failed to toggle rule');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -324,6 +286,10 @@ const AdvancedAlertsSystem = () => {
               {unreadCount} chưa đọc
             </Badge>
           )}
+          <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
           <Button variant="outline" size="sm" onClick={markAllAsRead}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Đánh dấu tất cả
@@ -459,8 +425,13 @@ const AdvancedAlertsSystem = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {alertRules.map((rule) => (
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : alertRules.length > 0 ? (
+                <div className="space-y-4">
+                  {alertRules.map((rule) => (
                   <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0">
@@ -483,17 +454,24 @@ const AdvancedAlertsSystem = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right text-xs text-muted-foreground">
-                        <div>{rule.notificationType}</div>
-                        <div>{rule.isEnabled ? 'Bật' : 'Tắt'}</div>
+                        <div>{rule.notification_type}</div>
+                        <div>{rule.is_enabled ? 'Bật' : 'Tắt'}</div>
                       </div>
                       <Switch
-                        checked={rule.isEnabled}
+                        checked={rule.is_enabled}
                         onCheckedChange={() => toggleRule(rule.id)}
                       />
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Settings className="h-8 w-8 mx-auto mb-2" />
+                  <p>Không có quy tắc nào</p>
+                  <p className="text-sm">Hệ thống sẽ tự động tạo quy tắc mặc định</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

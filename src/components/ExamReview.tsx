@@ -21,6 +21,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { ExamSet, Question } from '@/types';
 import SimpleAudioPlayer from './SimpleAudioPlayer';
+import TimeStatistics from './TimeStatistics';
 
 interface ExamReviewProps {
   sessionId: string;
@@ -207,6 +208,38 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
     return acc;
   }, {} as Record<number, Array<Question & { originalIndex: number }>>);
 
+  // Calculate part-wise statistics
+  const partStatistics = Object.entries(questionsByPart).map(([part, partQuestions]) => {
+    const correctInPart = partQuestions.filter(q => userAnswers[q.id] === q.correct_choice).length;
+    const totalInPart = partQuestions.length;
+    const accuracy = totalInPart > 0 ? (correctInPart / totalInPart) * 100 : 0;
+    
+    return {
+      part: parseInt(part),
+      correct: correctInPart,
+      total: totalInPart,
+      accuracy: Math.round(accuracy),
+      questions: partQuestions
+    };
+  }).sort((a, b) => a.part - b.part);
+
+  // Calculate TOEIC score estimation
+  const calculateTOEICScore = (accuracy: number) => {
+    // Rough estimation based on TOEIC scoring system
+    if (accuracy >= 95) return 990;
+    if (accuracy >= 90) return 900 + (accuracy - 90) * 18;
+    if (accuracy >= 80) return 800 + (accuracy - 80) * 10;
+    if (accuracy >= 70) return 700 + (accuracy - 70) * 10;
+    if (accuracy >= 60) return 600 + (accuracy - 60) * 10;
+    if (accuracy >= 50) return 500 + (accuracy - 50) * 10;
+    if (accuracy >= 40) return 400 + (accuracy - 40) * 10;
+    if (accuracy >= 30) return 300 + (accuracy - 30) * 10;
+    if (accuracy >= 20) return 200 + (accuracy - 20) * 10;
+    return Math.max(100, accuracy * 5);
+  };
+
+  const estimatedTOEICScore = calculateTOEICScore((correctAnswers / totalQuestions) * 100);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - Giống ExamSession */}
@@ -228,6 +261,9 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
               <div className={`text-2xl font-bold ${getScoreColor(examSession.score)}`}>
                 {examSession.score}%
               </div>
+              <div className="text-xs text-blue-600 font-medium">
+                ~{estimatedTOEICScore} TOEIC
+              </div>
             </div>
             <Button onClick={() => navigate(`/exam-sets/${examSet.id}/take`)}>
               <Play className="h-4 w-4 mr-2" />
@@ -237,9 +273,9 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
         </div>
       </div>
 
-      <div className="flex h-screen">
+      <div className="flex flex-col lg:flex-row h-screen">
         {/* Main Content - Giống ExamSession */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-4 lg:p-6 overflow-y-auto">
           {currentQuestion && (
             <div className="max-w-4xl mx-auto">
               {/* Question Header */}
@@ -614,33 +650,93 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
         </div>
 
         {/* Right Sidebar - Giống ExamSession */}
-        <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+        <div className="w-full lg:w-80 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 p-4 lg:p-6 overflow-y-auto max-h-96 lg:max-h-none">
           <div className="space-y-6">
-            {/* Progress Summary */}
+            {/* Overall Score Summary */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Tiến độ</CardTitle>
+                <CardTitle className="text-lg">Tổng kết</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Overall Score */}
+                  <div className="text-center">
+                    <div className={`text-3xl font-bold ${getScoreColor(examSession.score)}`}>
+                      {examSession.score}%
+                    </div>
+                    <div className="text-sm text-gray-600">Độ chính xác</div>
+                  </div>
+
+                  {/* TOEIC Score Estimation */}
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">
+                      ~{estimatedTOEICScore}
+                    </div>
+                    <div className="text-sm text-blue-700">Điểm TOEIC ước tính</div>
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="p-2 bg-green-50 rounded">
+                      <div className="text-lg font-bold text-green-600">{correctAnswers}</div>
+                      <div className="text-xs text-green-700">Đúng</div>
+                    </div>
+                    <div className="p-2 bg-red-50 rounded">
+                      <div className="text-lg font-bold text-red-600">{totalQuestions - correctAnswers}</div>
+                      <div className="text-xs text-red-700">Sai</div>
+                    </div>
+                  </div>
+
+                  {/* Time Spent */}
+                  <div className="text-center p-2 bg-gray-50 rounded">
+                    <div className="text-sm font-medium text-gray-700">
+                      Thời gian: {Math.floor(examSession.time_spent / 60)} phút
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Part-wise Analysis */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Phân tích theo Part</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span>Câu hiện tại</span>
-                    <span>{currentQuestionIndex + 1}/{totalQuestions}</span>
-                  </div>
-                  <Progress 
-                    value={((currentQuestionIndex + 1) / totalQuestions) * 100} 
-                    className="h-2"
-                  />
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-green-600">{correctAnswers}</div>
-                      <div className="text-xs text-gray-600">Đúng</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-red-600">{totalQuestions - correctAnswers}</div>
-                      <div className="text-xs text-gray-600">Sai</div>
-                    </div>
-                  </div>
+                  {partStatistics.map((stat) => {
+                    const PartIcon = getPartIcon(stat.part);
+                    const partColor = getPartColor(stat.part);
+                    
+                    return (
+                      <div key={stat.part} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <PartIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">Part {stat.part}</span>
+                          </div>
+                          <div className="text-sm font-bold">
+                            {stat.correct}/{stat.total}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={stat.accuracy} 
+                            className="flex-1 h-2"
+                          />
+                          <span className="text-xs font-medium w-12 text-right">
+                            {stat.accuracy}%
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {stat.part <= 4 ? 'Listening' : 'Reading'} • 
+                          {stat.accuracy >= 80 ? ' Xuất sắc' : 
+                           stat.accuracy >= 60 ? ' Tốt' : 
+                           stat.accuracy >= 40 ? ' Trung bình' : ' Cần cải thiện'}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -689,6 +785,81 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
               </CardContent>
             </Card>
 
+            {/* Time Statistics */}
+            <TimeStatistics
+              timeSpent={examSession.time_spent}
+              totalQuestions={totalQuestions}
+              correctAnswers={correctAnswers}
+              partStatistics={partStatistics}
+            />
+
+            {/* Improvement Suggestions */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Đề xuất cải thiện</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {(() => {
+                    const weakParts = partStatistics.filter(stat => stat.accuracy < 60);
+                    const strongParts = partStatistics.filter(stat => stat.accuracy >= 80);
+                    
+                    return (
+                      <>
+                        {/* Weak Areas */}
+                        {weakParts.length > 0 && (
+                          <div className="p-3 bg-red-50 rounded-lg border-l-4 border-red-400">
+                            <h4 className="font-semibold text-red-900 mb-2">Cần cải thiện:</h4>
+                            <ul className="text-sm text-red-800 space-y-1">
+                              {weakParts.map(part => (
+                                <li key={part.part}>
+                                  • Part {part.part} ({part.accuracy}%) - 
+                                  {part.part <= 4 ? 'Luyện nghe nhiều hơn' : 'Đọc hiểu và từ vựng'}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Strong Areas */}
+                        {strongParts.length > 0 && (
+                          <div className="p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                            <h4 className="font-semibold text-green-900 mb-2">Điểm mạnh:</h4>
+                            <ul className="text-sm text-green-800 space-y-1">
+                              {strongParts.map(part => (
+                                <li key={part.part}>
+                                  • Part {part.part} ({part.accuracy}%) - 
+                                  {part.part <= 4 ? 'Kỹ năng nghe tốt' : 'Kỹ năng đọc tốt'}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* General Recommendations */}
+                        <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                          <h4 className="font-semibold text-blue-900 mb-2">Khuyến nghị:</h4>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            {estimatedTOEICScore >= 800 && (
+                              <li>• Bạn đã có trình độ tốt! Tiếp tục luyện tập để đạt 900+</li>
+                            )}
+                            {estimatedTOEICScore >= 600 && estimatedTOEICScore < 800 && (
+                              <li>• Tập trung vào các Part yếu để đạt mục tiêu 800+</li>
+                            )}
+                            {estimatedTOEICScore < 600 && (
+                              <li>• Cần luyện tập nhiều hơn, tập trung vào từ vựng và ngữ pháp cơ bản</li>
+                            )}
+                            <li>• Làm lại bài thi này sau 1-2 tuần để kiểm tra tiến bộ</li>
+                            <li>• Thực hành đều đặn 30-60 phút mỗi ngày</li>
+                          </ul>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Quick Actions */}
             <Card>
               <CardHeader className="pb-3">
@@ -718,6 +889,17 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                 >
                   <Play className="h-4 w-4 mr-2" />
                   Làm lại bài thi
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    // TODO: Implement save/share functionality
+                    navigator.clipboard.writeText(`Tôi vừa hoàn thành bài thi TOEIC với điểm số ${examSession.score}% (ước tính ~${estimatedTOEICScore} điểm TOEIC). Hãy cùng luyện tập nhé!`);
+                  }}
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  Chia sẻ kết quả
                 </Button>
               </CardContent>
             </Card>

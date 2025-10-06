@@ -118,7 +118,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
           user_id,
           correct,
           created_at,
-          items(type),
+          questions(part),
           profiles(name)
         `)
         .in('user_id', studentIds);
