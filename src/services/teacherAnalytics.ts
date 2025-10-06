@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { alertsService } from './alertsService';
 
 export interface StudentProfile {
   id: string;
@@ -111,8 +112,14 @@ class TeacherAnalyticsService {
         this.getWeeklyProgress(studentIds)
       ]);
 
-      // Generate alerts
-      const alerts = await this.generateAlerts(students, activities, examResults);
+      // Generate alerts using the new alerts service
+      if (students.length > 0) {
+        console.log('Generating alerts for students:', students.length);
+        await alertsService.generateAlerts(teacherId, students);
+      }
+      
+      // Get alerts from database
+      const alerts = await alertsService.getAlerts(teacherId);
 
       return {
         ...keyMetrics,
@@ -150,22 +157,44 @@ class TeacherAnalyticsService {
    */
   private async getTeacherStudents(teacherId: string) {
     try {
-      const { data, error } = await supabase.rpc('get_teacher_students', {
-        teacher_uuid: teacherId
-      });
+      // Get students assigned to this teacher
+      const { data: teacherStudents, error: teacherError } = await supabase
+        .from('teacher_students')
+        .select(`
+          student_id,
+          assigned_at,
+          status,
+          notes
+        `)
+        .eq('teacher_id', teacherId)
+        .eq('status', 'active');
 
-      if (error) {
-        console.error('Error fetching teacher students:', error);
+      if (teacherError) {
+        console.error('Error fetching teacher students:', teacherError);
         return [];
       }
 
-      // Get additional student data
-      const studentIds = data?.map(s => s.student_id) || [];
-      if (studentIds.length === 0) return [];
+      if (!teacherStudents || teacherStudents.length === 0) {
+        console.log('No teacher students found for teacher:', teacherId);
+        return [];
+      }
 
+      console.log('Found teacher students:', teacherStudents.length);
+      console.log('Student IDs:', teacherStudents.map(ts => ts.student_id));
+
+      const studentIds = teacherStudents.map(ts => ts.student_id);
+
+      // Get student profiles separately
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          user_id,
+          name,
+          role,
+          target_score,
+          test_date,
+          created_at
+        `)
         .in('user_id', studentIds);
 
       if (profileError) {
@@ -173,37 +202,61 @@ class TeacherAnalyticsService {
         return [];
       }
 
-      // Get student statistics
-      const { data: attempts, error: attemptsError } = await supabase
-        .from('attempts')
-        .select('user_id, correct, created_at, items(type)')
-        .in('user_id', studentIds);
+      console.log('Found profiles:', profiles?.length || 0);
 
-      if (attemptsError) {
-        console.error('Error fetching student attempts:', attemptsError);
-      }
+      // Get student statistics from attempts and exam sessions
+      const [attemptsResult, examSessionsResult] = await Promise.all([
+        supabase
+          .from('attempts')
+          .select('user_id, correct, created_at, questions(part, difficulty)')
+          .in('user_id', studentIds),
+        supabase
+          .from('exam_sessions')
+          .select('user_id, score, completed_at, total_questions, correct_answers')
+          .in('user_id', studentIds)
+          .eq('status', 'completed')
+      ]);
+
+      const attempts = attemptsResult.data || [];
+      const examSessions = examSessionsResult.data || [];
+      
+      console.log('Found attempts:', attempts.length);
+      console.log('Found exam sessions:', examSessions.length);
 
       // Calculate statistics for each student
-      return profiles?.map(profile => {
-        const studentAttempts = attempts?.filter(a => a.user_id === profile.user_id) || [];
+      return teacherStudents.map(teacherStudent => {
+        const profile = profiles?.find(p => p.user_id === teacherStudent.student_id);
+        if (!profile) return null;
+
+        const studentId = profile.user_id;
+        const studentAttempts = attempts.filter(a => a.user_id === studentId);
+        const studentExams = examSessions.filter(e => e.user_id === studentId);
+        
         const correctAttempts = studentAttempts.filter(a => a.correct);
-        const avgScore = studentAttempts.length > 0 ? 
-          (correctAttempts.length / studentAttempts.length) * 100 : 0;
+        const totalQuestions = studentAttempts.length + 
+          studentExams.reduce((sum, exam) => sum + (exam.total_questions || 0), 0);
+        const totalCorrect = correctAttempts.length + 
+          studentExams.reduce((sum, exam) => sum + (exam.correct_answers || 0), 0);
+        
+        const avgScore = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
 
         // Calculate weak/strong areas
-        const skillStats = this.calculateSkillStats(studentAttempts);
+        const skillStats = this.calculateSkillStats(studentAttempts, studentExams);
         
-        return {
+        const result = {
           ...profile,
-          total_attempts: studentAttempts.length,
+          total_attempts: totalQuestions,
           avg_score: avgScore,
-          completion_rate: Math.min(100, studentAttempts.length * 2), // Simplified
-          streak_days: this.calculateStreak(studentAttempts),
+          completion_rate: Math.min(100, totalQuestions * 2), // Simplified
+          streak_days: this.calculateStreak(studentAttempts, studentExams),
           weak_areas: skillStats.weak,
           strong_areas: skillStats.strong,
-          last_activity: this.getLastActivity(studentAttempts)
+          last_activity: this.getLastActivity(studentAttempts, studentExams)
         };
-      }) || [];
+        
+        console.log(`Student ${profile.name}: ${totalQuestions} questions, ${avgScore.toFixed(1)}% avg score`);
+        return result;
+      }).filter(Boolean);
     } catch (error) {
       console.error('Error in getTeacherStudents:', error);
       return [];
@@ -537,20 +590,49 @@ class TeacherAnalyticsService {
   /**
    * Calculate skill statistics
    */
-  private calculateSkillStats(attempts: any[]) {
+  private calculateSkillStats(attempts: any[], examSessions: any[] = []) {
     const skillCounts: Record<string, { correct: number; total: number }> = {};
     
+    // Process attempts
     attempts.forEach(attempt => {
-      const type = attempt.items?.type;
-      if (type) {
-        if (!skillCounts[type]) {
-          skillCounts[type] = { correct: 0, total: 0 };
+      const part = attempt.questions?.part;
+      if (part) {
+        // Map TOEIC parts to skills
+        let skill = '';
+        if (part <= 4) {
+          skill = 'listening';
+        } else if (part === 5) {
+          skill = 'grammar';
+        } else if (part >= 6) {
+          skill = 'reading';
         }
-        skillCounts[type].total++;
-        if (attempt.correct) {
-          skillCounts[type].correct++;
+        
+        if (skill) {
+          if (!skillCounts[skill]) {
+            skillCounts[skill] = { correct: 0, total: 0 };
+          }
+          skillCounts[skill].total++;
+          if (attempt.correct) {
+            skillCounts[skill].correct++;
+          }
         }
       }
+    });
+
+    // Process exam sessions
+    examSessions.forEach(exam => {
+      const totalQuestions = exam.total_questions || 0;
+      const correctAnswers = exam.correct_answers || 0;
+      const accuracy = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
+      
+      // For exams, we'll distribute across all skills equally
+      ['listening', 'grammar', 'reading', 'vocabulary'].forEach(skill => {
+        if (!skillCounts[skill]) {
+          skillCounts[skill] = { correct: 0, total: 0 };
+        }
+        skillCounts[skill].total += Math.floor(totalQuestions / 4);
+        skillCounts[skill].correct += Math.floor(correctAnswers * accuracy / 4);
+      });
     });
 
     const skills = Object.entries(skillCounts).map(([skill, stats]) => ({
@@ -569,12 +651,25 @@ class TeacherAnalyticsService {
   /**
    * Calculate streak days
    */
-  private calculateStreak(attempts: any[]): number {
-    if (attempts.length === 0) return 0;
+  private calculateStreak(attempts: any[], examSessions: any[] = []): number {
+    // Combine all activity dates
+    const allDates = new Set<string>();
     
-    const dates = attempts.map(a => a.created_at.split('T')[0]);
-    const uniqueDates = [...new Set(dates)].sort().reverse();
+    attempts.forEach(attempt => {
+      if (attempt.created_at) {
+        allDates.add(attempt.created_at.split('T')[0]);
+      }
+    });
     
+    examSessions.forEach(exam => {
+      if (exam.completed_at) {
+        allDates.add(exam.completed_at.split('T')[0]);
+      }
+    });
+    
+    if (allDates.size === 0) return 0;
+    
+    const uniqueDates = Array.from(allDates).sort().reverse();
     let streak = 0;
     const today = new Date().toISOString().split('T')[0];
     
@@ -596,14 +691,31 @@ class TeacherAnalyticsService {
   /**
    * Get last activity date
    */
-  private getLastActivity(attempts: any[]): string {
-    if (attempts.length === 0) return new Date().toISOString();
+  private getLastActivity(attempts: any[], examSessions: any[] = []): string {
+    const allActivities: { date: string; timestamp: number }[] = [];
     
-    const sortedAttempts = attempts.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    attempts.forEach(attempt => {
+      if (attempt.created_at) {
+        allActivities.push({
+          date: attempt.created_at,
+          timestamp: new Date(attempt.created_at).getTime()
+        });
+      }
+    });
     
-    return sortedAttempts[0].created_at;
+    examSessions.forEach(exam => {
+      if (exam.completed_at) {
+        allActivities.push({
+          date: exam.completed_at,
+          timestamp: new Date(exam.completed_at).getTime()
+        });
+      }
+    });
+    
+    if (allActivities.length === 0) return new Date().toISOString();
+    
+    const sortedActivities = allActivities.sort((a, b) => b.timestamp - a.timestamp);
+    return sortedActivities[0].date;
   }
 
   /**

@@ -51,45 +51,73 @@ const Analytics = () => {
 
     setLoading(true);
     try {
-      // Fetch attempts with item details
-      const { data: attempts, error } = await supabase
+      // Fetch attempts with question details
+      const { data: attempts, error: attemptsError } = await supabase
         .from('attempts')
         .select(`
           *,
-          item:items(type, difficulty)
+          question:questions(part, difficulty, status)
         `)
         .eq('user_id', user.id)
+        .eq('question.status', 'published')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching analytics:', error);
+      if (attemptsError) {
+        console.error('Error fetching attempts:', attemptsError);
         return;
       }
 
-      if (!attempts) return;
+      // Fetch exam sessions for more comprehensive data
+      const { data: examSessions, error: examError } = await supabase
+        .from('exam_sessions')
+        .select(`
+          *,
+          exam_sets(title, type, difficulty)
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false });
+
+      if (examError) {
+        console.error('Error fetching exam sessions:', examError);
+      }
+
+      // Combine attempts and exam data
+      const allAttempts = attempts || [];
+      const allExams = examSessions || [];
 
       // Calculate total and correct attempts
-      const totalAttempts = attempts.length;
-      const correctAttempts = attempts.filter(a => a.correct).length;
+      const totalAttempts = allAttempts.length;
+      const correctAttempts = allAttempts.filter(a => a.correct).length;
       
-      // Calculate average time (in seconds)
-      const averageTime = attempts.reduce((sum, a) => sum + (a.time_ms || 0), 0) / attempts.length / 1000;
+      // Add exam data to totals
+      const totalExamQuestions = allExams.reduce((sum, exam) => sum + (exam.total_questions || 0), 0);
+      const totalExamCorrect = allExams.reduce((sum, exam) => sum + (exam.correct_answers || 0), 0);
+      
+      const grandTotalAttempts = totalAttempts + totalExamQuestions;
+      const grandTotalCorrect = correctAttempts + totalExamCorrect;
+      
+      // Calculate average time (in seconds) - only for attempts with time data
+      const attemptsWithTime = allAttempts.filter(a => a.time_ms && a.time_ms > 0);
+      const averageTime = attemptsWithTime.length > 0 
+        ? attemptsWithTime.reduce((sum, a) => sum + (a.time_ms || 0), 0) / attemptsWithTime.length / 1000
+        : 0;
 
-      // Calculate streak (simplified - consecutive days with attempts)
-      const streakDays = calculateStreak(attempts);
+      // Calculate streak (consecutive days with activity)
+      const streakDays = calculateStreak(allAttempts, allExams);
 
       // Weekly progress (last 7 days)
-      const weeklyProgress = calculateWeeklyProgress(attempts);
+      const weeklyProgress = calculateWeeklyProgress(allAttempts, allExams);
 
       // Topic performance
-      const topicPerformance = calculateTopicPerformance(attempts);
+      const topicPerformance = calculateTopicPerformance(allAttempts, allExams);
 
       // Difficulty performance
-      const difficultyPerformance = calculateDifficultyPerformance(attempts);
+      const difficultyPerformance = calculateDifficultyPerformance(allAttempts, allExams);
 
       setAnalytics({
-        totalAttempts,
-        correctAttempts,
+        totalAttempts: grandTotalAttempts,
+        correctAttempts: grandTotalCorrect,
         averageTime,
         streakDays,
         weeklyProgress,
@@ -103,22 +131,36 @@ const Analytics = () => {
     }
   };
 
-  const calculateStreak = (attempts: any[]) => {
-    if (attempts.length === 0) return 0;
+  const calculateStreak = (attempts: any[], examSessions: any[] = []) => {
+    // Combine all activity dates
+    const allDates = new Set<string>();
     
+    attempts.forEach(attempt => {
+      if (attempt.created_at) {
+        allDates.add(attempt.created_at.split('T')[0]);
+      }
+    });
+    
+    examSessions.forEach(exam => {
+      if (exam.completed_at) {
+        allDates.add(exam.completed_at.split('T')[0]);
+      }
+    });
+    
+    if (allDates.size === 0) return 0;
+    
+    const sortedDates = Array.from(allDates).sort().reverse();
     const today = new Date();
     let streak = 0;
     let currentDate = new Date(today);
     
     for (let i = 0; i < 30; i++) { // Check last 30 days
       const dateStr = currentDate.toISOString().split('T')[0];
-      const hasAttempts = attempts.some(a => 
-        a.created_at.startsWith(dateStr)
-      );
+      const hasActivity = sortedDates.includes(dateStr);
       
-      if (hasAttempts) {
+      if (hasActivity) {
         streak++;
-      } else if (i > 0) { // Don't break on first day (today) if no attempts yet
+      } else if (i > 0) { // Don't break on first day (today) if no activity yet
         break;
       }
       
@@ -128,7 +170,7 @@ const Analytics = () => {
     return streak;
   };
 
-  const calculateWeeklyProgress = (attempts: any[]) => {
+  const calculateWeeklyProgress = (attempts: any[], examSessions: any[] = []) => {
     const last7Days = [];
     const today = new Date();
     
@@ -137,50 +179,120 @@ const Analytics = () => {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
       
+      // Count attempts for this day
       const dayAttempts = attempts.filter(a => 
-        a.created_at.startsWith(dateStr)
+        a.created_at && a.created_at.startsWith(dateStr)
       );
+      
+      // Count exam sessions for this day
+      const dayExams = examSessions.filter(e => 
+        e.completed_at && e.completed_at.startsWith(dateStr)
+      );
+      
+      // Calculate total questions from exams
+      const examQuestions = dayExams.reduce((sum, exam) => sum + (exam.total_questions || 0), 0);
+      const examCorrect = dayExams.reduce((sum, exam) => sum + (exam.correct_answers || 0), 0);
       
       last7Days.push({
         date: dateStr,
-        attempts: dayAttempts.length,
-        correct: dayAttempts.filter(a => a.correct).length,
+        attempts: dayAttempts.length + examQuestions,
+        correct: dayAttempts.filter(a => a.correct).length + examCorrect,
       });
     }
     
     return last7Days;
   };
 
-  const calculateTopicPerformance = (attempts: any[]) => {
+  const calculateTopicPerformance = (attempts: any[], examSessions: any[] = []) => {
     const topicStats: Record<string, { total: number; correct: number }> = {};
     
+    // Process attempts
     attempts.forEach(attempt => {
-      if (attempt.item?.type) {
-        const type = attempt.item.type;
-        if (!topicStats[type]) {
-          topicStats[type] = { total: 0, correct: 0 };
+      if (attempt.question?.part) {
+        const part = attempt.question.part;
+        // Map TOEIC parts to topics
+        let topic = '';
+        if (part <= 4) {
+          topic = 'listening';
+        } else if (part === 5) {
+          topic = 'grammar';
+        } else if (part >= 6) {
+          topic = 'reading';
         }
-        topicStats[type].total++;
-        if (attempt.correct) {
-          topicStats[type].correct++;
+        
+        if (topic) {
+          if (!topicStats[topic]) {
+            topicStats[topic] = { total: 0, correct: 0 };
+          }
+          topicStats[topic].total++;
+          if (attempt.correct) {
+            topicStats[topic].correct++;
+          }
         }
       }
     });
     
-    return Object.entries(topicStats).map(([type, stats]) => ({
-      type,
+    // Process exam sessions
+    examSessions.forEach(exam => {
+      if (exam.exam_sets?.type) {
+        const examType = exam.exam_sets.type;
+        let topic = '';
+        
+        // Map exam types to topics
+        switch (examType) {
+          case 'listening':
+            topic = 'listening';
+            break;
+          case 'grammar':
+            topic = 'grammar';
+            break;
+          case 'reading':
+            topic = 'reading';
+            break;
+          case 'vocab':
+            topic = 'vocabulary';
+            break;
+          case 'mix':
+            // For mixed exams, distribute across all topics
+            const totalQuestions = exam.total_questions || 0;
+            const correctAnswers = exam.correct_answers || 0;
+            const accuracy = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
+            
+            ['listening', 'grammar', 'reading', 'vocabulary'].forEach(t => {
+              if (!topicStats[t]) {
+                topicStats[t] = { total: 0, correct: 0 };
+              }
+              topicStats[t].total += Math.floor(totalQuestions / 4);
+              topicStats[t].correct += Math.floor(correctAnswers * accuracy / 4);
+            });
+            return;
+        }
+        
+        if (topic) {
+          if (!topicStats[topic]) {
+            topicStats[topic] = { total: 0, correct: 0 };
+          }
+          topicStats[topic].total += exam.total_questions || 0;
+          topicStats[topic].correct += exam.correct_answers || 0;
+        }
+      }
+    });
+    
+    return Object.entries(topicStats).map(([topic, stats]) => ({
+      type: topic,
       total: stats.total,
       correct: stats.correct,
       accuracy: stats.total > 0 ? (stats.correct / stats.total) * 100 : 0,
     }));
   };
 
-  const calculateDifficultyPerformance = (attempts: any[]) => {
+  const calculateDifficultyPerformance = (attempts: any[], examSessions: any[] = []) => {
     const difficultyStats: Record<string, { total: number; correct: number }> = {};
     
+    // Process attempts
     attempts.forEach(attempt => {
-      if (attempt.item?.difficulty) {
-        const difficulty = attempt.item.difficulty;
+      if (attempt.question?.difficulty) {
+        const difficulty = attempt.question.difficulty;
         if (!difficultyStats[difficulty]) {
           difficultyStats[difficulty] = { total: 0, correct: 0 };
         }
@@ -188,6 +300,18 @@ const Analytics = () => {
         if (attempt.correct) {
           difficultyStats[difficulty].correct++;
         }
+      }
+    });
+    
+    // Process exam sessions
+    examSessions.forEach(exam => {
+      if (exam.exam_sets?.difficulty) {
+        const difficulty = exam.exam_sets.difficulty;
+        if (!difficultyStats[difficulty]) {
+          difficultyStats[difficulty] = { total: 0, correct: 0 };
+        }
+        difficultyStats[difficulty].total += exam.total_questions || 0;
+        difficultyStats[difficulty].correct += exam.correct_answers || 0;
       }
     });
     
@@ -212,7 +336,9 @@ const Analytics = () => {
     );
   }
 
-  const accuracyPercentage = analytics ? (analytics.correctAttempts / analytics.totalAttempts) * 100 || 0 : 0;
+  const accuracyPercentage = analytics && analytics.totalAttempts > 0 
+    ? (analytics.correctAttempts / analytics.totalAttempts) * 100 
+    : 0;
 
   // Show teacher analytics if user is a teacher
   if (isTeacher()) {
@@ -236,7 +362,7 @@ const Analytics = () => {
         </p>
       </div>
 
-      {analytics ? (
+      {analytics && analytics.totalAttempts > 0 ? (
         <>
           {/* Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -458,9 +584,17 @@ const Analytics = () => {
           <CardContent className="text-center py-12">
             <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Chưa có dữ liệu</h3>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Hãy bắt đầu luyện tập để xem thống kê tiến độ của bạn.
             </p>
+            <div className="text-sm text-muted-foreground">
+              <p>Dữ liệu thống kê sẽ hiển thị khi bạn:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Làm bài tập luyện tập (attempts)</li>
+                <li>Hoàn thành các bài thi (exam sessions)</li>
+                <li>Có ít nhất một câu hỏi đã trả lời</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
       )}

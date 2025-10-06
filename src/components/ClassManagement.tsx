@@ -30,28 +30,12 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { classesService, ClassInfo } from '@/services/classesService';
 
-interface ClassInfo {
-  id: string;
-  name: string;
-  description: string;
-  student_count: number;
-  created_at: string;
-  avg_score: number;
-  completion_rate: number;
-  students: Array<{
-    id: string;
-    name: string;
-    email: string;
-    avg_score: number;
-    last_activity: string;
-  }>;
-}
 
 interface Student {
   id: string;
   name: string;
-  email: string;
   avg_score: number;
   last_activity: string;
   is_in_class: boolean;
@@ -82,31 +66,8 @@ const ClassManagement = () => {
     
     setLoading(true);
     try {
-      // Mock data - in real implementation, you'd fetch from classes table
-      const mockClasses: ClassInfo[] = [
-        {
-          id: 'class_1',
-          name: 'TOEIC Intermediate',
-          description: 'Students targeting 600-700 points',
-          student_count: 15,
-          created_at: '2024-01-01',
-          avg_score: 650,
-          completion_rate: 85,
-          students: []
-        },
-        {
-          id: 'class_2',
-          name: 'TOEIC Advanced',
-          description: 'Students targeting 700+ points',
-          student_count: 8,
-          created_at: '2024-01-15',
-          avg_score: 720,
-          completion_rate: 92,
-          students: []
-        }
-      ];
-
-      setClasses(mockClasses);
+      const classesData = await classesService.getClasses(user.id);
+      setClasses(classesData);
     } catch (error) {
       console.error('Error fetching classes:', error);
       toast({
@@ -119,56 +80,19 @@ const ClassManagement = () => {
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (excludeClassId?: string) => {
     if (!user) return;
 
     try {
-      // Get teacher's students
-      const { data: teacherStudents } = await supabase.rpc('get_teacher_students', {
-        teacher_uuid: user.id
-      });
-
-      if (teacherStudents) {
-        const studentIds = teacherStudents.map(s => s.student_id);
-        
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, name, email')
-          .in('user_id', studentIds);
-
-        const { data: attempts } = await supabase
-          .from('attempts')
-          .select('user_id, correct, created_at')
-          .in('user_id', studentIds);
-
-        const studentsWithStats = profiles?.map(profile => {
-          const studentAttempts = attempts?.filter(a => a.user_id === profile.user_id) || [];
-          const avgScore = studentAttempts.length > 0 ?
-            Math.round((studentAttempts.filter(a => a.correct).length / studentAttempts.length) * 100) : 0;
-          
-          const lastActivity = studentAttempts.length > 0 ?
-            studentAttempts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at :
-            profile.user_id; // Fallback
-
-          return {
-            id: profile.user_id,
-            name: profile.name || 'Unknown',
-            email: profile.email || '',
-            avg_score: avgScore,
-            last_activity: lastActivity,
-            is_in_class: false // This would be determined by class membership
-          };
-        }) || [];
-
-        setStudents(studentsWithStats);
-      }
+      const studentsData = await classesService.getAvailableStudents(user.id, excludeClassId);
+      setStudents(studentsData);
     } catch (error) {
       console.error('Error fetching students:', error);
     }
   };
 
   const createClass = async () => {
-    if (!newClass.name.trim()) {
+    if (!user || !newClass.name.trim()) {
       toast({
         title: 'Lỗi',
         description: 'Vui lòng nhập tên lớp học.',
@@ -178,26 +102,24 @@ const ClassManagement = () => {
     }
 
     try {
-      // In real implementation, you'd create the class in database
-      const newClassData: ClassInfo = {
-        id: `class_${Date.now()}`,
-        name: newClass.name,
-        description: newClass.description,
-        student_count: 0,
-        created_at: new Date().toISOString(),
-        avg_score: 0,
-        completion_rate: 0,
-        students: []
-      };
+      const success = await classesService.createClass(
+        user.id,
+        newClass.name,
+        newClass.description
+      );
 
-      setClasses(prev => [...prev, newClassData]);
-      setNewClass({ name: '', description: '' });
-      setIsCreateDialogOpen(false);
+      if (success) {
+        setNewClass({ name: '', description: '' });
+        setIsCreateDialogOpen(false);
+        await fetchClasses(); // Refresh the list
 
-      toast({
-        title: 'Thành công',
-        description: 'Đã tạo lớp học mới.'
-      });
+        toast({
+          title: 'Thành công',
+          description: 'Đã tạo lớp học mới.'
+        });
+      } else {
+        throw new Error('Failed to create class');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -209,11 +131,17 @@ const ClassManagement = () => {
 
   const deleteClass = async (classId: string) => {
     try {
-      setClasses(prev => prev.filter(c => c.id !== classId));
-      toast({
-        title: 'Thành công',
-        description: 'Đã xóa lớp học.'
-      });
+      const success = await classesService.deleteClass(classId);
+      
+      if (success) {
+        await fetchClasses(); // Refresh the list
+        toast({
+          title: 'Thành công',
+          description: 'Đã xóa lớp học.'
+        });
+      } else {
+        throw new Error('Failed to delete class');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -225,25 +153,18 @@ const ClassManagement = () => {
 
   const addStudentToClass = async (classId: string, studentId: string) => {
     try {
-      // In real implementation, you'd update the database
-      setClasses(prev => prev.map(c => {
-        if (c.id === classId) {
-          const student = students.find(s => s.id === studentId);
-          if (student && !c.students.find(s => s.id === studentId)) {
-            return {
-              ...c,
-              students: [...c.students, student],
-              student_count: c.student_count + 1
-            };
-          }
-        }
-        return c;
-      }));
-
-      toast({
-        title: 'Thành công',
-        description: 'Đã thêm học viên vào lớp.'
-      });
+      const success = await classesService.addStudentToClass(classId, studentId);
+      
+      if (success) {
+        await fetchClasses(); // Refresh the classes list
+        await fetchStudents(classId); // Refresh students for this specific class
+        toast({
+          title: 'Thành công',
+          description: 'Đã thêm học viên vào lớp.'
+        });
+      } else {
+        throw new Error('Failed to add student to class');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -255,21 +176,18 @@ const ClassManagement = () => {
 
   const removeStudentFromClass = async (classId: string, studentId: string) => {
     try {
-      setClasses(prev => prev.map(c => {
-        if (c.id === classId) {
-          return {
-            ...c,
-            students: c.students.filter(s => s.id !== studentId),
-            student_count: c.student_count - 1
-          };
-        }
-        return c;
-      }));
-
-      toast({
-        title: 'Thành công',
-        description: 'Đã xóa học viên khỏi lớp.'
-      });
+      const success = await classesService.removeStudentFromClass(classId, studentId);
+      
+      if (success) {
+        await fetchClasses(); // Refresh the classes list
+        await fetchStudents(classId); // Refresh students for this specific class
+        toast({
+          title: 'Thành công',
+          description: 'Đã xóa học viên khỏi lớp.'
+        });
+      } else {
+        throw new Error('Failed to remove student from class');
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -392,7 +310,10 @@ const ClassManagement = () => {
                   variant="outline" 
                   size="sm" 
                   className="flex-1"
-                  onClick={() => setSelectedClass(classInfo)}
+                  onClick={() => {
+                    setSelectedClass(classInfo);
+                    fetchStudents(classInfo.id); // Refresh students for this specific class
+                  }}
                 >
                   <Eye className="h-3 w-3 mr-1" />
                   Xem chi tiết
@@ -454,11 +375,17 @@ const ClassManagement = () => {
                               <SelectValue placeholder="Chọn học viên..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {students.filter(s => !selectedClass.students.find(cs => cs.id === s.id)).map(student => (
-                                <SelectItem key={student.id} value={student.id}>
-                                  {student.name} ({student.email})
-                                </SelectItem>
-                              ))}
+                              {students.filter(s => !s.is_in_class).length > 0 ? (
+                                students.filter(s => !s.is_in_class).map(student => (
+                                  <SelectItem key={student.id} value={student.id}>
+                                    {student.name}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <div className="p-2 text-sm text-muted-foreground text-center">
+                                  Tất cả học viên đã có trong lớp này
+                                </div>
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -476,7 +403,7 @@ const ClassManagement = () => {
                         </div>
                         <div>
                           <h4 className="font-medium">{student.name}</h4>
-                          <p className="text-sm text-muted-foreground">{student.email}</p>
+                          <p className="text-sm text-muted-foreground">Điểm TB: {student.avg_score}%</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">

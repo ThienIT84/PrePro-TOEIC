@@ -78,7 +78,7 @@ const ExamQuestionManagement = () => {
         .from('exam_questions')
         .select(`
           *,
-          question:items(*)
+          question:questions(*)
         `)
         .eq('exam_set_id', examSetId)
         .order('order_index', { ascending: true });

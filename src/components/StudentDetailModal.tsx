@@ -79,7 +79,7 @@ const StudentDetailModal = ({ student, isOpen, onClose }: StudentDetailModalProp
       // Get student attempts
       const { data: attempts } = await supabase
         .from('attempts')
-        .select('*, items(type)')
+        .select('*, questions(part, difficulty)')
         .eq('user_id', student.id)
         .order('created_at', { ascending: false });
 
@@ -92,7 +92,7 @@ const StudentDetailModal = ({ student, isOpen, onClose }: StudentDetailModalProp
         .order('completed_at', { ascending: false })
         .limit(10);
 
-      // Calculate skill performance
+      // Calculate skill performance based on TOEIC parts
       const skillPerformance = {
         vocabulary: 0,
         grammar: 0,
@@ -103,14 +103,26 @@ const StudentDetailModal = ({ student, isOpen, onClose }: StudentDetailModalProp
       const skillStats: Record<string, { correct: number; total: number }> = {};
       
       attempts?.forEach(attempt => {
-        const type = attempt.items?.type;
-        if (type) {
-          if (!skillStats[type]) {
-            skillStats[type] = { correct: 0, total: 0 };
+        const part = attempt.questions?.part;
+        if (part) {
+          // Map TOEIC parts to skills
+          let skill = '';
+          if (part <= 4) {
+            skill = 'listening';
+          } else if (part === 5) {
+            skill = 'grammar';
+          } else if (part >= 6) {
+            skill = 'reading';
           }
-          skillStats[type].total++;
-          if (attempt.correct) {
-            skillStats[type].correct++;
+          
+          if (skill) {
+            if (!skillStats[skill]) {
+              skillStats[skill] = { correct: 0, total: 0 };
+            }
+            skillStats[skill].total++;
+            if (attempt.correct) {
+              skillStats[skill].correct++;
+            }
           }
         }
       });
