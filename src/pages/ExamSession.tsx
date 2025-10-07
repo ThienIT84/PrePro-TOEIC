@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { toeicQuestionGenerator, TOEICQuestion, ExamConfig } from '@/services/toeicQuestionGenerator';
+import { TimeMode } from '@/types';
 
 // Remove duplicate interfaces - using from toeicQuestionGenerator
 
@@ -47,6 +48,7 @@ const ExamSession = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -85,19 +87,19 @@ const ExamSession = () => {
   }, [location, examSetId]);
 
   useEffect(() => {
-    console.log(`🕐 Timer effect: timeLeft=${timeLeft}, isPaused=${isPaused}, isCompleted=${isCompleted}`);
+    console.log(`🕐 Timer effect: timeLeft=${timeLeft}, isPaused=${isPaused}, isCompleted=${isCompleted}, timeMode=${timeMode}`);
     
-    // Only start timer if timeLeft > 0 (not -1 which means not started)
-    if (timeLeft > 0 && !isPaused && !isCompleted) {
+    // Only start timer if time mode is standard and timeLeft > 0 (not -1 which means not started)
+    if (timeMode === 'standard' && timeLeft > 0 && !isPaused && !isCompleted) {
       const timer = setTimeout(() => {
         setTimeLeft(timeLeft - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !isCompleted) {
+    } else if (timeMode === 'standard' && timeLeft === 0 && !isCompleted) {
       console.log('⏰ Time up! Submitting exam...');
       handleSubmitExam();
     }
-  }, [timeLeft, isPaused, isCompleted]);
+  }, [timeLeft, isPaused, isCompleted, timeMode]);
 
   const loadQuestions = async (config: ExamConfig) => {
     setLoading(true);
@@ -122,8 +124,15 @@ const ExamSession = () => {
       })));
       
       setQuestions(generatedQuestions);
-      setTimeLeft(config.timeLimit! * 60); // Convert minutes to seconds
-      console.log(`⏰ Timer set to ${config.timeLimit! * 60} seconds for ${generatedQuestions.length} questions`);
+      
+      // Set time based on time mode
+      if (timeMode === 'unlimited') {
+        setTimeLeft(-1); // -1 indicates unlimited time
+        console.log(`⏰ Unlimited time mode for ${generatedQuestions.length} questions`);
+      } else {
+        setTimeLeft(config.timeLimit! * 60); // Convert minutes to seconds
+        console.log(`⏰ Timer set to ${config.timeLimit! * 60} seconds for ${generatedQuestions.length} questions`);
+      }
     } catch (error) {
       console.error('Error loading questions:', error);
       toast({
@@ -382,7 +391,14 @@ const ExamSession = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          {timeLeft > 0 && (
+          {timeMode === 'unlimited' ? (
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary">
+                Không giới hạn
+              </div>
+              <div className="text-sm text-muted-foreground">Thời gian tự do</div>
+            </div>
+          ) : timeLeft > 0 && (
             <div className="text-right">
               <div className="text-2xl font-bold text-primary">
                 {formatTime(timeLeft)}
@@ -390,7 +406,7 @@ const ExamSession = () => {
               <div className="text-sm text-muted-foreground">Thời gian còn lại</div>
             </div>
           )}
-          {timeLeft > 0 && (
+          {timeMode === 'standard' && timeLeft > 0 && (
             <Button variant="outline" onClick={handlePauseResume}>
               {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </Button>

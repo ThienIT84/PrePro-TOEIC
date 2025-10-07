@@ -9,6 +9,15 @@ export type PassageType = 'single' | 'double' | 'triple';
 export type QuestionStatus = 'draft' | 'published' | 'archived';
 export type CorrectChoice = 'A' | 'B' | 'C' | 'D';
 
+// Time mode types
+export type TimeMode = 'standard' | 'unlimited';
+export interface TimeModeConfig {
+  mode: TimeMode;
+  label: string;
+  description: string;
+  icon: string;
+}
+
 export interface Profile {
   id: string;
   user_id: string;

@@ -24,7 +24,7 @@ import {
   Eye,
   RefreshCw
 } from 'lucide-react';
-import { ExamSet, Question } from '@/types';
+import { ExamSet, Question, TimeMode } from '@/types';
 import { ExamAnswer, PassageLite } from '../controllers/exam/ExamSessionController';
 import SimpleAudioPlayer from './SimpleAudioPlayer';
 
@@ -45,6 +45,7 @@ export interface ExamSessionViewProps {
   sessionId: string | null;
   passageMap: Record<string, PassageLite>;
   selectedParts: number[] | null;
+  timeMode: TimeMode;
 
   // Actions
   onStartExam: () => void;
@@ -194,8 +195,12 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
                 )}
               </div>
               <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-primary">{examSet.time_limit}</div>
-                <div className="text-sm text-muted-foreground">Phút</div>
+                <div className="text-2xl font-bold text-primary">
+                  {timeMode === 'unlimited' ? 'Không giới hạn' : examSet.time_limit}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {timeMode === 'unlimited' ? 'Thời gian tự do' : 'Phút'}
+                </div>
               </div>
             </div>
 
@@ -203,10 +208,10 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
               <AlertDescription>
                 <strong>Hướng dẫn:</strong>
                 <ul className="mt-2 space-y-1 text-sm">
-                  <li>• Bạn có {examSet.time_limit} phút để hoàn thành bài thi</li>
+                  <li>• {timeMode === 'unlimited' ? 'Bạn có thể làm bài không giới hạn thời gian' : `Bạn có ${examSet.time_limit} phút để hoàn thành bài thi`}</li>
                   <li>• Chọn đáp án A, B, C, hoặc D cho mỗi câu hỏi</li>
-                  <li>• Có thể tạm dừng và tiếp tục bất kỳ lúc nào</li>
-                  <li>• Bài thi sẽ tự động nộp khi hết thời gian</li>
+                  <li>• {timeMode === 'standard' ? 'Có thể tạm dừng và tiếp tục bất kỳ lúc nào' : 'Làm bài với thời gian tự do'}</li>
+                  <li>• {timeMode === 'standard' ? 'Bài thi sẽ tự động nộp khi hết thời gian' : 'Bạn có thể nộp bài bất kỳ lúc nào'}</li>
                 </ul>
               </AlertDescription>
             </Alert>

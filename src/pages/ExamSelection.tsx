@@ -26,6 +26,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useParams } from 'react-router-dom';
+import { TimeMode, TimeModeConfig } from '@/types';
 
 interface ExamSet {
   id: string;
@@ -48,6 +49,22 @@ const ExamSelection = () => {
   const [examSets, setExamSets] = useState<ExamSet[]>([]);
   const [currentExamSet, setCurrentExamSet] = useState<ExamSet | null>(null);
   const [loading, setLoading] = useState(false);
+  const [timeMode, setTimeMode] = useState<TimeMode>('standard');
+
+  const timeModeConfigs: TimeModeConfig[] = [
+    {
+      mode: 'standard',
+      label: 'Chuẩn TOEIC',
+      description: 'Thời gian giới hạn theo chuẩn TOEIC thực tế',
+      icon: 'Timer'
+    },
+    {
+      mode: 'unlimited',
+      label: 'Tự do',
+      description: 'Không giới hạn thời gian, phù hợp cho luyện tập',
+      icon: 'Infinity'
+    }
+  ];
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
@@ -113,24 +130,17 @@ const ExamSelection = () => {
   };
 
   const handleStartExam = (examSetId: string) => {
-    if (examSetId) {
-      const target = examSets.find(e => e.id === examSetId) || null;
-      setStartExamSet(target);
-      setStartMode('full');
-      setStartParts([]);
-      setStartOpen(true);
-      return;
-    }
-    navigate(`/exam-sets/${examSetId}/take`);
+    // Always navigate directly to exam when examSetId is provided
+    navigate(`/exam-sets/${examSetId}/take`, { state: { timeMode } });
   };
 
   const confirmStart = () => {
     if (!startExamSet) return;
     if (startMode === 'custom') {
       if (startParts.length === 0) return;
-      navigate(`/exam-sets/${startExamSet.id}/take`, { state: { parts: startParts } });
+      navigate(`/exam-sets/${startExamSet.id}/take`, { state: { parts: startParts, timeMode } });
     } else {
-      navigate(`/exam-sets/${startExamSet.id}/take`);
+      navigate(`/exam-sets/${startExamSet.id}/take`, { state: { timeMode } });
     }
     setStartOpen(false);
   };
@@ -238,6 +248,56 @@ const ExamSelection = () => {
           </div>
         </div>
 
+        {/* Time Mode Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Chế độ thời gian
+            </CardTitle>
+            <CardDescription>
+              Chọn cách thức tính thời gian cho bài thi
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {timeModeConfigs.map((config) => {
+                const IconComponent = config.icon === 'Timer' ? Clock : Target;
+                return (
+                  <div 
+                    key={config.mode} 
+                    className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                      timeMode === config.mode 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted hover:bg-muted/50'
+                    }`}
+                    onClick={() => setTimeMode(config.mode)}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      timeMode === config.mode 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{config.label}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {config.description}
+                      </div>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 ${
+                      timeMode === config.mode 
+                        ? 'border-primary bg-primary' 
+                        : 'border-muted'
+                    }`} />
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Exam Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
@@ -267,7 +327,9 @@ const ExamSelection = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Thời gian:</span>
-                <span className="font-medium">{currentExamSet.time_limit} phút</span>
+                <span className="font-medium">
+                  {timeMode === 'unlimited' ? 'Không giới hạn' : `${currentExamSet.time_limit} phút`}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Trạng thái:</span>
@@ -310,7 +372,7 @@ const ExamSelection = () => {
                     Bỏ chọn
                   </Button>
                   <Button onClick={() => {
-                    navigate(`/exam-sets/${examSetId}/take`, { state: { parts: startParts } });
+                    navigate(`/exam-sets/${examSetId}/take`, { state: { parts: startParts, timeMode } });
                   }}
                   >
                     <Play className="h-4 w-4 mr-2" /> Bắt đầu các Part đã chọn
@@ -335,8 +397,12 @@ const ExamSelection = () => {
                   <div className="text-sm text-muted-foreground">Tổng số câu hỏi</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{currentExamSet.time_limit}</div>
-                  <div className="text-sm text-muted-foreground">Phút làm bài</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {timeMode === 'unlimited' ? '∞' : currentExamSet.time_limit}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {timeMode === 'unlimited' ? 'Thời gian tự do' : 'Phút làm bài'}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -482,7 +548,7 @@ const ExamSelection = () => {
                   
                   <div className="ml-6">
                     <Button 
-                      onClick={() => navigate(`/exam-sets/${examSet.id}/customize`)}
+                      onClick={() => navigate(`/exam-sets/${examSet.id}/customize`, { state: { timeMode } })}
                       size="lg"
                       className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold"
                     >
