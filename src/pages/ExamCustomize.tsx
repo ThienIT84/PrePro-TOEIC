@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { TimeMode } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Play } from 'lucide-react';
+import { ArrowLeft, Play, Clock, Timer, Target } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
 
 const PART_DETAILS: Record<number, { title: string; defaultCount: number; items: { name: string; count: number }[] }> = {
@@ -45,12 +48,30 @@ const PART_DETAILS: Record<number, { title: string; defaultCount: number; items:
 
 const ExamCustomize = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { examSetId } = useParams<{ examSetId: string }>();
   const [selectedParts, setSelectedParts] = useState<number[]>([]);
+  const [timeMode, setTimeMode] = useState<TimeMode>((location.state as any)?.timeMode || 'standard');
+
+  const timeModeConfigs = [
+    {
+      mode: 'standard' as TimeMode,
+      label: 'Chuẩn TOEIC',
+      description: 'Thời gian giới hạn theo chuẩn TOEIC thực tế',
+      icon: 'Timer'
+    },
+    {
+      mode: 'unlimited' as TimeMode,
+      label: 'Tự do',
+      description: 'Không giới hạn thời gian, phù hợp cho luyện tập',
+      icon: 'Infinity'
+    }
+  ];
 
   const totalMinutes = useMemo(() => {
+    if (timeMode === 'unlimited') return 'Không giới hạn';
     return (selectedParts.length === 0 ? 0 : selectedParts.reduce((sum, p) => sum + (toeicQuestionGenerator.getPartConfig(p)?.timeLimit || 0), 0));
-  }, [selectedParts]);
+  }, [selectedParts, timeMode]);
 
   const totalQuestions = useMemo(() => {
     return (selectedParts.length === 0 ? 0 : selectedParts.reduce((sum, p) => sum + (PART_DETAILS[p]?.defaultCount || 0), 0));
@@ -62,7 +83,7 @@ const ExamCustomize = () => {
 
   const start = () => {
     if (!examSetId || selectedParts.length === 0) return;
-    navigate(`/exam-sets/${examSetId}/take`, { state: { parts: selectedParts } });
+    navigate(`/exam-sets/${examSetId}/take`, { state: { parts: selectedParts, timeMode } });
   };
 
   return (
@@ -76,12 +97,97 @@ const ExamCustomize = () => {
         </div>
         <div className="flex items-center gap-3">
           <Badge> {totalQuestions} câu</Badge>
-          <Badge> {totalMinutes} phút</Badge>
+          <Badge> {typeof totalMinutes === 'string' ? totalMinutes : `${totalMinutes} phút`}</Badge>
           <Button disabled={selectedParts.length === 0} onClick={start}>
             <Play className="h-4 w-4 mr-2" /> Bắt đầu
           </Button>
         </div>
       </div>
+
+      {/* Time Mode Selection */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Chế độ thời gian
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={timeMode} onValueChange={(value: TimeMode) => setTimeMode(value)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {timeModeConfigs.map((config) => {
+                const IconComponent = config.icon === 'Timer' ? Timer : Target;
+                return (
+                  <div key={config.mode} className="flex items-center space-x-3">
+                    <RadioGroupItem value={config.mode} id={config.mode} />
+                    <Label 
+                      htmlFor={config.mode} 
+                      className="flex-1 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                          <IconComponent className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{config.label}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {config.description}
+                          </div>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
+      {/* Quick Selection Buttons */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Chọn nhanh
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedParts([1,2,3,4,5,6,7])}
+              className="flex items-center gap-2"
+            >
+              <Target className="h-4 w-4" />
+              Tất cả Part (1-7)
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedParts([1,2,3,4])}
+              className="flex items-center gap-2"
+            >
+              <Play className="h-4 w-4" />
+              Listening (Part 1-4)
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedParts([5,6,7])}
+              className="flex items-center gap-2"
+            >
+              <Clock className="h-4 w-4" />
+              Reading (Part 5-7)
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedParts([])}
+              className="flex items-center gap-2"
+            >
+              Bỏ chọn tất cả
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1,2,3,4,5,6,7].map(p => (
@@ -91,7 +197,9 @@ const ExamCustomize = () => {
                 <CardTitle className="text-lg">{PART_DETAILS[p].title}</CardTitle>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{PART_DETAILS[p].defaultCount} câu</Badge>
-                  <Badge variant="outline">{toeicQuestionGenerator.getPartConfig(p)?.timeLimit} phút</Badge>
+                  <Badge variant="outline">
+                    {timeMode === 'unlimited' ? 'Không giới hạn' : `${toeicQuestionGenerator.getPartConfig(p)?.timeLimit} phút`}
+                  </Badge>
                   <Checkbox checked={selectedParts.includes(p)} onCheckedChange={() => togglePart(p)} />
                 </div>
               </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, 
   Play, 
@@ -14,11 +16,14 @@ import {
   CheckCircle,
   BookOpen,
   Target,
-  Zap
+  Zap,
+  Timer,
+  Infinity
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { TimeMode, TimeModeConfig } from '@/types';
 
 interface ExamSet {
   id: string;
@@ -48,6 +53,22 @@ const ExamPartSelection = () => {
   const [loading, setLoading] = useState(true);
   const [selectedParts, setSelectedParts] = useState<number[]>([]);
   const [isFullTest, setIsFullTest] = useState(false);
+  const [timeMode, setTimeMode] = useState<TimeMode>('standard');
+
+  const timeModeConfigs: TimeModeConfig[] = [
+    {
+      mode: 'standard',
+      label: 'Chuẩn TOEIC',
+      description: 'Thời gian giới hạn theo chuẩn TOEIC thực tế',
+      icon: 'Timer'
+    },
+    {
+      mode: 'unlimited',
+      label: 'Tự do',
+      description: 'Không giới hạn thời gian, phù hợp cho luyện tập',
+      icon: 'Infinity'
+    }
+  ];
 
   const partConfigs: PartInfo[] = [
     {
@@ -177,7 +198,8 @@ const ExamPartSelection = () => {
         state: {
           type: 'full',
           parts: [1, 2, 3, 4, 5, 6, 7],
-          examSet: examSet
+          examSet: examSet,
+          timeMode: timeMode
         }
       });
     } else if (selectedParts.length > 0) {
@@ -186,7 +208,8 @@ const ExamPartSelection = () => {
         state: {
           type: 'custom',
           parts: selectedParts,
-          examSet: examSet
+          examSet: examSet,
+          timeMode: timeMode
         }
       });
     } else {
@@ -209,6 +232,9 @@ const ExamPartSelection = () => {
   };
 
   const getTotalTime = () => {
+    if (timeMode === 'unlimited') {
+      return 'Không giới hạn';
+    }
     if (isFullTest) {
       return partConfigs.reduce((sum, part) => sum + part.timeLimit, 0);
     }
@@ -288,6 +314,49 @@ const ExamPartSelection = () => {
         </div>
       </div>
 
+      {/* Time Mode Selection */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Chế độ thời gian
+          </CardTitle>
+          <CardDescription>
+            Chọn cách thức tính thời gian cho bài thi
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={timeMode} onValueChange={(value: TimeMode) => setTimeMode(value)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {timeModeConfigs.map((config) => {
+                const IconComponent = config.icon === 'Timer' ? Timer : Infinity;
+                return (
+                  <div key={config.mode} className="flex items-center space-x-3">
+                    <RadioGroupItem value={config.mode} id={config.mode} />
+                    <Label 
+                      htmlFor={config.mode} 
+                      className="flex-1 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                          <IconComponent className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{config.label}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {config.description}
+                          </div>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
       {/* Full Test Option */}
       <Card className="mb-6">
         <CardContent className="p-6">
@@ -299,7 +368,7 @@ const ExamPartSelection = () => {
               <div>
                 <h3 className="text-lg font-semibold">Làm hết đề thi</h3>
                 <p className="text-muted-foreground">
-                  Làm tất cả 7 Parts (200 câu hỏi, 150 phút)
+                  Làm tất cả 7 Parts (200 câu hỏi, {timeMode === 'unlimited' ? 'không giới hạn thời gian' : '150 phút'})
                 </p>
               </div>
             </div>
@@ -347,7 +416,7 @@ const ExamPartSelection = () => {
                         </p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                           <span>{part.questionCount} câu</span>
-                          <span>{part.timeLimit} phút</span>
+                          <span>{timeMode === 'unlimited' ? 'Không giới hạn' : `${part.timeLimit} phút`}</span>
                           <Badge variant="outline" className="text-xs">
                             {part.type === 'listening' ? 'Listening' : 'Reading'}
                           </Badge>
@@ -384,7 +453,7 @@ const ExamPartSelection = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  <span>{getTotalTime()} phút</span>
+                  <span>{typeof getTotalTime() === 'string' ? getTotalTime() : `${getTotalTime()} phút`}</span>
                 </div>
                 {!isFullTest && selectedParts.length > 0 && (
                   <div className="flex items-center gap-2">

@@ -9,7 +9,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
-import { ExamSet, Question, DrillType } from '@/types';
+import { ExamSet, Question, DrillType, TimeMode } from '@/types';
 import { useExamSessionController } from '../controllers/exam/useExamSessionController';
 import { ExamAnswer, PassageLite } from '../controllers/exam/ExamSessionController';
 import ExamSessionView from './ExamSessionView';
@@ -27,6 +27,7 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
   // Get examSetId from props or params
   const examSetId = propExamSetId || params.examSetId;
   const selectedParts: number[] | undefined = (location.state as any)?.parts;
+  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
 
   // Use exam session controller
   const {
@@ -425,6 +426,7 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
       sessionId={sessionId}
       passageMap={passageMap}
       selectedParts={controllerSelectedParts}
+      timeMode={timeMode}
 
       // Actions
       onStartExam={startExam}

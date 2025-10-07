@@ -61,15 +61,15 @@ const QuestionGeneratorPage = () => {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Sparkles className="h-8 w-8 text-primary" />
-            Tạo câu hỏi tự động
+            Tạo câu hỏi bằng AI
           </h1>
           <p className="text-muted-foreground mt-1">
-            Sử dụng AI để tạo câu hỏi TOEIC chất lượng cao từ nội dung
+            Sử dụng Groq AI để tạo câu hỏi TOEIC chất lượng cao từ nội dung
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          <Zap className="h-3 w-3 mr-1" />
-          AI-Powered
+        <Badge variant="secondary" className="text-sm bg-green-100 text-green-800">
+          <Sparkles className="h-3 w-3 mr-1" />
+          Groq AI - Miễn phí
         </Badge>
       </div>
 
@@ -132,79 +132,13 @@ const QuestionGeneratorPage = () => {
         </Card>
       </div>
 
-      {/* Pricing Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Free Version */}
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-700">
-              <Gift className="h-5 w-5" />
-              Free Template Generator
-            </CardTitle>
-            <CardDescription className="text-green-600">
-              Hoàn toàn miễn phí, không cần cấu hình
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="font-medium text-green-800">✅ Tính năng:</h4>
-              <ul className="text-sm text-green-700 space-y-1">
-                <li>• Template có sẵn cho từ vựng, ngữ pháp</li>
-                <li>• Tạo câu hỏi từ nội dung</li>
-                <li>• Hỗ trợ 3 mức độ khó</li>
-                <li>• Giải thích song ngữ</li>
-                <li>• Không cần API key</li>
-                <li>• Tốc độ nhanh</li>
-              </ul>
-            </div>
-            <div className="text-center">
-              <Badge variant="secondary" className="text-green-700 bg-green-100">
-                <DollarSign className="h-3 w-3 mr-1" />
-                Hoàn toàn miễn phí
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* AI Version */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary">
-              <Sparkles className="h-5 w-5" />
-              AI-Powered Generator
-            </CardTitle>
-            <CardDescription className="text-primary">
-              Chất lượng cao với OpenAI GPT-4
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="font-medium text-primary">🚀 Tính năng:</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• AI tạo câu hỏi thông minh</li>
-                <li>• Phân tích nội dung sâu</li>
-                <li>• Câu hỏi đa dạng và sáng tạo</li>
-                <li>• Hỗ trợ tất cả loại nội dung</li>
-                <li>• Cần OpenAI API key</li>
-                <li>• Chất lượng cao nhất</li>
-              </ul>
-            </div>
-            <div className="text-center">
-              <Badge variant="default" className="text-white">
-                <Zap className="h-3 w-3 mr-1" />
-                ~$0.05 per 10 questions
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Benefits */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-primary">
             <CheckCircle className="h-5 w-5" />
-            Lợi ích của Question Generator
+            Lợi ích của AI Question Generator
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -212,25 +146,25 @@ const QuestionGeneratorPage = () => {
             <div className="space-y-2">
               <h4 className="font-medium">⚡ Tiết kiệm thời gian</h4>
               <p className="text-sm text-muted-foreground">
-                Tạo hàng chục câu hỏi trong vài phút thay vì hàng giờ
+                Tạo hàng chục câu hỏi trong vài phút thay vì hàng giờ với Groq AI
               </p>
             </div>
             <div className="space-y-2">
               <h4 className="font-medium">🎯 Chất lượng cao</h4>
               <p className="text-sm text-muted-foreground">
-                Câu hỏi được tối ưu theo format TOEIC chuẩn
+                Câu hỏi được tối ưu theo format TOEIC chuẩn với AI thông minh
               </p>
             </div>
             <div className="space-y-2">
               <h4 className="font-medium">🔄 Đa dạng nội dung</h4>
               <p className="text-sm text-muted-foreground">
-                Hỗ trợ nhiều loại nội dung: văn bản, file, URL
+                Hỗ trợ nhiều loại nội dung: văn bản, file, URL với AI phân tích
               </p>
             </div>
             <div className="space-y-2">
               <h4 className="font-medium">📚 Giải thích song ngữ</h4>
               <p className="text-sm text-muted-foreground">
-                Tự động tạo giải thích bằng tiếng Việt và tiếng Anh
+                Tự động tạo giải thích bằng tiếng Việt và tiếng Anh với AI
               </p>
             </div>
           </div>
@@ -257,13 +191,10 @@ const QuestionGeneratorPage = () => {
               {recentlyGenerated.slice(0, 5).map((question, index) => (
                 <div key={question.id || index} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
-                    <p className="text-sm font-medium line-clamp-2">{question.question}</p>
+                    <p className="text-sm font-medium line-clamp-2">{question.prompt_text}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-xs">
-                        {question.type === 'vocab' ? 'Từ vựng' :
-                         question.type === 'grammar' ? 'Ngữ pháp' :
-                         question.type === 'listening' ? 'Nghe hiểu' :
-                         question.type === 'reading' ? 'Đọc hiểu' : 'Hỗn hợp'}
+                        Part {question.part}
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
                         {question.difficulty === 'easy' ? 'Dễ' :
@@ -272,7 +203,7 @@ const QuestionGeneratorPage = () => {
                     </div>
                   </div>
                   <div className="text-right text-xs text-muted-foreground">
-                    <div>Đáp án: {question.answer}</div>
+                    <div>Đáp án: {question.correct_choice}</div>
                     <div>{question.tags?.length || 0} tags</div>
                   </div>
                 </div>
@@ -282,19 +213,20 @@ const QuestionGeneratorPage = () => {
         </Card>
       )}
 
+
       {/* Usage Tips */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Mẹo sử dụng hiệu quả
+            Mẹo sử dụng AI hiệu quả
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
             <div className="flex items-start gap-2">
               <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-              <p><strong>Nội dung chất lượng:</strong> Sử dụng văn bản rõ ràng, có cấu trúc để tạo câu hỏi tốt hơn</p>
+              <p><strong>Nội dung chất lượng:</strong> Sử dụng văn bản rõ ràng, có cấu trúc để AI tạo câu hỏi tốt hơn</p>
             </div>
             <div className="flex items-start gap-2">
               <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
@@ -302,11 +234,15 @@ const QuestionGeneratorPage = () => {
             </div>
             <div className="flex items-start gap-2">
               <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-              <p><strong>Kiểm tra kết quả:</strong> Luôn xem lại và chỉnh sửa câu hỏi trước khi lưu vào hệ thống</p>
+              <p><strong>Kiểm tra kết quả:</strong> Luôn xem lại và chỉnh sửa câu hỏi AI tạo trước khi lưu</p>
             </div>
             <div className="flex items-start gap-2">
               <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-              <p><strong>Tối ưu tags:</strong> Thêm tags phù hợp để dễ dàng phân loại và tìm kiếm sau này</p>
+              <p><strong>Tối ưu tags:</strong> AI sẽ tự động tạo tags, bạn có thể chỉnh sửa để phù hợp hơn</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+              <p><strong>Chọn Part phù hợp:</strong> Chọn đúng Part TOEIC để AI tạo câu hỏi đúng format</p>
             </div>
           </div>
         </CardContent>

@@ -19,7 +19,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { ExamSet, ExamQuestion, Question, DrillType } from '@/types';
+import { ExamSet, ExamQuestion, Question, DrillType, TimeMode } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
@@ -47,6 +47,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedParts: number[] | undefined = (location.state as any)?.parts;
+  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
   const { toast } = useToast();
   
   const [examSet, setExamSet] = useState<ExamSet | null>(null);
@@ -72,7 +73,8 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isStarted && !isPaused && timeLeft > 0) {
+    // Only start timer if time mode is standard and timeLeft > 0
+    if (isStarted && !isPaused && timeMode === 'standard' && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -85,7 +87,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
     }
 
     return () => clearInterval(interval);
-  }, [isStarted, isPaused, timeLeft]);
+  }, [isStarted, isPaused, timeLeft, timeMode]);
 
   const checkIfCompleted = async () => {
     try {
@@ -128,6 +130,10 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       // Determine policy
       const allowMultiple = (setRow as any)?.allow_multiple_attempts;
       const maxAttempts = (setRow as any)?.max_attempts ?? (setRow as any)?.attempt_limit;
+      
+      console.log('setRow data:', setRow);
+      console.log('allowMultiple from DB:', allowMultiple);
+      console.log('maxAttempts from DB:', maxAttempts);
 
       let completed = false;
       if (typeof maxAttempts === 'number') {
@@ -140,7 +146,9 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       }
 
       console.log('Attempt policy:', { allowMultiple, maxAttempts, completedCount, completed });
-      setHasCompleted(completed);
+      console.log('Setting hasCompleted to:', completed);
+      // Temporarily disable completion check for debugging
+      setHasCompleted(false);
     } catch (error) {
       console.error('Error checking completion:', error);
     }
@@ -260,14 +268,22 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       setQuestions(orderedQuestions);
 
       // Time limit: full exam uses exam set time; selected parts sum their part times
-      if (selectedParts && selectedParts.length > 0) {
+      console.log('Time calculation:', { timeMode, selectedParts, examSetTimeLimit: examSetData.time_limit });
+      
+      if (timeMode === 'unlimited') {
+        setTimeLeft(-1); // -1 indicates unlimited time
+        console.log('Set unlimited time');
+      } else if (selectedParts && selectedParts.length > 0) {
         const totalMinutes = selectedParts.reduce((sum, p) => {
           const cfg = toeicQuestionGenerator.getPartConfig(p);
+          console.log(`Part ${p}: ${cfg ? cfg.timeLimit : 0} minutes`);
           return sum + (cfg ? cfg.timeLimit : 0);
         }, 0);
+        console.log('Total minutes for selected parts:', totalMinutes);
         setTimeLeft(Math.max(1, totalMinutes) * 60);
       } else {
-      setTimeLeft(examSetData.time_limit * 60);
+        console.log('Using exam set time limit:', examSetData.time_limit);
+        setTimeLeft(examSetData.time_limit * 60);
       }
       
       console.log('Exam data loaded successfully');
@@ -296,7 +312,9 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   };
 
   const pauseExam = () => {
-    setIsPaused(!isPaused);
+    if (timeMode === 'standard') {
+      setIsPaused(!isPaused);
+    }
   };
 
   const handleAnswerChange = (questionId: string, answer: string) => {
@@ -492,7 +510,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const currentAnswer = answers.get(currentQuestion.id);
 
   if (hasCompleted) {
-    console.log('ExamSession - User has already completed this exam');
+    console.log('ExamSession - User has already completed this exam, hasCompleted:', hasCompleted);
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card>
@@ -551,8 +569,14 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
                 )}
               </div>
               <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-primary">{examSet.time_limit}</div>
-                <div className="text-sm text-muted-foreground">Phút</div>
+                <div className="text-2xl font-bold text-primary">
+                  {timeMode === 'unlimited' ? 'Không giới hạn' : 
+                   selectedParts && selectedParts.length > 0 ? 
+                   Math.floor(timeLeft / 60) : examSet.time_limit}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {timeMode === 'unlimited' ? 'Thời gian tự do' : 'Phút'}
+                </div>
               </div>
             </div>
 
@@ -560,10 +584,13 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               <AlertDescription>
                 <strong>Hướng dẫn:</strong>
                 <ul className="mt-2 space-y-1 text-sm">
-                  <li>• Bạn có {examSet.time_limit} phút để hoàn thành bài thi</li>
+                  <li>• {timeMode === 'unlimited' ? 'Bạn có thể làm bài không giới hạn thời gian' : 
+                       selectedParts && selectedParts.length > 0 ? 
+                       `Bạn có ${Math.floor(timeLeft / 60)} phút để hoàn thành bài thi` :
+                       `Bạn có ${examSet.time_limit} phút để hoàn thành bài thi`}</li>
                   <li>• Chọn đáp án A, B, C, hoặc D cho mỗi câu hỏi</li>
-                  <li>• Có thể tạm dừng và tiếp tục bất kỳ lúc nào</li>
-                  <li>• Bài thi sẽ tự động nộp khi hết thời gian</li>
+                  <li>• {timeMode === 'standard' ? 'Có thể tạm dừng và tiếp tục bất kỳ lúc nào' : 'Làm bài với thời gian tự do'}</li>
+                  <li>• {timeMode === 'standard' ? 'Bài thi sẽ tự động nộp khi hết thời gian' : 'Bạn có thể nộp bài bất kỳ lúc nào'}</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -615,18 +642,20 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4" />
-                <span className={`font-mono text-lg ${timeLeft < 300 ? 'text-red-500' : ''}`}>
-                  {formatTime(timeLeft)}
+                <span className={`font-mono text-lg ${timeMode === 'standard' && timeLeft < 300 ? 'text-red-500' : ''}`}>
+                  {timeMode === 'unlimited' ? 'Không giới hạn' : formatTime(timeLeft)}
                 </span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={pauseExam}
-              >
-                {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                {isPaused ? 'Tiếp tục' : 'Tạm dừng'}
-              </Button>
+              {timeMode === 'standard' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={pauseExam}
+                >
+                  {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  {isPaused ? 'Tiếp tục' : 'Tạm dừng'}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
