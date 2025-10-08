@@ -100,7 +100,7 @@ const QuickQuestionSetup = ({ onQuestionsAdded }: QuickQuestionSetupProps) => {
       {
         type: 'reading' as const,
         difficulty: 'medium' as const,
-        question: 'The company\'s profits have increased _____ 15% this year.',
+        question: 'The compunknown\'s profits have increased _____ 15% this year.',
         choices: ['by', 'for', 'with', 'from'],
         answer: 'A',
         explain_vi: 'Dùng "by" để chỉ mức độ tăng trưởng.',
@@ -122,7 +122,7 @@ const QuickQuestionSetup = ({ onQuestionsAdded }: QuickQuestionSetupProps) => {
       {
         type: 'reading' as const,
         difficulty: 'medium' as const,
-        question: 'According to the email, what should employees do?\n\nSubject: Important Meeting Tomorrow\n\nDear Team,\n\nWe have an important meeting scheduled for tomorrow at 10 AM in the main conference room. Please prepare your quarterly reports and bring them to the meeting. The CEO will be present to discuss our company\'s performance.\n\nBest regards,\nManagement',
+        question: 'According to the email, what should employees do?\n\nSubject: Important Meeting Tomorrow\n\nDear Team,\n\nWe have an important meeting scheduled for tomorrow at 10 AM in the main conference room. Please prepare your quarterly reports and bring them to the meeting. The CEO will be present to discuss our compunknown\'s performance.\n\nBest regards,\nManagement',
         choices: ['Submit reports by Friday', 'Attend a meeting', 'Update their passwords', 'Contact HR'],
         answer: 'B',
         explain_vi: 'Email yêu cầu nhân viên tham dự cuộc họp quan trọng.',

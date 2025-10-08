@@ -363,7 +363,7 @@ EXAMPLE OUTPUT FORMAT (JSON):
 ${type === 'vocab' ? `{
   "questions": [
     {
-      "question": "The company's quarterly report shows a significant _____ in sales compared to last year.",
+      "question": "The compunknown's quarterly report shows a significant _____ in sales compared to last year.",
       "choices": ["increase", "increasing", "increased", "increases"],
       "answer": "A",
       "explain_vi": "Câu cần danh từ để hoàn thành cấu trúc 'a significant + noun'. 'Increase' là danh từ phù hợp.",
@@ -430,11 +430,15 @@ Language preference: ${language === 'vi' ? 'Vietnamese explanations should be de
 
     return `Create TOEIC Part 7 reading comprehension with ${passageCount} passage(s) and ${questionCount} questions.
 
+IMPORTANT: This is Part 7 (Reading Comprehension), NOT Part 6 (Text Completion).
+Part 7 has complete passages with NO blanks or missing words.
+Part 7 tests reading comprehension skills, not grammar/vocabulary filling.
+
 Content: "${content}"
 Level: ${difficultyInstructions[difficulty]}
 Passage Types: ${selectedTypes.join(', ')}
 
-REQUIREMENTS:
+REQUIREMENTS FOR PART 7:
 - ${passageCount} passage(s) with business context
 - Passages should be related to each other (same topic/theme)
 - Each passage should have different type (email, article, memo, etc.)
@@ -444,8 +448,9 @@ REQUIREMENTS:
 - Realistic workplace scenarios
 - Passages can be read independently or linked together
 - Each passage 150-300 words
+- NO BLANKS OR MISSING WORDS (this is Part 7, not Part 6)
 
-EXAMPLE:
+EXAMPLE FOR PART 7 (NO BLANKS):
 {
   "passages": [
     {
@@ -477,24 +482,25 @@ EXAMPLE:
       "tags": ["detail", "notice", "business"]
     },
     {
-      "question": "What can be inferred about the company's meeting culture?",
+      "question": "What can be inferred about the compunknown's meeting culture?",
       "choices": ["Meetings are informal", "Meetings require preparation", "Meetings are optional", "Meetings are rare"],
       "answer": "B",
       "explain_vi": "Có thể suy ra rằng công ty có văn hóa họp hành yêu cầu chuẩn bị (department reports)",
-      "explain_en": "It can be inferred that the company has a meeting culture requiring preparation (department reports)",
+      "explain_en": "It can be inferred that the compunknown has a meeting culture requiring preparation (department reports)",
       "tags": ["inference", "business", "culture"]
     }
   ]
 }
 
-CRITICAL: 
+CRITICAL FOR PART 7: 
 - Return ONLY valid JSON object
 - Passages must be realistic business documents
 - Questions must be clear and testable
-- No blanks or missing text in passages
+- NO BLANKS OR MISSING WORDS (this is Part 7, not Part 6)
 - Ensure JSON is properly closed with matching braces
 - Complete all arrays and objects properly
-- No extra characters before or after JSON`;
+- No extra characters before or after JSON
+- Passages should be complete and readable`;
 
   }
 
@@ -596,7 +602,7 @@ CRITICAL:
       }
       
       // Find JSON object - handle cases with extra braces
-      let jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
@@ -733,12 +739,12 @@ CRITICAL:
       }
 
       return {
-        passages: parsed.passages.map((p: any) => ({
+        passages: parsed.passages.map((p: unknown) => ({
           content: p.content || '',
           type: p.type || 'email',
           title: p.title || ''
         })),
-        questions: parsed.questions.map((q: any, index: number) => ({
+        questions: parsed.questions.map((q: unknown, index: number) => ({
           question: q.question || `Question ${index + 1}`,
           choices: Array.isArray(q.choices) ? q.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
           answer: q.answer || 'A',
@@ -825,7 +831,7 @@ CRITICAL:
           content: parsed.passage.content || '',
           blanks: parsed.passage.blanks || [1, 2, 3, 4]
         },
-        questions: parsed.answers.map((a: any, index: number) => ({
+        questions: parsed.answers.map((a: unknown, index: number) => ({
           question: `Blank ${a.blank_index || index + 1}`,
           choices: Array.isArray(a.choices) ? a.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
           answer: a.answer || 'A',
@@ -877,7 +883,7 @@ CRITICAL:
         throw new Error('Invalid response format');
       }
 
-      return parsed.questions.map((q: any, index: number) => ({
+      return parsed.questions.map((q: unknown, index: number) => ({
         question: q.question || `Question ${index + 1}`,
         choices: Array.isArray(q.choices) ? q.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
         answer: q.answer || 'A',

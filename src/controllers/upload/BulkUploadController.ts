@@ -130,7 +130,7 @@ export class BulkUploadController {
   /**
    * Generate template data for Excel download
    */
-  public generateTemplateData(): any[] {
+  public generateTemplateData(): unknown[] {
     return [
       // ===== PART 1: PHOTOS (LISTENING) =====
       {
@@ -190,7 +190,7 @@ export class BulkUploadController {
       {
         part: 4,
         prompt_text: 'What is the main topic of the announcement?',
-        choiceA: 'New company policies',
+        choiceA: 'New compunknown policies',
         choiceB: 'Upcoming training sessions',
         choiceC: 'Office renovation plans',
         choiceD: 'Employee benefits update',
@@ -230,30 +230,30 @@ export class BulkUploadController {
         choiceD: 'Your',
         correct_choice: 'A',
         explain_vi: 'Chỗ trống đầu tiên cần đại từ sở hữu "Our" để chỉ công ty đang nói.',
-        explain_en: 'The first blank needs possessive pronoun "Our" to refer to the company speaking.',
+        explain_en: 'The first blank needs possessive pronoun "Our" to refer to the compunknown speaking.',
         tags: 'text-completion,reading,part6',
         difficulty: 'medium',
         status: 'published',
         blank_index: 1,
-        passage_title: 'Company Newsletter',
-        passage_content: 'Dear Employees, We are pleased to announce that _____ company has achieved record sales this quarter. _____ we continue to grow, we are looking for talented individuals to join our team.'
+        passage_title: 'Compunknown Newsletter',
+        passage_content: 'Dear Employees, We are pleased to announce that _____ compunknown has achieved record sales this quarter. _____ we continue to grow, we are looking for talented individuals to join our team.'
       },
 
       // ===== PART 7: READING COMPREHENSION (READING) =====
       {
         part: 7,
-        prompt_text: 'According to the passage, what is the main purpose of the company?',
+        prompt_text: 'According to the passage, what is the main purpose of the compunknown?',
         choiceA: 'To increase profits',
         choiceB: 'To provide quality service',
         choiceC: 'To expand globally',
         choiceD: 'To reduce costs',
         correct_choice: 'B',
         explain_vi: 'Theo đoạn văn, mục đích chính của công ty là cung cấp dịch vụ chất lượng.',
-        explain_en: 'According to the passage, the main purpose of the company is to provide quality service.',
+        explain_en: 'According to the passage, the main purpose of the compunknown is to provide quality service.',
         tags: 'reading,comprehension,part7',
         difficulty: 'easy',
         status: 'published',
-        passage_title: 'Company Mission',
+        passage_title: 'Compunknown Mission',
         passage_content: 'TechCorp is committed to providing exceptional customer service and innovative solutions. Our mission is to help businesses grow through technology while maintaining the highest standards of quality and reliability.'
       }
     ];
@@ -283,7 +283,7 @@ export class BulkUploadController {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      const parsedQuestions: TOEICQuestion[] = jsonData.map((row: any, index: number) => {
+      const parsedQuestions: TOEICQuestion[] = jsonData.map((row: unknown, index: number) => {
         const question: TOEICQuestion = {
           part: parseInt(row.part) || 1,
           prompt_text: row.prompt_text || row.question_text || '',
@@ -494,7 +494,7 @@ export class BulkUploadController {
         count: importedCount
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Import failed:', error);
       return {
         success: false,

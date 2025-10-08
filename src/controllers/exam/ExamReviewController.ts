@@ -1,43 +1,65 @@
-/**
- * ExamReviewController
- * Business logic cho TOEIC Exam Review
- * Extracted từ ExamReview.tsx
- */
-
-import { ExamService } from '@/services/domains/exam/ExamService';
-import { QuestionService } from '@/services/domains/question/QuestionService';
-import { Question, ExamSet } from '@/types';
+import { ExamService } from '@/services/domains/ExamService';
+import { QuestionService } from '@/services/domains/QuestionService';
+import { ExamSet, Question, Passage } from '@/types';
 
 export interface ExamSession {
   id: string;
   exam_set_id: string;
   user_id: string;
-  score: number;
-  completed_at: string;
-  created_at: string;
+  started_at: string;
+  completed_at?: string;
+  total_time: number;
+  score?: number;
+  status: 'in_progress' | 'completed' | 'abandoned';
   exam_sets?: ExamSet;
 }
 
-export interface ExamAttempt {
+export interface UserAnswer {
   question_id: string;
   user_answer: string;
+  is_correct: boolean;
+  time_spent: number;
+}
+
+export interface QuestionReview {
+  question: Question;
+  userAnswer: UserAnswer | null;
+  isCorrect: boolean;
+  timeSpent: number;
+  explanation: string;
+}
+
+export interface ExamStatistics {
+  totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  unansweredQuestions: number;
+  accuracy: number;
+  totalTime: number;
+  averageTimePerQuestion: number;
+  partBreakdown: Record<number, {
+    total: number;
+    correct: number;
+    accuracy: number;
+  }>;
 }
 
 export interface ExamReviewState {
   examSession: ExamSession | null;
-  questions: Question[];
   examSet: ExamSet | null;
-  userAnswers: Record<string, string>;
-  loading: boolean;
+  questions: Question[];
+  questionReviews: QuestionReview[];
+  userAnswers: Record<string, UserAnswer>;
   currentQuestionIndex: number;
+  loading: boolean;
   error: string | null;
+  statistics: ExamStatistics | null;
 }
 
 export class ExamReviewController {
   private examService: ExamService;
   private questionService: QuestionService;
   private state: ExamReviewState;
-  private listeners: Array<(state: ExamReviewState) => void> = [];
 
   constructor() {
     this.examService = new ExamService();
@@ -45,369 +67,295 @@ export class ExamReviewController {
     this.state = this.getInitialState();
   }
 
-  /**
-   * Get initial state
-   */
+  // Initial State
   private getInitialState(): ExamReviewState {
     return {
       examSession: null,
-      questions: [],
       examSet: null,
+      questions: [],
+      questionReviews: [],
       userAnswers: {},
-      loading: false,
       currentQuestionIndex: 0,
+      loading: false,
       error: null,
+      statistics: null
     };
   }
 
-  /**
-   * Subscribe to state changes
-   */
-  public subscribe(listener: (state: ExamReviewState) => void): () => void {
-    this.listeners.push(listener);
-    return () => {
-      const index = this.listeners.indexOf(listener);
-      if (index > -1) {
-        this.listeners.splice(index, 1);
-      }
-    };
-  }
-
-  /**
-   * Notify listeners of state changes
-   */
-  private notifyListeners(): void {
-    this.listeners.forEach(listener => listener(this.state));
-  }
-
-  /**
-   * Update state
-   */
-  private setState(updates: Partial<ExamReviewState>): void {
-    this.state = { ...this.state, ...updates };
-    this.notifyListeners();
-  }
-
-  /**
-   * Get current state
-   */
-  public getState(): ExamReviewState {
+  // State Management
+  getState(): ExamReviewState {
     return { ...this.state };
   }
 
-  /**
-   * Fetch exam data for review
-   */
-  public async fetchExamData(sessionId: string): Promise<{ success: boolean; error?: string }> {
+  updateState(updates: Partial<ExamReviewState>): void {
+    this.state = { ...this.state, ...updates };
+  }
+
+  // Data Loading
+  async loadExamData(sessionId: string): Promise<void> {
     try {
-      this.setState({ loading: true, error: null });
+      this.updateState({ loading: true, error: null });
 
-      // Fetch exam session
+      // Load exam session
       const examSession = await this.examService.getExamSession(sessionId);
-      this.setState({ examSession });
+      this.updateState({ examSession });
 
-      if (!examSession) {
-        throw new Error('Exam session not found');
+      // Load exam set
+      if (examSession.exam_set_id) {
+        const examSet = await this.examService.getExamSet(examSession.exam_set_id);
+        this.updateState({ examSet });
       }
 
-      // Fetch exam set
-      const examSet = await this.examService.getExamSet(examSession.exam_set_id);
-      this.setState({ examSet });
+      // Load questions
+      const questions = await this.examService.getExamQuestions(sessionId);
+      this.updateState({ questions });
 
-      // Fetch questions for this exam
-      const questions = await this.examService.getExamQuestions(examSession.exam_set_id);
-      this.setState({ questions });
+      // Load user answers
+      const userAnswers = await this.examService.getUserAnswers(sessionId);
+      this.updateState({ userAnswers });
 
-      // Fetch user answers
-      const attempts = await this.examService.getExamAttempts(sessionId);
-      const userAnswers: Record<string, string> = {};
-      attempts.forEach(attempt => {
-        userAnswers[attempt.question_id] = attempt.user_answer || '';
+      // Generate question reviews
+      const questionReviews = this.generateQuestionReviews(questions, userAnswers);
+      this.updateState({ questionReviews });
+
+      // Calculate statistics
+      const statistics = this.calculateStatistics(questionReviews, examSession);
+      this.updateState({ statistics });
+
+      this.updateState({ loading: false });
+    } catch (error) {
+      this.updateState({ 
+        loading: false, 
+        error: error.message 
       });
-      this.setState({ userAnswers });
-
-      return { success: true };
-    } catch (error: any) {
-      console.error('Error fetching exam data:', error);
-      this.setState({ 
-        error: 'Không thể tải dữ liệu bài thi. Vui lòng thử lại sau.' 
-      });
-      return {
-        success: false,
-        error: error.message || 'Failed to fetch exam data'
-      };
-    } finally {
-      this.setState({ loading: false });
+      throw error;
     }
   }
 
-  /**
-   * Navigate to specific question
-   */
-  public setCurrentQuestionIndex(index: number): void {
-    const maxIndex = this.state.questions.length - 1;
-    const clampedIndex = Math.max(0, Math.min(maxIndex, index));
-    this.setState({ currentQuestionIndex: clampedIndex });
+  // Question Navigation
+  setCurrentQuestionIndex(index: number): void {
+    if (index >= 0 && index < this.state.questions.length) {
+      this.updateState({ currentQuestionIndex: index });
+    }
   }
 
-  /**
-   * Navigate to next question
-   */
-  public goToNextQuestion(): void {
+  goToNextQuestion(): void {
     const nextIndex = this.state.currentQuestionIndex + 1;
+    if (nextIndex < this.state.questions.length) {
     this.setCurrentQuestionIndex(nextIndex);
+    }
   }
 
-  /**
-   * Navigate to previous question
-   */
-  public goToPreviousQuestion(): void {
+  goToPreviousQuestion(): void {
     const prevIndex = this.state.currentQuestionIndex - 1;
+    if (prevIndex >= 0) {
     this.setCurrentQuestionIndex(prevIndex);
   }
-
-  /**
-   * Get current question
-   */
-  public getCurrentQuestion(): Question | null {
-    return this.state.questions[this.state.currentQuestionIndex] || null;
   }
 
-  /**
-   * Get current answer
-   */
-  public getCurrentAnswer(): string | null {
-    const currentQuestion = this.getCurrentQuestion();
-    if (!currentQuestion) return null;
-    return this.state.userAnswers[currentQuestion.id] || null;
+  goToQuestion(questionIndex: number): void {
+    this.setCurrentQuestionIndex(questionIndex);
   }
 
-  /**
-   * Check if current answer is correct
-   */
-  public isCurrentAnswerCorrect(): boolean {
-    const currentQuestion = this.getCurrentQuestion();
-    const currentAnswer = this.getCurrentAnswer();
-    if (!currentQuestion || !currentAnswer) return false;
-    return currentAnswer === currentQuestion.correct_choice;
+  // Question Review Generation
+  private generateQuestionReviews(questions: Question[], userAnswers: Record<string, UserAnswer>): QuestionReview[] {
+    return questions.map(question => {
+      const userAnswer = userAnswers[question.id];
+      const isCorrect = userAnswer ? userAnswer.is_correct : false;
+      const timeSpent = userAnswer ? userAnswer.time_spent : 0;
+      const explanation = this.generateExplanation(question, userAnswer);
+
+      return {
+        question,
+        userAnswer,
+        isCorrect,
+        timeSpent,
+        explanation
+      };
+    });
   }
 
-  /**
-   * Get score color class
-   */
-  public getScoreColor(score: number): string {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+  private generateExplanation(question: Question, userAnswer: UserAnswer | null): string {
+    if (!userAnswer) {
+      return 'Question was not answered.';
+    }
+
+    if (userAnswer.is_correct) {
+      return `Correct! ${question.explain_vi || question.explain_en || 'Well done!'}`;
+    } else {
+      const correctAnswer = question.correct_choice;
+      const userAnswerChoice = userAnswer.user_answer;
+      return `Incorrect. The correct answer is ${correctAnswer}. Your answer was ${userAnswerChoice}. ${question.explain_vi || question.explain_en || 'Please review the explanation.'}`;
+    }
   }
 
-  /**
-   * Get score badge variant
-   */
-  public getScoreBadgeVariant(score: number): 'default' | 'secondary' | 'destructive' {
-    if (score >= 80) return 'default';
-    if (score >= 60) return 'secondary';
-    return 'destructive';
-  }
+  // Statistics Calculation
+  private calculateStatistics(questionReviews: QuestionReview[], examSession: ExamSession): ExamStatistics {
+    const totalQuestions = questionReviews.length;
+    const correctAnswers = questionReviews.filter(review => review.isCorrect).length;
+    const incorrectAnswers = questionReviews.filter(review => review.userAnswer && !review.isCorrect).length;
+    const unansweredQuestions = questionReviews.filter(review => !review.userAnswer).length;
+    const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+    const totalTime = examSession.total_time || 0;
+    const averageTimePerQuestion = totalQuestions > 0 ? totalTime / totalQuestions : 0;
 
-  /**
-   * Get part color class
-   */
-  public getPartColor(part: number): string {
-    if (part <= 4) return 'text-blue-600 bg-blue-50 border-blue-200';
-    return 'text-green-600 bg-green-50 border-green-200';
-  }
-
-  /**
-   * Get part icon component name
-   */
-  public getPartIcon(part: number): string {
-    if (part <= 4) return 'Headphones';
-    return 'FileText';
-  }
-
-  /**
-   * Get total questions count
-   */
-  public getTotalQuestions(): number {
-    return this.state.questions.length;
-  }
-
-  /**
-   * Get correct answers count
-   */
-  public getCorrectAnswersCount(): number {
-    return this.state.questions.filter(question => {
-      const userAnswer = this.state.userAnswers[question.id];
-      return userAnswer === question.correct_choice;
-    }).length;
-  }
-
-  /**
-   * Get incorrect answers count
-   */
-  public getIncorrectAnswersCount(): number {
-    return this.getTotalQuestions() - this.getCorrectAnswersCount();
-  }
-
-  /**
-   * Get questions grouped by part
-   */
-  public getQuestionsByPart(): Record<number, Array<Question & { originalIndex: number }>> {
-    return this.state.questions.reduce((acc, question, index) => {
-      const part = question.part;
-      if (!acc[part]) {
-        acc[part] = [];
+    // Part breakdown
+    const partBreakdown: Record<number, { total: number; correct: number; accuracy: number }> = {};
+    questionReviews.forEach(review => {
+      const part = review.question.part;
+      if (!partBreakdown[part]) {
+        partBreakdown[part] = { total: 0, correct: 0, accuracy: 0 };
       }
-      acc[part].push({ ...question, originalIndex: index });
-      return acc;
-    }, {} as Record<number, Array<Question & { originalIndex: number }>>);
-  }
+      partBreakdown[part].total++;
+      if (review.isCorrect) {
+        partBreakdown[part].correct++;
+      }
+    });
 
-  /**
-   * Get questions for current passage (Parts 3, 4, 6, 7)
-   */
-  public getCurrentPassageQuestions(): Question[] {
-    const currentQuestion = this.getCurrentQuestion();
-    if (!currentQuestion || !currentQuestion.passage_id) return [];
-    
-    return this.state.questions.filter(q => q.passage_id === currentQuestion.passage_id);
-  }
-
-  /**
-   * Check if question is answered correctly
-   */
-  public isQuestionCorrect(questionId: string): boolean {
-    const question = this.state.questions.find(q => q.id === questionId);
-    const userAnswer = this.state.userAnswers[questionId];
-    if (!question || !userAnswer) return false;
-    return userAnswer === question.correct_choice;
-  }
-
-  /**
-   * Get user answer for question
-   */
-  public getUserAnswer(questionId: string): string | null {
-    return this.state.userAnswers[questionId] || null;
-  }
-
-  /**
-   * Get progress percentage
-   */
-  public getProgressPercentage(): number {
-    const total = this.getTotalQuestions();
-    if (total === 0) return 0;
-    return ((this.state.currentQuestionIndex + 1) / total) * 100;
-  }
-
-  /**
-   * Get statistics
-   */
-  public getStatistics() {
-    const total = this.getTotalQuestions();
-    const correct = this.getCorrectAnswersCount();
-    const incorrect = this.getIncorrectAnswersCount();
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+    // Calculate accuracy for each part
+    Object.keys(partBreakdown).forEach(part => {
+      const partData = partBreakdown[parseInt(part)];
+      partData.accuracy = partData.total > 0 ? (partData.correct / partData.total) * 100 : 0;
+    });
 
     return {
-      total,
-      correct,
-      incorrect,
-      score,
-      currentIndex: this.state.currentQuestionIndex,
-      progress: this.getProgressPercentage()
+      totalQuestions,
+      correctAnswers,
+      incorrectAnswers,
+      unansweredQuestions,
+      accuracy,
+      totalTime,
+      averageTimePerQuestion,
+      partBreakdown
     };
   }
 
-  /**
-   * Check if current question has passage
-   */
-  public hasCurrentQuestionPassage(): boolean {
-    const currentQuestion = this.getCurrentQuestion();
-    return currentQuestion ? !!currentQuestion.passage_id : false;
-  }
-
-  /**
-   * Check if current question has audio
-   */
-  public hasCurrentQuestionAudio(): boolean {
-    const currentQuestion = this.getCurrentQuestion();
-    return currentQuestion ? !!currentQuestion.audio_url : false;
-  }
-
-  /**
-   * Check if current question has image
-   */
-  public hasCurrentQuestionImage(): boolean {
-    const currentQuestion = this.getCurrentQuestion();
-    return currentQuestion ? !!currentQuestion.image_url : false;
-  }
-
-  /**
-   * Get current question passage
-   */
-  public getCurrentQuestionPassage(): any {
-    const currentQuestion = this.getCurrentQuestion();
-    return currentQuestion ? (currentQuestion as any).passages : null;
-  }
-
-  /**
-   * Get passage images
-   */
-  public getPassageImages(passage: any): string[] {
-    if (!passage) return [];
-
-    const images = [];
-    
-    // Add main image
-    if (passage.image_url) {
-      images.push(passage.image_url);
-    }
-    
-    // Add additional images from texts.additional
-    if (passage.texts?.additional) {
-      const additionalImages = passage.texts.additional
-        .split('|')
-        .map((url: string) => url.trim())
-        .filter((url: string) => url && url.startsWith('http'));
-      images.push(...additionalImages);
+  // Audio Management
+  getAudioUrl(question: Question): string | null {
+    if (question.audio_url) {
+      return question.audio_url;
     }
 
-    return images;
+    // Check if question has associated passage with audio
+    if (question.passage_id && question.passage) {
+      return question.passage.audio_url || null;
+    }
+
+    return null;
   }
 
-  /**
-   * Check if can go to next question
-   */
-  public canGoToNext(): boolean {
-    return this.state.currentQuestionIndex < this.state.questions.length - 1;
+  // Question Analysis
+  getQuestionAnalysis(question: Question): {
+    difficulty: 'easy' | 'medium' | 'hard';
+    type: 'listening' | 'reading';
+    skills: string[];
+  } {
+    const part = question.part;
+    const isListening = part >= 1 && part <= 4;
+    const isReading = part >= 5 && part <= 7;
+
+    const skills: string[] = [];
+    if (isListening) {
+      skills.push('Listening');
+      if (part === 1) skills.push('Visual Description');
+      if (part === 2) skills.push('Question Response');
+      if (part === 3) skills.push('Conversation');
+      if (part === 4) skills.push('Talk');
+    } else if (isReading) {
+      skills.push('Reading');
+      if (part === 5) skills.push('Grammar');
+      if (part === 6) skills.push('Text Completion');
+      if (part === 7) skills.push('Reading Comprehension');
+    }
+
+    return {
+      difficulty: question.difficulty,
+      type: isListening ? 'listening' : 'reading',
+      skills
+    };
   }
 
-  /**
-   * Check if can go to previous question
-   */
-  public canGoToPrevious(): boolean {
-    return this.state.currentQuestionIndex > 0;
+  // Performance Analysis
+  getPerformanceAnalysis(): {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  } {
+    if (!this.state.statistics) {
+      return { strengths: [], weaknesses: [], recommendations: [] };
+    }
+
+    const { partBreakdown, accuracy } = this.state.statistics;
+    const strengths: string[] = [];
+    const weaknesses: string[] = [];
+    const recommendations: string[] = [];
+
+    // Analyze part performance
+    Object.entries(partBreakdown).forEach(([part, data]) => {
+      const partName = this.getPartName(parseInt(part));
+      if (data.accuracy >= 80) {
+        strengths.push(`${partName} (${data.accuracy.toFixed(1)}%)`);
+      } else if (data.accuracy < 60) {
+        weaknesses.push(`${partName} (${data.accuracy.toFixed(1)}%)`);
+      }
+    });
+
+    // Generate recommendations
+    if (accuracy < 60) {
+      recommendations.push('Focus on fundamental grammar and vocabulary');
+    } else if (accuracy < 80) {
+      recommendations.push('Practice more TOEIC-specific question types');
+    } else {
+      recommendations.push('Continue practicing to maintain high performance');
+    }
+
+    if (weaknesses.length > 0) {
+      recommendations.push(`Focus on improving: ${weaknesses.join(', ')}`);
+    }
+
+    return { strengths, weaknesses, recommendations };
   }
 
-  /**
-   * Reset state
-   */
-  public reset(): void {
-    this.setState(this.getInitialState());
+  private getPartName(part: number): string {
+    const partNames = {
+      1: 'Part 1: Photos',
+      2: 'Part 2: Question-Response',
+      3: 'Part 3: Conversations',
+      4: 'Part 4: Talks',
+      5: 'Part 5: Incomplete Sentences',
+      6: 'Part 6: Text Completion',
+      7: 'Part 7: Reading Comprehension'
+    };
+    return partNames[part] || `Part ${part}`;
   }
 
-  /**
-   * Set error
-   */
-  public setError(error: string | null): void {
-    this.setState({ error });
+  // Utility Methods
+  getCurrentQuestion(): Question | null {
+    if (this.state.questions.length === 0) return null;
+    return this.state.questions[this.state.currentQuestionIndex];
   }
 
-  /**
-   * Clear error
-   */
-  public clearError(): void {
-    this.setState({ error: null });
+  getCurrentQuestionReview(): QuestionReview | null {
+    if (this.state.questionReviews.length === 0) return null;
+    return this.state.questionReviews[this.state.currentQuestionIndex];
+  }
+
+  getQuestionByIndex(index: number): Question | null {
+    if (index < 0 || index >= this.state.questions.length) return null;
+    return this.state.questions[index];
+  }
+
+  getQuestionReviewByIndex(index: number): QuestionReview | null {
+    if (index < 0 || index >= this.state.questionReviews.length) return null;
+    return this.state.questionReviews[index];
+  }
+
+  // Error Management
+  clearError(): void {
+    this.updateState({ error: null });
+  }
+
+  resetState(): void {
+    this.state = this.getInitialState();
   }
 }

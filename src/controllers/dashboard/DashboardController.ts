@@ -22,7 +22,7 @@ export class DashboardController {
     analytics: Analytics | null;
     reviewCount: number;
     examSets: ExamSet[];
-    recentStudentExams: any[];
+    recentStudentExams: unknown[];
     error: string | null;
   }> {
     try {
@@ -44,7 +44,7 @@ export class DashboardController {
       const reviewCount = 0;
 
       // Load recent student exams if teacher
-      let recentStudentExams: any[] = [];
+      let recentStudentExams: unknown[] = [];
       if (isTeacher) {
         const { data: studentExams, error: studentExamsError } = await this.examService.getExamSessions({
           status: 'completed'
@@ -64,7 +64,7 @@ export class DashboardController {
         error: null
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading dashboard data:', error);
       return {
         analytics: null,
@@ -150,7 +150,7 @@ export class DashboardController {
   /**
    * Get teacher dashboard stats
    */
-  getTeacherStats(examSets: ExamSet[], recentStudentExams: any[]) {
+  getTeacherStats(examSets: ExamSet[], recentStudentExams: unknown[]) {
     return {
       totalExamSets: examSets.length,
       totalStudents: 0, // TODO: Implement student count

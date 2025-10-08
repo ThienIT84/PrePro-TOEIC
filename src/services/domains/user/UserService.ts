@@ -15,7 +15,7 @@ export class UserService extends BaseService {
   async getProfiles(filters?: {
     role?: AppRole;
     search?: string;
-  }): Promise<{ data: UserModel[] | null; error: any }> {
+  }): Promise<{ data: UserModel[] | null; error: unknown }> {
     this.log('getProfiles', filters);
 
     try {
@@ -52,7 +52,7 @@ export class UserService extends BaseService {
   /**
    * Get profile by user ID
    */
-  async getProfileByUserId(userId: string): Promise<{ data: UserModel | null; error: any }> {
+  async getProfileByUserId(userId: string): Promise<{ data: UserModel | null; error: unknown }> {
     this.log('getProfileByUserId', { userId });
 
     try {
@@ -77,7 +77,7 @@ export class UserService extends BaseService {
   /**
    * Get profile by ID
    */
-  async getProfileById(id: string): Promise<{ data: UserModel | null; error: any }> {
+  async getProfileById(id: string): Promise<{ data: UserModel | null; error: unknown }> {
     this.log('getProfileById', { id });
 
     try {
@@ -102,7 +102,7 @@ export class UserService extends BaseService {
   /**
    * Create new profile
    */
-  async createProfile(profileData: Partial<Profile>): Promise<{ data: UserModel | null; error: any }> {
+  async createProfile(profileData: Partial<Profile>): Promise<{ data: UserModel | null; error: unknown }> {
     this.log('createProfile', { user_id: profileData.user_id });
 
     try {
@@ -139,7 +139,7 @@ export class UserService extends BaseService {
   /**
    * Update existing profile
    */
-  async updateProfile(id: string, updates: Partial<Profile>): Promise<{ data: UserModel | null; error: any }> {
+  async updateProfile(id: string, updates: Partial<Profile>): Promise<{ data: UserModel | null; error: unknown }> {
     this.log('updateProfile', { id, updates });
 
     try {
@@ -175,7 +175,7 @@ export class UserService extends BaseService {
   /**
    * Update profile by user ID
    */
-  async updateProfileByUserId(userId: string, updates: Partial<Profile>): Promise<{ data: UserModel | null; error: any }> {
+  async updateProfileByUserId(userId: string, updates: Partial<Profile>): Promise<{ data: UserModel | null; error: unknown }> {
     this.log('updateProfileByUserId', { userId, updates });
 
     try {
@@ -201,7 +201,7 @@ export class UserService extends BaseService {
   /**
    * Delete profile
    */
-  async deleteProfile(id: string): Promise<{ error: any }> {
+  async deleteProfile(id: string): Promise<{ error: unknown }> {
     this.log('deleteProfile', { id });
 
     try {
@@ -221,7 +221,7 @@ export class UserService extends BaseService {
   /**
    * Search profiles
    */
-  async searchProfiles(searchTerm: string): Promise<{ data: UserModel[] | null; error: any }> {
+  async searchProfiles(searchTerm: string): Promise<{ data: UserModel[] | null; error: unknown }> {
     this.log('searchProfiles', { searchTerm });
 
     try {
@@ -246,7 +246,7 @@ export class UserService extends BaseService {
   /**
    * Get profiles by role
    */
-  async getProfilesByRole(role: AppRole): Promise<{ data: UserModel[] | null; error: any }> {
+  async getProfilesByRole(role: AppRole): Promise<{ data: UserModel[] | null; error: unknown }> {
     this.log('getProfilesByRole', { role });
 
     return this.getProfiles({ role });
@@ -255,7 +255,7 @@ export class UserService extends BaseService {
   /**
    * Get students
    */
-  async getStudents(): Promise<{ data: UserModel[] | null; error: any }> {
+  async getStudents(): Promise<{ data: UserModel[] | null; error: unknown }> {
     this.log('getStudents');
 
     return this.getProfilesByRole('student');
@@ -264,7 +264,7 @@ export class UserService extends BaseService {
   /**
    * Get teachers
    */
-  async getTeachers(): Promise<{ data: UserModel[] | null; error: any }> {
+  async getTeachers(): Promise<{ data: UserModel[] | null; error: unknown }> {
     this.log('getTeachers');
 
     return this.getProfilesByRole('teacher');
@@ -273,7 +273,7 @@ export class UserService extends BaseService {
   /**
    * Get user statistics
    */
-  async getUserStats(): Promise<{ data: any; error: any }> {
+  async getUserStats(): Promise<{ data: unknown; error: unknown }> {
     this.log('getUserStats');
 
     try {
@@ -334,7 +334,7 @@ export class UserService extends BaseService {
    */
   async getProfilesCount(filters?: {
     role?: AppRole;
-  }): Promise<{ count: number | null; error: any }> {
+  }): Promise<{ count: number | null; error: unknown }> {
     this.log('getProfilesCount', filters);
 
     return this.countData(this.profilesTable, filters);
@@ -343,7 +343,7 @@ export class UserService extends BaseService {
   /**
    * Check if user exists
    */
-  async userExists(userId: string): Promise<{ exists: boolean; error: any }> {
+  async userExists(userId: string): Promise<{ exists: boolean; error: unknown }> {
     this.log('userExists', { userId });
 
     try {
@@ -367,7 +367,7 @@ export class UserService extends BaseService {
   /**
    * Get user's exam history
    */
-  async getUserExamHistory(userId: string): Promise<{ data: any[] | null; error: any }> {
+  async getUserExamHistory(userId: string): Promise<{ data: unknown[] | null; error: unknown }> {
     this.log('getUserExamHistory', { userId });
 
     try {
@@ -394,7 +394,7 @@ export class UserService extends BaseService {
   /**
    * Get user's performance statistics
    */
-  async getUserPerformanceStats(userId: string): Promise<{ data: any; error: any }> {
+  async getUserPerformanceStats(userId: string): Promise<{ data: unknown; error: unknown }> {
     this.log('getUserPerformanceStats', { userId });
 
     try {
@@ -420,7 +420,7 @@ export class UserService extends BaseService {
         correctAnswers: attempts?.filter(a => a.correct).length || 0,
         accuracy: 0,
         averageTime: 0,
-        byPart: {} as Record<number, any>,
+        byPart: {} as Record<number, unknown>,
         byDifficulty: {
           easy: { attempts: 0, correct: 0 },
           medium: { attempts: 0, correct: 0 },

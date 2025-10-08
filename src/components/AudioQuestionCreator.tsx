@@ -40,7 +40,7 @@ interface QuestionFormData {
 }
 
 interface AudioQuestionCreatorProps {
-  onQuestionCreated?: (question: any) => void;
+  onQuestionCreated?: (question: unknown) => void;
   className?: string;
 }
 
@@ -68,7 +68,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   // Handle audio upload completion
-  const handleAudioUploadComplete = async (files: any[]) => {
+  const handleAudioUploadComplete = async (files: unknown[]) => {
     if (files.length === 0 || !user) return;
 
     const file = files[0];
@@ -96,7 +96,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
   };
 
   // Handle form input changes
-  const handleInputChange = (field: keyof QuestionFormData, value: any) => {
+  const handleInputChange = (field: keyof QuestionFormData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -239,7 +239,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
 
       onQuestionCreated?.(data);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Create question error:', error);
       toast({
         title: "Error",
@@ -282,7 +282,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
                   <Label htmlFor="type">Question Type</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value: any) => handleInputChange('type', value)}
+                    onValueChange={(value: unknown) => handleInputChange('type', value)}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -301,7 +301,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
                   <Label htmlFor="difficulty">Difficulty</Label>
                   <Select 
                     value={formData.difficulty} 
-                    onValueChange={(value: any) => handleInputChange('difficulty', value)}
+                    onValueChange={(value: unknown) => handleInputChange('difficulty', value)}
                   >
                     <SelectTrigger>
                       <SelectValue />

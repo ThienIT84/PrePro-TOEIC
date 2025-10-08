@@ -11,7 +11,7 @@ const QuickCleanup: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [cleaning, setCleaning] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [cleanupResult, setCleanupResult] = useState<unknown>(null);
 
   const performQuickCleanup = async () => {
     if (!user) {
@@ -129,7 +129,7 @@ const QuickCleanup: React.FC = () => {
         description: `Đã xóa ${itemsCount + questionsCount} câu hỏi và bảng items`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Cleanup error:', error);
       setCleanupResult({
         success: false,

@@ -21,7 +21,7 @@ export interface CleanupResult {
 
 export interface DependenciesCheck {
   itemsCount: number;
-  foreignKeys: any[];
+  foreignKeys: unknown[];
   hasDependencies: boolean;
   error?: string;
 }
@@ -149,11 +149,11 @@ export class ItemsTableCleanupController {
    */
   public async checkDependencies(): Promise<DependenciesCheck> {
     try {
-      // Check if any other tables reference items
+      // Check if unknown other tables reference items
       const { data: foreignKeys, error: fkError } = await supabase
         .rpc('get_foreign_keys', { table_name: 'items' });
 
-      // Check if any components are still using items table
+      // Check if unknown components are still using items table
       const { data: itemsCount, error: itemsError } = await supabase
         .from('items')
         .select('COUNT(*) as count');
@@ -165,7 +165,7 @@ export class ItemsTableCleanupController {
         foreignKeys: foreignKeys || [],
         hasDependencies: (foreignKeys || []).length > 0
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Check dependencies error:', error);
       return {
         itemsCount: 0,
@@ -210,7 +210,7 @@ export class ItemsTableCleanupController {
         success: true,
         backedUpCount: itemsData?.length || 0
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         backedUpCount: 0,
@@ -276,7 +276,7 @@ export class ItemsTableCleanupController {
    */
   public async migrateRemainingData(userId: string | null): Promise<MigrationResult> {
     try {
-      // Check if there's any data in items that's not in questions
+      // Check if there's unknown data in items that's not in questions
       const { data: itemsData, error: itemsError } = await supabase
         .from('items')
         .select('*');
@@ -308,7 +308,7 @@ export class ItemsTableCleanupController {
         migrated: insertedData?.length || 0,
         message: `Migrated ${transformedQuestions.length} items to questions`
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         migrated: 0,
@@ -333,7 +333,7 @@ export class ItemsTableCleanupController {
         success: true, 
         message: 'Items table dropped successfully' 
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         message: 'Drop table failed',
@@ -397,7 +397,7 @@ export class ItemsTableCleanupController {
       this.setCleanupResult(result);
       return result;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Cleanup error:', error);
       const result: CleanupResult = {
         success: false,

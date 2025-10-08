@@ -18,7 +18,7 @@ import {
   Target,
   Zap,
   Timer,
-  Infinity
+  Infinity as InfinityIcon
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -329,7 +329,7 @@ const ExamPartSelection = () => {
           <RadioGroup value={timeMode} onValueChange={(value: TimeMode) => setTimeMode(value)}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {timeModeConfigs.map((config) => {
-                const IconComponent = config.icon === 'Timer' ? Timer : Infinity;
+                const IconComponent = config.icon === 'Timer' ? Timer : InfinityIcon;
                 return (
                   <div key={config.mode} className="flex items-center space-x-3">
                     <RadioGroupItem value={config.mode} id={config.mode} />

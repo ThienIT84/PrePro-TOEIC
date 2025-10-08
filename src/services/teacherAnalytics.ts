@@ -207,8 +207,8 @@ class TeacherAnalyticsService {
       // Get student statistics from attempts and exam sessions
       const [attemptsResult, examSessionsResult] = await Promise.all([
         supabase
-          .from('attempts')
-          .select('user_id, correct, created_at, questions(part, difficulty)')
+          .from('exam_attempts')
+          .select('user_id, is_correct, answered_at, questions(part, difficulty)')
           .in('user_id', studentIds),
         supabase
           .from('exam_sessions')
@@ -232,7 +232,7 @@ class TeacherAnalyticsService {
         const studentAttempts = attempts.filter(a => a.user_id === studentId);
         const studentExams = examSessions.filter(e => e.user_id === studentId);
         
-        const correctAttempts = studentAttempts.filter(a => a.correct);
+        const correctAttempts = studentAttempts.filter(a => a.is_correct);
         const totalQuestions = studentAttempts.length + 
           studentExams.reduce((sum, exam) => sum + (exam.total_questions || 0), 0);
         const totalCorrect = correctAttempts.length + 
@@ -273,29 +273,29 @@ class TeacherAnalyticsService {
 
     // Get current metrics
     const { data: currentAttempts } = await supabase
-      .from('attempts')
-      .select('user_id, correct, created_at')
+      .from('exam_attempts')
+      .select('user_id, is_correct, answered_at')
       .in('user_id', studentIds);
 
     const { data: lastWeekAttempts } = await supabase
-      .from('attempts')
-      .select('user_id, correct, created_at')
+      .from('exam_attempts')
+      .select('user_id, is_correct, answered_at')
       .in('user_id', studentIds)
-      .gte('created_at', lastWeek.toISOString())
-      .lt('created_at', today.toISOString());
+      .gte('answered_at', lastWeek.toISOString())
+      .lt('answered_at', today.toISOString());
 
     const totalStudents = studentIds.length;
     const activeToday = new Set(
       currentAttempts?.filter(a => 
-        new Date(a.created_at) >= today
+        new Date(a.answered_at) >= today
       ).map(a => a.user_id) || []
     ).size;
 
     const currentAvgScore = currentAttempts?.length > 0 ?
-      (currentAttempts.filter(a => a.correct).length / currentAttempts.length) * 100 : 0;
+      (currentAttempts.filter(a => a.is_correct).length / currentAttempts.length) * 100 : 0;
 
     const lastWeekAvgScore = lastWeekAttempts?.length > 0 ?
-      (lastWeekAttempts.filter(a => a.correct).length / lastWeekAttempts.length) * 100 : 0;
+      (lastWeekAttempts.filter(a => a.is_correct).length / lastWeekAttempts.length) * 100 : 0;
 
     return {
       total_students: totalStudents,
@@ -329,7 +329,7 @@ class TeacherAnalyticsService {
       .limit(20);
 
     const { data: attempts } = await supabase
-      .from('attempts')
+      .from('exam_attempts')
       .select(`
         user_id,
         correct,
@@ -360,14 +360,14 @@ class TeacherAnalyticsService {
     // Add drill activities
     attempts?.forEach(attempt => {
       activities.push({
-        id: attempt.user_id + '_' + attempt.created_at,
+        id: attempt.user_id + '_' + attempt.answered_at,
         student_id: attempt.user_id,
         student_name: attempt.profiles?.name || 'Unknown',
         type: 'drill',
         title: `${attempt.items?.type || 'Unknown'} Practice`,
-        score: attempt.correct ? 100 : 0,
-        timestamp: attempt.created_at,
-        details: attempt.correct ? 'Correct' : 'Incorrect'
+        score: attempt.is_correct ? 100 : 0,
+        timestamp: attempt.answered_at,
+        details: attempt.is_correct ? 'Correct' : 'Incorrect'
       });
     });
 
@@ -395,7 +395,7 @@ class TeacherAnalyticsService {
    */
   private async getSkillPerformance(studentIds: string[]) {
     const { data: attempts } = await supabase
-      .from('attempts')
+      .from('exam_attempts')
       .select('correct, items(type)')
       .in('user_id', studentIds);
 
@@ -410,7 +410,7 @@ class TeacherAnalyticsService {
       const type = attempt.items?.type as keyof typeof skillStats;
       if (type && skillStats[type]) {
         skillStats[type].total++;
-        if (attempt.correct) {
+        if (attempt.is_correct) {
           skillStats[type].correct++;
         }
       }
@@ -451,7 +451,7 @@ class TeacherAnalyticsService {
     }).reverse();
 
     const { data: attempts } = await supabase
-      .from('attempts')
+      .from('exam_attempts')
       .select('created_at')
       .in('user_id', studentIds)
       .gte('created_at', last7Days[0])
@@ -474,7 +474,7 @@ class TeacherAnalyticsService {
     }).reverse();
 
     const { data: attempts } = await supabase
-      .from('attempts')
+      .from('exam_attempts')
       .select('created_at, correct')
       .in('user_id', studentIds);
 
@@ -487,7 +487,7 @@ class TeacherAnalyticsService {
       }) || [];
 
       const avgScore = weekAttempts.length > 0 ?
-        (weekAttempts.filter(a => a.correct).length / weekAttempts.length) * 100 : 0;
+        (weekAttempts.filter(a => a.is_correct).length / weekAttempts.length) * 100 : 0;
 
       return {
         week: `Week ${index + 1}`,
@@ -499,7 +499,7 @@ class TeacherAnalyticsService {
   /**
    * Generate smart alerts
    */
-  private async generateAlerts(students: any[], activities: ActivityEvent[], examResults: any[]): Promise<AlertItem[]> {
+  private async generateAlerts(students: unknown[], activities: ActivityEvent[], examResults: unknown[]): Promise<AlertItem[]> {
     const alerts: AlertItem[] = [];
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -590,7 +590,7 @@ class TeacherAnalyticsService {
   /**
    * Calculate skill statistics
    */
-  private calculateSkillStats(attempts: any[], examSessions: any[] = []) {
+  private calculateSkillStats(attempts: unknown[], examSessions: unknown[] = []) {
     const skillCounts: Record<string, { correct: number; total: number }> = {};
     
     // Process attempts
@@ -612,7 +612,7 @@ class TeacherAnalyticsService {
             skillCounts[skill] = { correct: 0, total: 0 };
           }
           skillCounts[skill].total++;
-          if (attempt.correct) {
+          if (attempt.is_correct) {
             skillCounts[skill].correct++;
           }
         }
@@ -651,7 +651,7 @@ class TeacherAnalyticsService {
   /**
    * Calculate streak days
    */
-  private calculateStreak(attempts: any[], examSessions: any[] = []): number {
+  private calculateStreak(attempts: unknown[], examSessions: unknown[] = []): number {
     // Combine all activity dates
     const allDates = new Set<string>();
     
@@ -691,7 +691,7 @@ class TeacherAnalyticsService {
   /**
    * Get last activity date
    */
-  private getLastActivity(attempts: any[], examSessions: any[] = []): string {
+  private getLastActivity(attempts: unknown[], examSessions: unknown[] = []): string {
     const allActivities: { date: string; timestamp: number }[] = [];
     
     attempts.forEach(attempt => {

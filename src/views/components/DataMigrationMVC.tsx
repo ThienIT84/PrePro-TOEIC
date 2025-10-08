@@ -68,7 +68,7 @@ const DataMigrationMVC: React.FC = () => {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorResult = {
         success: false,
         message: "Migration thất bại",
@@ -104,7 +104,7 @@ const DataMigrationMVC: React.FC = () => {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi kiểm tra",
         description: error.message,

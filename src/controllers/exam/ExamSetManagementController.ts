@@ -197,7 +197,7 @@ export class ExamSetManagementController {
         success: true,
         data: examSets
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -232,7 +232,7 @@ export class ExamSetManagementController {
         success: true,
         data
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -260,7 +260,7 @@ export class ExamSetManagementController {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -281,7 +281,7 @@ export class ExamSetManagementController {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message

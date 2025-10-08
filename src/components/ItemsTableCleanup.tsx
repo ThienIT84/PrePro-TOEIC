@@ -11,15 +11,15 @@ const ItemsTableCleanup: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [cleaning, setCleaning] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [cleanupResult, setCleanupResult] = useState<unknown>(null);
 
   const checkDependencies = async () => {
     try {
-      // Check if any other tables reference items
+      // Check if unknown other tables reference items
       const { data: foreignKeys, error: fkError } = await supabase
         .rpc('get_foreign_keys', { table_name: 'items' });
 
-      // Check if any components are still using items table
+      // Check if unknown components are still using items table
       const { data: itemsCount, error: itemsError } = await supabase
         .from('items')
         .select('COUNT(*) as count');
@@ -31,7 +31,7 @@ const ItemsTableCleanup: React.FC = () => {
         foreignKeys: foreignKeys || [],
         hasDependencies: (foreignKeys || []).length > 0
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Check dependencies error:', error);
       return {
         itemsCount: 0,
@@ -70,14 +70,14 @@ const ItemsTableCleanup: React.FC = () => {
       URL.revokeObjectURL(url);
 
       return itemsData?.length || 0;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(`Backup failed: ${error.message}`);
     }
   };
 
   const migrateRemainingData = async () => {
     try {
-      // Check if there's any data in items that's not in questions
+      // Check if there's unknown data in items that's not in questions
       const { data: itemsData, error: itemsError } = await supabase
         .from('items')
         .select('*');
@@ -133,7 +133,7 @@ const ItemsTableCleanup: React.FC = () => {
         migrated: insertedData?.length || 0,
         message: `Migrated ${transformedQuestions.length} items to questions`
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(`Migration failed: ${error.message}`);
     }
   };
@@ -147,7 +147,7 @@ const ItemsTableCleanup: React.FC = () => {
       if (error) throw error;
 
       return { success: true, message: 'Items table dropped successfully' };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(`Drop table failed: ${error.message}`);
     }
   };
@@ -212,7 +212,7 @@ const ItemsTableCleanup: React.FC = () => {
         description: "Bảng items đã được xóa và dữ liệu đã được migrate",
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Cleanup error:', error);
       setCleanupResult({
         success: false,

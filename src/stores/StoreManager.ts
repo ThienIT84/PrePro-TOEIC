@@ -77,7 +77,7 @@ export class StoreManager {
   /**
    * Create question
    */
-  async createQuestion(questionData: any): Promise<QuestionModel | null> {
+  async createQuestion(questionData: unknown): Promise<QuestionModel | null> {
     if (this.questionController) {
       return await this.questionController.createQuestion(questionData);
     }
@@ -87,7 +87,7 @@ export class StoreManager {
   /**
    * Update question
    */
-  async updateQuestion(id: string, updates: any): Promise<QuestionModel | null> {
+  async updateQuestion(id: string, updates: unknown): Promise<QuestionModel | null> {
     if (this.questionController) {
       return await this.questionController.updateQuestion(id, updates);
     }
@@ -107,7 +107,7 @@ export class StoreManager {
   /**
    * Get questions statistics
    */
-  getQuestionsStats(): any {
+  getQuestionsStats(): unknown {
     if (this.questionController) {
       return this.questionController.getQuestionsStats();
     }
@@ -139,7 +139,7 @@ export class StoreManager {
    */
   getQuestionsByDifficulty(difficulty: string): QuestionModel[] {
     if (this.questionController) {
-      return this.questionController.getQuestionsByDifficulty(difficulty as any);
+      return this.questionController.getQuestionsByDifficulty(difficulty as unknown);
     }
     return [];
   }

@@ -87,19 +87,19 @@ export function useQuestionManagerController() {
   }, [controller]);
 
   const getQuestionsByPart = useCallback((part: number) => {
-    return controller.getQuestionsByPart(part as any);
+    return controller.getQuestionsByPart(part as unknown);
   }, [controller]);
 
   const getQuestionsByDifficulty = useCallback((difficulty: string) => {
-    return controller.getQuestionsByDifficulty(difficulty as any);
+    return controller.getQuestionsByDifficulty(difficulty as unknown);
   }, [controller]);
 
   const getQuestionsByStatus = useCallback((status: string) => {
-    return controller.getQuestionsByStatus(status as any);
+    return controller.getQuestionsByStatus(status as unknown);
   }, [controller]);
 
   const getPartInfo = useCallback((part: number) => {
-    return controller.getPartInfo(part as any);
+    return controller.getPartInfo(part as unknown);
   }, [controller]);
 
   const getQuestionAudioUrl = useCallback((question: Question) => {

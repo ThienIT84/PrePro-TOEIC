@@ -1,10 +1,4 @@
-/**
- * PassageManagerView
- * Pure UI component cho Passage Management
- * Nhận tất cả data và callbacks qua props
- */
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,335 +30,337 @@ import {
   FileImage,
   CheckSquare,
   Square,
-  Trash
+  Trash,
+  Loader2
 } from 'lucide-react';
-import { Passage, PassageFormData, PassageManagerState } from '@/controllers/passage/PassageManagerController';
+import { PassageManagerController, Passage, PassageFormData, PassageFilters } from '@/controllers/passage/PassageManagerController';
 
-export interface PassageManagerViewProps {
-  // State
-  state: PassageManagerState;
-
-  // Handlers
-  onSearchTermChange: (searchTerm: string) => void;
-  onFilterPartChange: (filterPart: string) => void;
-  onActiveTabChange: (activeTab: string) => void;
-  onFormDataChange: (field: string, value: any) => void;
-  onContentChange: (content: string) => void;
-  onToggleSelectAll: () => void;
-  onToggleSelectPassage: (passageId: string) => void;
-  onEditPassage: (passage: Passage) => void;
-  onSavePassage: () => void;
-  onDeletePassage: (passageId: string) => void;
-  onDeleteSelectedPassages: () => void;
-  onDownloadTemplate: () => void;
-  onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onResetForm: () => void;
-
-  // Utility functions
-  getFilteredPassages: () => Passage[];
-  getPartName: (part: number) => string;
-  getPartColor: (part: number) => string;
-  getStatistics: () => {
-    totalPassages: number;
-    filteredPassages: number;
-    selectedCount: number;
-    partCounts: Record<number, number>;
-    activeFiltersCount: number;
+interface PassageManagerViewProps {
+  controller: PassageManagerController;
+  state: {
+    passages: Passage[];
+    filteredPassages: Passage[];
+    selectedPassages: Set<string>;
+    editingPassage: Passage | null;
+    formData: PassageFormData;
+    loading: boolean;
+    saving: boolean;
+    deleting: boolean;
+    importing: boolean;
+    importProgress: number;
+    error: string | null;
+    activeTab: 'list' | 'create' | 'edit' | 'import';
   };
-
-  // Props
-  className?: string;
+  onLoadPassages: () => void;
+  onCreatePassage: (data: PassageFormData) => void;
+  onUpdatePassage: (id: string, data: Partial<PassageFormData>) => void;
+  onDeletePassage: (id: string) => void;
+  onDeleteSelectedPassages: () => void;
+  onToggleSelection: (id: string) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+  onSetEditingPassage: (passage: Passage | null) => void;
+  onSetFormData: (data: Partial<PassageFormData>) => void;
+  onApplyFilters: (filters: PassageFilters) => void;
+  onUploadAudio: (file: File) => void;
+  onUploadImage: (file: File) => void;
+  onImportFromExcel: (file: File) => void;
+  onExportToExcel: () => void;
+  onSetActiveTab: (tab: 'list' | 'create' | 'edit' | 'import') => void;
+  onClearError: () => void;
 }
 
 export const PassageManagerView: React.FC<PassageManagerViewProps> = ({
+  controller,
   state,
-  onSearchTermChange,
-  onFilterPartChange,
-  onActiveTabChange,
-  onFormDataChange,
-  onContentChange,
-  onToggleSelectAll,
-  onToggleSelectPassage,
-  onEditPassage,
-  onSavePassage,
+  onLoadPassages,
+  onCreatePassage,
+  onUpdatePassage,
   onDeletePassage,
   onDeleteSelectedPassages,
-  onDownloadTemplate,
-  onFileUpload,
-  onResetForm,
-  getFilteredPassages,
-  getPartName,
-  getPartColor,
-  getStatistics,
-  className = '',
+  onToggleSelection,
+  onSelectAll,
+  onClearSelection,
+  onSetEditingPassage,
+  onSetFormData,
+  onApplyFilters,
+  onUploadAudio,
+  onUploadImage,
+  onImportFromExcel,
+  onExportToExcel,
+  onSetActiveTab,
+  onClearError
 }) => {
-  const filteredPassages = getFilteredPassages();
-  const statistics = getStatistics();
+  const [filters, setFilters] = useState<PassageFilters>({
+    searchTerm: '',
+    filterPart: 'all',
+    filterType: 'all',
+    filterTopic: ''
+  });
 
-  if (state.loading) {
-    return (
-      <div className={`container mx-auto px-4 py-6 max-w-6xl ${className}`}>
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="h-32 bg-muted rounded"></div>
-          <div className="h-64 bg-muted rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  const {
+    passages,
+    filteredPassages,
+    selectedPassages,
+    editingPassage,
+    formData,
+    loading,
+    saving,
+    deleting,
+    importing,
+    importProgress,
+    error,
+    activeTab
+  } = state;
 
-  return (
-    <div className={`container mx-auto px-4 py-6 max-w-6xl ${className}`}>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Quản lý đoạn văn</h1>
-        <p className="text-muted-foreground">
-          Tạo và quản lý các đoạn văn cho Parts 3, 4, 6, 7
-        </p>
-      </div>
+  // Event Handlers
+  const handleSearchChange = (value: string) => {
+    const newFilters = { ...filters, searchTerm: value };
+    setFilters(newFilters);
+    onApplyFilters(newFilters);
+  };
 
-      <Tabs value={state.activeTab} onValueChange={onActiveTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="list" className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Danh sách ({state.passages.length})
-          </TabsTrigger>
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            {state.editingPassage ? 'Chỉnh sửa' : 'Tạo mới'}
-          </TabsTrigger>
-          <TabsTrigger value="import" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Import Excel
-          </TabsTrigger>
-        </TabsList>
+  const handleFilterChange = (key: keyof PassageFilters, value: string) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    onApplyFilters(newFilters);
+  };
 
-        <TabsContent value="list" className="mt-6">
-          <Card>
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingPassage) {
+      onUpdatePassage(editingPassage.id, formData);
+    } else {
+      onCreatePassage(formData);
+    }
+  };
+
+  const handleFileUpload = (type: 'audio' | 'image', file: File) => {
+    if (type === 'audio') {
+      onUploadAudio(file);
+    } else {
+      onUploadImage(file);
+    }
+  };
+
+  const handleImportFile = (file: File) => {
+    onImportFromExcel(file);
+  };
+
+  // Render Methods
+  const renderError = () => (
+    error && (
+      <Alert variant="destructive" className="mb-4">
+        <AlertDescription>{error}</AlertDescription>
+        <Button size="sm" variant="outline" onClick={onClearError} className="mt-2">
+          Dismiss
+        </Button>
+      </Alert>
+    )
+  );
+
+  const renderFilters = () => (
+    <Card className="mb-6">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div>
-                  <CardTitle>Danh sách đoạn văn</CardTitle>
-                  <CardDescription>
-                    Quản lý các đoạn văn cho bài thi TOEIC
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={onDownloadTemplate} variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Template
-                  </Button>
-                  <Button onClick={() => onActiveTabChange('import')} variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import Excel
-                  </Button>
-                  <Button onClick={() => onActiveTabChange('create')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tạo mới
-                  </Button>
-                </div>
-              </div>
+        <CardTitle className="flex items-center gap-2">
+          <Filter className="h-5 w-5" />
+          Filters
+        </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <Label htmlFor="search">Search</Label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Tìm kiếm theo tiêu đề hoặc nội dung..."
-                      value={state.searchTerm}
-                      onChange={(e) => onSearchTermChange(e.target.value)}
+                id="search"
+                placeholder="Search passages..."
+                value={filters.searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
-                <Select value={state.filterPart} onValueChange={onFilterPartChange}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Lọc theo Part" />
+          
+          <div>
+            <Label htmlFor="part">Part</Label>
+            <Select value={filters.filterPart} onValueChange={(value) => handleFilterChange('filterPart', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Parts" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả Parts</SelectItem>
-                    <SelectItem value="3">Part 3 - Conversations</SelectItem>
-                    <SelectItem value="4">Part 4 - Talks</SelectItem>
-                    <SelectItem value="6">Part 6 - Text Completion</SelectItem>
-                    <SelectItem value="7">Part 7 - Reading</SelectItem>
+                <SelectItem value="all">All Parts</SelectItem>
+                <SelectItem value="1">Part 1: Photos</SelectItem>
+                <SelectItem value="2">Part 2: Question-Response</SelectItem>
+                <SelectItem value="3">Part 3: Conversations</SelectItem>
+                <SelectItem value="4">Part 4: Talks</SelectItem>
+                <SelectItem value="5">Part 5: Incomplete Sentences</SelectItem>
+                <SelectItem value="6">Part 6: Text Completion</SelectItem>
+                <SelectItem value="7">Part 7: Reading Comprehension</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Bulk Actions */}
-              {filteredPassages.length > 0 && (
-                <div className="flex items-center justify-between mb-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onToggleSelectAll}
-                      className="flex items-center gap-2"
-                    >
-                      {state.selectedPassages.size === filteredPassages.length ? (
-                        <CheckSquare className="h-4 w-4" />
-                      ) : (
-                        <Square className="h-4 w-4" />
-                      )}
-                      {state.selectedPassages.size === filteredPassages.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                    </Button>
-                    
-                    {state.selectedPassages.size > 0 && (
-                      <span className="text-sm text-gray-600">
-                        Đã chọn {state.selectedPassages.size} đoạn văn
-                      </span>
-                    )}
+          <div>
+            <Label htmlFor="type">Type</Label>
+            <Select value={filters.filterType} onValueChange={(value) => handleFilterChange('filterType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="single">Single</SelectItem>
+                <SelectItem value="double">Double</SelectItem>
+                <SelectItem value="triple">Triple</SelectItem>
+              </SelectContent>
+            </Select>
                   </div>
                   
-                  {state.selectedPassages.size > 0 && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={onDeleteSelectedPassages}
-                      disabled={state.deleting}
-                      className="flex items-center gap-2"
-                    >
-                      <Trash className="h-4 w-4" />
-                      {state.deleting ? 'Đang xóa...' : `Xóa ${state.selectedPassages.size} đoạn văn`}
+          <div>
+            <Label htmlFor="topic">Topic</Label>
+            <Input
+              id="topic"
+              placeholder="Filter by topic..."
+              value={filters.filterTopic}
+              onChange={(e) => handleFilterChange('filterTopic', e.target.value)}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderPassageList = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Passages ({filteredPassages.length})</CardTitle>
+            <CardDescription>
+              Manage TOEIC reading and listening passages
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onSelectAll} variant="outline" size="sm">
+              Select All
+            </Button>
+            <Button onClick={onClearSelection} variant="outline" size="sm">
+              Clear
+            </Button>
+            {selectedPassages.size > 0 && (
+              <Button onClick={onDeleteSelectedPassages} variant="destructive" size="sm" disabled={deleting}>
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Delete Selected ({selectedPassages.size})
                     </Button>
                   )}
                 </div>
-              )}
-
-              {/* Passages List */}
-              {filteredPassages.length === 0 ? (
-                <div className="text-center py-8">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    {state.searchTerm || state.filterPart !== 'all' 
-                      ? 'Không tìm thấy đoạn văn nào' 
-                      : 'Chưa có đoạn văn nào. Hãy tạo đoạn văn đầu tiên!'
-                    }
-                  </p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading passages...</span>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {filteredPassages.map((passage) => (
-                    <Card key={passage.id} className={`hover:shadow-md transition-shadow ${state.selectedPassages.has(passage.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
-                      <CardContent className="p-6">
+              <div key={passage.id} className="border rounded-lg p-4">
                         <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            <div className="flex items-center mt-1">
+                  <div className="flex items-start space-x-3 flex-1">
                               <Checkbox
-                                checked={state.selectedPassages.has(passage.id)}
-                                onCheckedChange={() => onToggleSelectPassage(passage.id)}
+                      checked={selectedPassages.has(passage.id)}
+                      onCheckedChange={() => onToggleSelection(passage.id)}
                               />
-                            </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                <Badge className={getPartColor(passage.part)}>
-                                  {getPartName(passage.part)}
-                                </Badge>
-                                <Badge variant="outline">
-                                  {passage.passage_type}
-                                </Badge>
+                        <Badge variant="outline">Part {passage.part}</Badge>
+                        <Badge variant="outline">{passage.passage_type}</Badge>
+                        <Badge variant="outline">{passage.meta.topic}</Badge>
                               </div>
-                              
-                              <h3 className="text-lg font-semibold mb-2">
-                                {passage.texts.title}
-                              </h3>
-                              
-                              <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                      <h3 className="font-medium text-lg mb-2">{passage.texts.title}</h3>
+                      <p className="text-gray-600 text-sm line-clamp-3 mb-2">
                                 {passage.texts.content}
                               </p>
-                              
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <FileText className="h-4 w-4" />
-                                  {passage.meta.word_count} từ
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  {passage.meta.reading_time} phút
-                                </div>
-                                {passage.audio_url && (
-                                  <div className="flex items-center gap-1">
-                                    <Headphones className="h-4 w-4" />
-                                    Có audio
-                                  </div>
-                                )}
-                                {passage.image_url && (
-                                  <div className="flex items-center gap-1">
-                                    <FileImage className="h-4 w-4" />
-                                    Có hình ảnh
-                                  </div>
-                                )}
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {passage.meta.word_count} words
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(passage.created_at).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {passage.created_by}
+                        </span>
                               </div>
                             </div>
                           </div>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onEditPassage(passage)}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Sửa
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => onSetEditingPassage(passage)}>
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      <Eye className="h-3 w-3" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onDeletePassage(passage.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Xóa
+                    <Button size="sm" variant="outline" onClick={() => onDeletePassage(passage.id)}>
+                      <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+              </div>
                   ))}
                 </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+  );
 
-        <TabsContent value="create" className="mt-6">
+  const renderPassageForm = () => (
           <Card>
             <CardHeader>
               <CardTitle>
-                {state.editingPassage ? 'Chỉnh sửa đoạn văn' : 'Tạo đoạn văn mới'}
+          {editingPassage ? 'Edit Passage' : 'Create New Passage'}
               </CardTitle>
               <CardDescription>
-                Nhập thông tin đoạn văn cho bài thi TOEIC
+          {editingPassage ? 'Update passage information' : 'Add a new TOEIC passage'}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+      <CardContent>
+        <form onSubmit={handleFormSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="part">Part</Label>
                   <Select
-                    value={state.formData.part.toString()}
-                    onValueChange={(value) => onFormDataChange('part', parseInt(value))}
+                value={formData.part.toString()} 
+                onValueChange={(value) => onSetFormData({ part: parseInt(value) })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn Part" />
+                  <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="3">Part 3 - Conversations</SelectItem>
-                      <SelectItem value="4">Part 4 - Talks</SelectItem>
-                      <SelectItem value="6">Part 6 - Text Completion</SelectItem>
-                      <SelectItem value="7">Part 7 - Reading</SelectItem>
+                  <SelectItem value="1">Part 1: Photos</SelectItem>
+                  <SelectItem value="2">Part 2: Question-Response</SelectItem>
+                  <SelectItem value="3">Part 3: Conversations</SelectItem>
+                  <SelectItem value="4">Part 4: Talks</SelectItem>
+                  <SelectItem value="5">Part 5: Incomplete Sentences</SelectItem>
+                  <SelectItem value="6">Part 6: Text Completion</SelectItem>
+                  <SelectItem value="7">Part 7: Reading Comprehension</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label htmlFor="passage_type">Loại đoạn văn</Label>
+              <Label htmlFor="type">Passage Type</Label>
                   <Select
-                    value={state.formData.passage_type}
-                    onValueChange={(value) => onFormDataChange('passage_type', value)}
+                value={formData.passage_type} 
+                onValueChange={(value: 'single' | 'double' | 'triple') => onSetFormData({ passage_type: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn loại" />
+                  <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="single">Single</SelectItem>
@@ -376,146 +372,188 @@ export const PassageManagerView: React.FC<PassageManagerViewProps> = ({
               </div>
 
               <div>
-                <Label htmlFor="title">Tiêu đề</Label>
+            <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
-                  value={state.formData.texts.title}
-                  onChange={(e) => onFormDataChange('texts.title', e.target.value)}
-                  placeholder="Nhập tiêu đề đoạn văn..."
+              value={formData.texts.title}
+              onChange={(e) => onSetFormData({ 
+                texts: { ...formData.texts, title: e.target.value }
+              })}
+              placeholder="Enter passage title..."
                 />
               </div>
 
               <div>
-                <Label htmlFor="content">Nội dung</Label>
+            <Label htmlFor="content">Content</Label>
                 <Textarea
                   id="content"
-                  value={state.formData.texts.content}
-                  onChange={(e) => onContentChange(e.target.value)}
-                  placeholder="Nhập nội dung đoạn văn..."
-                  rows={8}
-                />
-                <div className="mt-2 text-sm text-muted-foreground">
-                  {state.formData.meta.word_count} từ • {state.formData.meta.reading_time} phút đọc
-                </div>
+              value={formData.texts.content}
+              onChange={(e) => onSetFormData({ 
+                texts: { ...formData.texts, content: e.target.value }
+              })}
+              placeholder="Enter passage content..."
+              rows={6}
+            />
               </div>
 
               <div>
-                <Label htmlFor="additional">Nội dung bổ sung</Label>
+            <Label htmlFor="additional">Additional Information</Label>
                 <Textarea
                   id="additional"
-                  value={state.formData.texts.additional}
-                  onChange={(e) => onFormDataChange('texts.additional', e.target.value)}
-                  placeholder="Nhập nội dung bổ sung (nếu có)..."
-                  rows={4}
+              value={formData.texts.additional}
+              onChange={(e) => onSetFormData({ 
+                texts: { ...formData.texts, additional: e.target.value }
+              })}
+              placeholder="Enter additional information..."
+              rows={3}
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="audio_url">URL Audio</Label>
+              <Label htmlFor="topic">Topic</Label>
                   <Input
-                    id="audio_url"
-                    value={state.formData.audio_url}
-                    onChange={(e) => onFormDataChange('audio_url', e.target.value)}
-                    placeholder="https://example.com/audio.mp3"
+                id="topic"
+                value={formData.meta.topic}
+                onChange={(e) => onSetFormData({ 
+                  meta: { ...formData.meta, topic: e.target.value }
+                })}
+                placeholder="Enter topic..."
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="image_url">URL Hình ảnh</Label>
+              <Label htmlFor="wordCount">Word Count</Label>
                   <Input
-                    id="image_url"
-                    value={state.formData.image_url}
-                    onChange={(e) => onFormDataChange('image_url', e.target.value)}
-                    placeholder="https://example.com/image.jpg"
+                id="wordCount"
+                type="number"
+                value={formData.meta.word_count}
+                onChange={(e) => onSetFormData({ 
+                  meta: { ...formData.meta, word_count: parseInt(e.target.value) || 0 }
+                })}
+                placeholder="Enter word count..."
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="topic">Chủ đề</Label>
-                <Input
-                  id="topic"
-                  value={state.formData.meta.topic}
-                  onChange={(e) => onFormDataChange('meta.topic', e.target.value)}
-                  placeholder="Nhập chủ đề..."
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={onSavePassage} disabled={state.saving}>
-                  {state.saving ? 'Đang lưu...' : 'Lưu'}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onSetActiveTab('list')}>
+              Cancel
                 </Button>
-                <Button variant="outline" onClick={onResetForm}>
-                  Reset
-                </Button>
-                <Button variant="outline" onClick={() => onActiveTabChange('list')}>
-                  Hủy
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {editingPassage ? 'Update Passage' : 'Create Passage'}
                 </Button>
               </div>
+        </form>
             </CardContent>
           </Card>
-        </TabsContent>
+  );
 
-        <TabsContent value="import" className="mt-6">
+  const renderImportTab = () => (
           <Card>
             <CardHeader>
-              <CardTitle>Import từ Excel</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Upload className="h-5 w-5" />
+          Import Passages
+        </CardTitle>
               <CardDescription>
-                Tải lên file Excel để import nhiều đoạn văn cùng lúc
+          Import passages from Excel file
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-2">
-                <Button onClick={onDownloadTemplate} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Tải template
-                </Button>
-              </div>
-
-              <div>
-                <Label htmlFor="file-upload">Chọn file Excel</Label>
-                <Input
-                  id="file-upload"
+      <CardContent>
+        <div className="space-y-4">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <Upload className="mx-auto h-12 w-12 text-gray-400" />
+            <div className="mt-4">
+              <label htmlFor="import-file" className="cursor-pointer">
+                <span className="text-blue-600 hover:text-blue-500">
+                  Click to upload Excel file
+                </span>
+              </label>
+              <input
+                id="import-file"
                   type="file"
                   accept=".xlsx,.xls"
-                  onChange={onFileUpload}
-                  disabled={state.importing}
-                />
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFile(file);
+                }}
+                className="hidden"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Excel files (.xlsx, .xls) up to 50MB
+            </p>
               </div>
 
-              {state.importing && (
+          {importing && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    <span className="text-sm">Đang import...</span>
+              <div className="flex justify-between text-sm">
+                <span>Importing...</span>
+                <span>{importProgress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${state.importProgress}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {Math.round(state.importProgress)}% hoàn thành
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${importProgress}%` }}
+                />
                   </div>
                 </div>
               )}
 
-              <Alert>
-                <AlertDescription>
-                  <strong>Hướng dẫn:</strong>
-                  <ul className="mt-2 list-disc list-inside space-y-1">
-                    <li>Tải template để xem định dạng dữ liệu</li>
-                    <li>Điền thông tin vào các cột: part, passage_type, title, content</li>
-                    <li>Các cột khác là tùy chọn: audio_url, image_url, topic</li>
-                    <li>Part phải là 3, 4, 6, hoặc 7</li>
-                    <li>Passage type phải là single, double, hoặc triple</li>
-                  </ul>
-                </AlertDescription>
-              </Alert>
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={onExportToExcel}>
+              <Download className="h-4 w-4 mr-2" />
+              Export to Excel
+            </Button>
+            <Button variant="outline" onClick={() => onSetActiveTab('list')}>
+              Back to List
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Passage Manager</h1>
+        <p className="text-gray-600 mt-2">Manage TOEIC reading and listening passages</p>
+      </div>
+
+      {renderError()}
+
+      <Tabs value={activeTab} onValueChange={(value) => onSetActiveTab(value as unknown)}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="list">Passages</TabsTrigger>
+          <TabsTrigger value="create">Create</TabsTrigger>
+          <TabsTrigger value="edit">Edit</TabsTrigger>
+          <TabsTrigger value="import">Import</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list" className="space-y-6">
+          {renderFilters()}
+          {renderPassageList()}
+        </TabsContent>
+
+        <TabsContent value="create">
+          {renderPassageForm()}
+        </TabsContent>
+
+        <TabsContent value="edit">
+          {editingPassage ? renderPassageForm() : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-gray-500">Select a passage to edit</p>
             </CardContent>
           </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="import">
+          {renderImportTab()}
         </TabsContent>
       </Tabs>
     </div>

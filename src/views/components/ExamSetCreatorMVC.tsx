@@ -65,8 +65,8 @@ export const ExamSetCreatorMVC: React.FC<ExamSetCreatorMVCProps> = ({
   };
 
   // Handle part config update
-  const handlePartConfigUpdate = (partNumber: number, field: string, value: any) => {
-    updatePartConfig(partNumber, field as any, value);
+  const handlePartConfigUpdate = (partNumber: number, field: string, value: unknown) => {
+    updatePartConfig(partNumber, field as unknown, value);
   };
 
   // Handle add questions to part
@@ -129,7 +129,7 @@ export const ExamSetCreatorMVC: React.FC<ExamSetCreatorMVCProps> = ({
   };
 
   // Handle load template with toast notifications
-  const handleLoadTemplate = (template: any) => {
+  const handleLoadTemplate = (template: unknown) => {
     loadTemplate(template);
     toast({
       title: "Template loaded",

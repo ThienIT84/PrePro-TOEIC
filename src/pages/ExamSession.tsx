@@ -48,18 +48,18 @@ const ExamSession = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
-  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
+  const timeMode: TimeMode = (location.state as unknown)?.timeMode || 'standard';
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const type = urlParams.get('type') || 'mini';
-    const state = location.state as any;
+    const state = location.state as unknown;
     
     // If we have examSetId, use exam set configuration
     if (examSetId && state?.examSet) {
       const examSet = state.examSet;
       const config: ExamConfig = {
-        type: type as any,
+        type: type as unknown,
         parts: state?.parts?.map((p: number) => p) || [],
         questionCount: examSet.total_questions,
         difficulty: examSet.difficulty,
@@ -73,7 +73,7 @@ const ExamSession = () => {
     } else {
       // Original logic for mini/custom tests
       const config: ExamConfig = {
-        type: type as any,
+        type: type as unknown,
         parts: state?.parts?.map((p: string) => parseInt(p)) || [],
         questionCount: state?.testConfig?.questionCount || 50,
         difficulty: state?.testConfig?.difficulty || 'medium',
@@ -130,8 +130,8 @@ const ExamSession = () => {
         setTimeLeft(-1); // -1 indicates unlimited time
         console.log(`⏰ Unlimited time mode for ${generatedQuestions.length} questions`);
       } else {
-        setTimeLeft(config.timeLimit! * 60); // Convert minutes to seconds
-        console.log(`⏰ Timer set to ${config.timeLimit! * 60} seconds for ${generatedQuestions.length} questions`);
+        setTimeLeft((config.timeLimit || 0) * 60); // Convert minutes to seconds
+        console.log(`⏰ Timer set to ${(config.timeLimit || 0) * 60} seconds for ${generatedQuestions.length} questions`);
       }
     } catch (error) {
       console.error('Error loading questions:', error);
@@ -200,7 +200,7 @@ const ExamSession = () => {
           total_questions: questions.length,
           correct_answers: correctAnswers,
           score,
-          time_spent: (examConfig?.timeLimit! * 60) - timeLeft,
+          time_spent: (examConfig?.timeLimit || 0) * 60 - timeLeft,
           status: 'completed',
           completed_at: new Date().toISOString()
         });
@@ -218,7 +218,7 @@ const ExamSession = () => {
           score, 
           totalQuestions: questions.length,
           correctAnswers,
-          timeTaken: (examConfig?.timeLimit! * 60) - timeLeft
+          timeTaken: (examConfig?.timeLimit || 0) * 60 - timeLeft
         } 
       });
     } catch (error) {
@@ -322,7 +322,7 @@ const ExamSession = () => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Quay lại
               </Button>
-              <Button onClick={() => setTimeLeft(examConfig?.timeLimit! * 60)}>
+              <Button onClick={() => setTimeLeft((examConfig?.timeLimit || 0) * 60)}>
                 <Play className="h-4 w-4 mr-2" />
                 Bắt đầu làm bài
               </Button>

@@ -1,8 +1,7 @@
-/**
- * PassageManagerController
- * Business logic cho Passage Management
- * Extracted từ PassageManager.tsx
- */
+import { PassageService } from '@/services/domains/PassageService';
+import { FileService } from '@/services/domains/FileService';
+import { TOEICPart, PassageType } from '@/types';
+import * as XLSX from 'xlsx';
 
 export interface Passage {
   id: string;
@@ -50,46 +49,265 @@ export interface PassageFormData {
   };
 }
 
-export interface PassageManagerState {
-  passages: Passage[];
-  loading: boolean;
+export interface PassageFilters {
   searchTerm: string;
   filterPart: string;
-  activeTab: string;
+  filterType: string;
+  filterTopic: string;
+}
+
+export interface PassageManagerState {
+  passages: Passage[];
+  filteredPassages: Passage[];
+  selectedPassages: Set<string>;
   editingPassage: Passage | null;
+  formData: PassageFormData;
+  loading: boolean;
   saving: boolean;
+  deleting: boolean;
   importing: boolean;
   importProgress: number;
-  selectedPassages: Set<string>;
-  deleting: boolean;
-  formData: PassageFormData;
+  error: string | null;
+  activeTab: 'list' | 'create' | 'edit' | 'import';
 }
 
 export class PassageManagerController {
+  private passageService: PassageService;
+  private fileService: FileService;
   private state: PassageManagerState;
-  private listeners: Array<(state: PassageManagerState) => void> = [];
 
   constructor() {
+    this.passageService = new PassageService();
+    this.fileService = new FileService();
     this.state = this.getInitialState();
   }
 
-  /**
-   * Get initial state
-   */
+  // Initial State
   private getInitialState(): PassageManagerState {
     return {
       passages: [],
-      loading: false,
-      searchTerm: '',
-      filterPart: 'all',
-      activeTab: 'list',
+      filteredPassages: [],
+      selectedPassages: new Set(),
       editingPassage: null,
+      formData: this.getEmptyFormData(),
+      loading: false,
       saving: false,
+      deleting: false,
       importing: false,
       importProgress: 0,
-      selectedPassages: new Set(),
-      deleting: false,
-      formData: {
+      error: null,
+      activeTab: 'list'
+    };
+  }
+
+  // State Management
+  getState(): PassageManagerState {
+    return { ...this.state };
+  }
+
+  updateState(updates: Partial<PassageManagerState>): void {
+    this.state = { ...this.state, ...updates };
+  }
+
+  // Passage Management
+  async loadPassages(): Promise<Passage[]> {
+    try {
+      this.updateState({ loading: true, error: null });
+
+      const passages = await this.passageService.getPassages();
+      
+      this.updateState({ 
+        loading: false, 
+        passages,
+        filteredPassages: passages
+      });
+
+      return passages;
+    } catch (error) {
+      this.updateState({ 
+        loading: false, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async createPassage(data: PassageFormData): Promise<Passage> {
+    try {
+      this.updateState({ saving: true, error: null });
+
+      const passage = await this.passageService.createPassage(data);
+      
+      // Add to local state
+      const newPassages = [...this.state.passages, passage];
+      this.updateState({ 
+        saving: false, 
+        passages: newPassages,
+        filteredPassages: this.filterPassages(newPassages, this.getCurrentFilters()),
+        formData: this.getEmptyFormData(),
+        activeTab: 'list'
+      });
+
+      return passage;
+    } catch (error) {
+      this.updateState({ 
+        saving: false, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async updatePassage(id: string, data: Partial<PassageFormData>): Promise<Passage> {
+    try {
+      this.updateState({ saving: true, error: null });
+
+      const passage = await this.passageService.updatePassage(id, data);
+      
+      // Update local state
+      const updatedPassages = this.state.passages.map(p => 
+        p.id === id ? passage : p
+      );
+      this.updateState({ 
+        saving: false, 
+        passages: updatedPassages,
+        filteredPassages: this.filterPassages(updatedPassages, this.getCurrentFilters()),
+        editingPassage: null,
+        activeTab: 'list'
+      });
+
+      return passage;
+    } catch (error) {
+      this.updateState({ 
+        saving: false, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async deletePassage(id: string): Promise<void> {
+    try {
+      this.updateState({ deleting: true, error: null });
+
+      await this.passageService.deletePassage(id);
+      
+      // Remove from local state
+      const filteredPassages = this.state.passages.filter(p => p.id !== id);
+      this.updateState({ 
+        deleting: false, 
+        passages: filteredPassages,
+        filteredPassages: this.filterPassages(filteredPassages, this.getCurrentFilters())
+      });
+    } catch (error) {
+      this.updateState({ 
+        deleting: false, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async deleteSelectedPassages(): Promise<void> {
+    try {
+      this.updateState({ deleting: true, error: null });
+
+      const deletePromises = Array.from(this.state.selectedPassages).map(id =>
+        this.passageService.deletePassage(id)
+      );
+
+      await Promise.all(deletePromises);
+      
+      // Remove from local state
+      const filteredPassages = this.state.passages.filter(p => 
+        !this.state.selectedPassages.has(p.id)
+      );
+      this.updateState({ 
+        deleting: false, 
+        passages: filteredPassages,
+        filteredPassages: this.filterPassages(filteredPassages, this.getCurrentFilters()),
+        selectedPassages: new Set()
+      });
+    } catch (error) {
+      this.updateState({ 
+        deleting: false, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  // Filtering and Search
+  filterPassages(passages: Passage[], filters: PassageFilters): Passage[] {
+    return passages.filter(passage => {
+      // Search term filter
+      if (filters.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase();
+        const matchesSearch = 
+          passage.texts.title.toLowerCase().includes(searchLower) ||
+          passage.texts.content.toLowerCase().includes(searchLower) ||
+          passage.meta.topic.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Part filter
+      if (filters.filterPart !== 'all') {
+        if (passage.part.toString() !== filters.filterPart) return false;
+      }
+
+      // Type filter
+      if (filters.filterType !== 'all') {
+        if (passage.passage_type !== filters.filterType) return false;
+      }
+
+      // Topic filter
+      if (filters.filterTopic) {
+        if (!passage.meta.topic.toLowerCase().includes(filters.filterTopic.toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  applyFilters(filters: PassageFilters): void {
+    const filteredPassages = this.filterPassages(this.state.passages, filters);
+    this.updateState({ filteredPassages });
+  }
+
+  getCurrentFilters(): PassageFilters {
+    return {
+      searchTerm: '',
+      filterPart: 'all',
+      filterType: 'all',
+      filterTopic: ''
+    };
+  }
+
+  // Selection Management
+  togglePassageSelection(id: string): void {
+    const newSelected = new Set(this.state.selectedPassages);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    this.updateState({ selectedPassages: newSelected });
+  }
+
+  selectAllPassages(): void {
+    const allIds = new Set(this.state.filteredPassages.map(p => p.id));
+    this.updateState({ selectedPassages: allIds });
+  }
+
+  clearSelection(): void {
+    this.updateState({ selectedPassages: new Set() });
+  }
+
+  // Form Management
+  getEmptyFormData(): PassageFormData {
+    return {
         part: 3,
         passage_type: 'single',
         texts: {
@@ -108,412 +326,189 @@ export class PassageManagerController {
           word_count: 0,
           reading_time: 0
         }
-      }
     };
   }
 
-  /**
-   * Subscribe to state changes
-   */
-  public subscribe(listener: (state: PassageManagerState) => void): () => void {
-    this.listeners.push(listener);
-    return () => {
-      const index = this.listeners.indexOf(listener);
-      if (index > -1) {
-        this.listeners.splice(index, 1);
-      }
-    };
+  setFormData(data: Partial<PassageFormData>): void {
+    this.updateState({ 
+      formData: { ...this.state.formData, ...data }
+    });
   }
 
-  /**
-   * Notify listeners of state changes
-   */
-  private notifyListeners(): void {
-    this.listeners.forEach(listener => listener(this.state));
-  }
-
-  /**
-   * Update state
-   */
-  private setState(updates: Partial<PassageManagerState>): void {
-    this.state = { ...this.state, ...updates };
-    this.notifyListeners();
-  }
-
-  /**
-   * Get current state
-   */
-  public getState(): PassageManagerState {
-    return { ...this.state };
-  }
-
-  /**
-   * Set loading state
-   */
-  public setLoading(loading: boolean): void {
-    this.setState({ loading });
-  }
-
-  /**
-   * Set passages data
-   */
-  public setPassages(passages: Passage[]): void {
-    this.setState({ passages });
-  }
-
-  /**
-   * Set search term
-   */
-  public setSearchTerm(searchTerm: string): void {
-    this.setState({ searchTerm });
-  }
-
-  /**
-   * Set filter part
-   */
-  public setFilterPart(filterPart: string): void {
-    this.setState({ filterPart });
-  }
-
-  /**
-   * Set active tab
-   */
-  public setActiveTab(activeTab: string): void {
-    this.setState({ activeTab });
-  }
-
-  /**
-   * Set editing passage
-   */
-  public setEditingPassage(passage: Passage | null): void {
-    this.setState({ editingPassage: passage });
-  }
-
-  /**
-   * Set saving state
-   */
-  public setSaving(saving: boolean): void {
-    this.setState({ saving });
-  }
-
-  /**
-   * Set importing state
-   */
-  public setImporting(importing: boolean): void {
-    this.setState({ importing });
-  }
-
-  /**
-   * Set import progress
-   */
-  public setImportProgress(progress: number): void {
-    this.setState({ importProgress: progress });
-  }
-
-  /**
-   * Set deleting state
-   */
-  public setDeleting(deleting: boolean): void {
-    this.setState({ deleting });
-  }
-
-  /**
-   * Update form data
-   */
-  public updateFormData(field: string, value: any): void {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      this.setState({
-        formData: {
-          ...this.state.formData,
-          [parent]: {
-            ...(this.state.formData[parent as keyof PassageFormData] as any),
-            [child]: value
-          }
-        }
+  setEditingPassage(passage: Passage | null): void {
+    if (passage) {
+      this.updateState({ 
+        editingPassage: passage,
+      formData: {
+        part: passage.part,
+        passage_type: passage.passage_type,
+          texts: { ...passage.texts },
+        audio_url: passage.audio_url || '',
+        image_url: passage.image_url || '',
+        assets: passage.assets || { images: [], charts: [] },
+          meta: { ...passage.meta }
+        },
+        activeTab: 'edit'
       });
     } else {
-      this.setState({
-        formData: {
-          ...this.state.formData,
-          [field]: value
-        }
+      this.updateState({ 
+        editingPassage: null,
+        formData: this.getEmptyFormData(),
+        activeTab: 'list'
       });
     }
   }
 
-  /**
-   * Reset form data
-   */
-  public resetFormData(): void {
-    this.setState({
-      formData: {
-        part: 3,
-        passage_type: 'single',
-        texts: {
-          title: '',
-          content: '',
-          additional: ''
-        },
-        audio_url: '',
-        image_url: '',
-        assets: {
-          images: [],
-          charts: []
-        },
-        meta: {
-          topic: '',
-          word_count: 0,
-          reading_time: 0
-        }
-      }
-    });
+  // File Upload
+  async uploadAudio(file: File): Promise<string> {
+    try {
+      const audioUrl = await this.fileService.uploadAudio(file);
+      this.setFormData({ audio_url: audioUrl });
+      return audioUrl;
+    } catch (error) {
+      this.updateState({ error: error.message });
+      throw error;
+    }
   }
 
-  /**
-   * Calculate word count
-   */
-  public calculateWordCount(text: string): number {
+  async uploadImage(file: File): Promise<string> {
+    try {
+      const imageUrl = await this.fileService.uploadImage(file);
+      this.setFormData({ image_url: imageUrl });
+      return imageUrl;
+    } catch (error) {
+      this.updateState({ error: error.message });
+      throw error;
+    }
+  }
+
+  // Import/Export
+  async importFromExcel(file: File): Promise<void> {
+    try {
+      this.updateState({ importing: true, importProgress: 0, error: null });
+
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      const passages: PassageFormData[] = [];
+      
+      // Skip header row
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i] as unknown[];
+        if (row.length === 0) continue;
+
+        const passage: PassageFormData = {
+          part: parseInt(row[0]) || 3,
+          passage_type: row[1] || 'single',
+          texts: {
+            title: row[2] || '',
+            content: row[3] || '',
+            additional: row[4] || ''
+          },
+          audio_url: row[5] || '',
+          image_url: row[6] || '',
+          assets: {
+            images: row[7] ? row[7].split(',').map((img: string) => img.trim()) : [],
+            charts: row[8] ? row[8].split(',').map((chart: string) => chart.trim()) : []
+          },
+          meta: {
+            topic: row[9] || '',
+            word_count: parseInt(row[10]) || 0,
+            reading_time: parseInt(row[11]) || 0
+          }
+        };
+
+        passages.push(passage);
+      }
+
+      // Import passages
+      for (let i = 0; i < passages.length; i++) {
+        try {
+          await this.createPassage(passages[i]);
+        } catch (error) {
+          console.error(`Failed to import passage ${i + 1}:`, error);
+        }
+
+        this.updateState({ 
+          importProgress: Math.round(((i + 1) / passages.length) * 100)
+        });
+      }
+
+      this.updateState({ importing: false, importProgress: 100 });
+    } catch (error) {
+      this.updateState({ 
+        importing: false, 
+        importProgress: 0,
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  exportToExcel(): void {
+    const data = this.state.passages.map(passage => [
+      passage.part,
+      passage.passage_type,
+      passage.texts.title,
+      passage.texts.content,
+      passage.texts.additional,
+      passage.audio_url || '',
+      passage.image_url || '',
+      passage.assets?.images.join(',') || '',
+      passage.assets?.charts.join(',') || '',
+      passage.meta.topic,
+      passage.meta.word_count,
+      passage.meta.reading_time
+    ]);
+
+    const headers = [
+      'Part', 'Type', 'Title', 'Content', 'Additional', 
+      'Audio URL', 'Image URL', 'Images', 'Charts', 
+      'Topic', 'Word Count', 'Reading Time'
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Passages');
+    XLSX.writeFile(workbook, 'passages_export.xlsx');
+  }
+
+  // Utility Methods
+  calculateWordCount(text: string): number {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   }
 
-  /**
-   * Calculate reading time
-   */
-  public calculateReadingTime(wordCount: number): number {
+  calculateReadingTime(wordCount: number): number {
     // Average reading speed: 200 words per minute
     return Math.ceil(wordCount / 200);
   }
 
-  /**
-   * Handle content change with auto-calculation
-   */
-  public handleContentChange(content: string): void {
-    const wordCount = this.calculateWordCount(content);
-    const readingTime = this.calculateReadingTime(wordCount);
-    
-    this.updateFormData('texts.content', content);
-    this.updateFormData('meta.word_count', wordCount);
-    this.updateFormData('meta.reading_time', readingTime);
-  }
-
-  /**
-   * Get filtered passages
-   */
-  public getFilteredPassages(): Passage[] {
-    return this.state.passages.filter(passage => {
-      const matchesSearch = passage.texts.title.toLowerCase().includes(this.state.searchTerm.toLowerCase()) ||
-                           passage.texts.content.toLowerCase().includes(this.state.searchTerm.toLowerCase());
-      const matchesPart = this.state.filterPart === 'all' || passage.part.toString() === this.state.filterPart;
-      return matchesSearch && matchesPart;
-    });
-  }
-
-  /**
-   * Toggle select all passages
-   */
-  public toggleSelectAll(): void {
-    const filteredPassages = this.getFilteredPassages();
-    if (this.state.selectedPassages.size === filteredPassages.length) {
-      this.setState({ selectedPassages: new Set() });
-    } else {
-      this.setState({ selectedPassages: new Set(filteredPassages.map(p => p.id)) });
-    }
-  }
-
-  /**
-   * Toggle select individual passage
-   */
-  public toggleSelectPassage(passageId: string): void {
-    const newSelected = new Set(this.state.selectedPassages);
-    if (newSelected.has(passageId)) {
-      newSelected.delete(passageId);
-    } else {
-      newSelected.add(passageId);
-    }
-    this.setState({ selectedPassages: newSelected });
-  }
-
-  /**
-   * Clear selection
-   */
-  public clearSelection(): void {
-    this.setState({ selectedPassages: new Set() });
-  }
-
-  /**
-   * Edit passage
-   */
-  public editPassage(passage: Passage): void {
-    this.setState({
-      formData: {
-        part: passage.part,
-        passage_type: passage.passage_type,
-        texts: {
-          title: passage.texts.title,
-          content: passage.texts.content,
-          additional: passage.texts.additional || ''
-        },
-        audio_url: passage.audio_url || '',
-        image_url: passage.image_url || '',
-        assets: passage.assets || { images: [], charts: [] },
-        meta: passage.meta
-      },
-      editingPassage: passage,
-      activeTab: 'create'
-    });
-  }
-
-  /**
-   * Get part name
-   */
-  public getPartName(part: number): string {
-    const partNames: { [key: number]: string } = {
-      3: 'Conversations',
-      4: 'Talks',
-      6: 'Text Completion',
-      7: 'Reading Comprehension'
+  getPartInfo(part: number) {
+    const partInfo = {
+      1: { name: 'Photos', description: 'Mô tả hình ảnh', type: 'listening' },
+      2: { name: 'Question-Response', description: 'Hỏi đáp ngắn', type: 'listening' },
+      3: { name: 'Conversations', description: 'Hội thoại ngắn', type: 'listening' },
+      4: { name: 'Talks', description: 'Bài nói dài', type: 'listening' },
+      5: { name: 'Incomplete Sentences', description: 'Hoàn thành câu', type: 'reading' },
+      6: { name: 'Text Completion', description: 'Hoàn thành đoạn văn', type: 'reading' },
+      7: { name: 'Reading Comprehension', description: 'Đọc hiểu', type: 'reading' }
     };
-    return partNames[part] || `Part ${part}`;
+    return partInfo[part] || { name: 'Unknown', description: '', type: 'unknown' };
   }
 
-  /**
-   * Get part color class
-   */
-  public getPartColor(part: number): string {
-    const colors: { [key: number]: string } = {
-      3: 'bg-blue-100 text-blue-800',
-      4: 'bg-green-100 text-green-800',
-      6: 'bg-purple-100 text-purple-800',
-      7: 'bg-orange-100 text-orange-800'
-    };
-    return colors[part] || 'bg-gray-100 text-gray-800';
+  // Tab Management
+  setActiveTab(tab: 'list' | 'create' | 'edit' | 'import'): void {
+    this.updateState({ activeTab: tab });
   }
 
-  /**
-   * Get template data for Excel export
-   */
-  public getTemplateData(): any[] {
-    return [
-      {
-        part: 3,
-        passage_type: 'single',
-        title: 'Office Meeting',
-        content: 'Woman: Good morning, everyone. Thank you for coming to today\'s meeting. We need to discuss the quarterly sales report and the upcoming product launch. Man: Yes, I have the sales figures here. Our revenue increased by 15% compared to last quarter. Woman: That\'s excellent news. What about the new product? Man: The launch is scheduled for next month, but we\'re still waiting for final approval from the marketing department.',
-        audio_url: 'https://example.com/audio/part3-conversation1.mp3',
-        image_url: 'https://example.com/images/office-meeting.jpg',
-        topic: 'Business Meeting',
-        word_count: 85,
-        reading_time: 1
-      },
-      {
-        part: 3,
-        passage_type: 'single',
-        title: 'Restaurant Reservation',
-        content: 'Man: Hello, I\'d like to make a reservation for dinner tonight. Woman: Certainly, sir. How many people will be in your party? Man: There will be four of us. Woman: What time would you prefer? Man: Around 7:30 PM would be perfect. Woman: I\'m sorry, but we\'re fully booked at that time. Would 8:00 PM work for you? Man: Yes, that\'s fine. Woman: Great, I\'ll reserve a table for four at 8:00 PM. May I have your name and phone number?',
-        audio_url: 'https://example.com/audio/part3-conversation2.mp3',
-        image_url: 'https://example.com/images/restaurant.jpg',
-        topic: 'Restaurant',
-        word_count: 78,
-        reading_time: 1
-      }
-    ];
+  // Error Management
+  clearError(): void {
+    this.updateState({ error: null });
   }
 
-  /**
-   * Validate passage data
-   */
-  public validatePassageData(data: any): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (!data.part || ![3, 4, 6, 7].includes(parseInt(data.part))) {
-      errors.push('Part must be 3, 4, 6, or 7');
-    }
-
-    if (!data.title || data.title.trim().length === 0) {
-      errors.push('Title is required');
-    }
-
-    if (!data.content || data.content.trim().length === 0) {
-      errors.push('Content is required');
-    }
-
-    if (!data.passage_type || !['single', 'double', 'triple'].includes(data.passage_type)) {
-      errors.push('Passage type must be single, double, or triple');
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  }
-
-  /**
-   * Process imported data
-   */
-  public processImportedData(jsonData: any[]): { validData: any[]; errors: string[] } {
-    const validData: any[] = [];
-    const errors: string[] = [];
-
-    jsonData.forEach((row, index) => {
-      const validation = this.validatePassageData(row);
-      if (validation.isValid) {
-        const wordCount = row.word_count || this.calculateWordCount(row.content);
-        const readingTime = row.reading_time || this.calculateReadingTime(wordCount);
-
-        validData.push({
-          part: parseInt(row.part),
-          passage_type: row.passage_type || 'single',
-          texts: {
-            title: row.title.trim(),
-            content: row.content.trim(),
-            additional: row.additional?.trim() || ''
-          },
-          audio_url: row.audio_url?.trim() || null,
-          image_url: row.image_url?.trim() || null,
-          assets: {
-            images: [],
-            charts: []
-          },
-          meta: {
-            topic: row.topic?.trim() || 'General',
-            word_count: wordCount,
-            reading_time: readingTime
-          }
-        });
-      } else {
-        errors.push(`Row ${index + 1}: ${validation.errors.join(', ')}`);
-      }
-    });
-
-    return { validData, errors };
-  }
-
-  /**
-   * Get statistics
-   */
-  public getStatistics() {
-    const totalPassages = this.state.passages.length;
-    const filteredPassages = this.getFilteredPassages();
-    const selectedCount = this.state.selectedPassages.size;
-    const partCounts = this.state.passages.reduce((acc, passage) => {
-      acc[passage.part] = (acc[passage.part] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
-
-    return {
-      totalPassages,
-      filteredPassages: filteredPassages.length,
-      selectedCount,
-      partCounts,
-      activeFiltersCount: (this.state.searchTerm ? 1 : 0) + (this.state.filterPart !== 'all' ? 1 : 0)
-    };
-  }
-
-  /**
-   * Reset state
-   */
-  public reset(): void {
-    this.setState(this.getInitialState());
+  resetState(): void {
+    this.state = this.getInitialState();
   }
 }

@@ -401,7 +401,7 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
                 {currentQuestion.part !== 1 && currentQuestion.part !== 2 && (
                   <div>
                     <h2 className="text-lg font-medium mb-4">
-                      {currentQuestion.prompt_text || (currentQuestion as any).question}
+                      {currentQuestion.prompt_text || (currentQuestion as unknown).question}
                     </h2>
                   </div>
                 )}

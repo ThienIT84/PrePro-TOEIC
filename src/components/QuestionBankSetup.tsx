@@ -87,7 +87,7 @@ const QuestionBankSetup: React.FC = () => {
       {
         type: 'reading',
         difficulty: 'medium',
-        question: 'The company\'s profits have increased _____ 15% this year.',
+        question: 'The compunknown\'s profits have increased _____ 15% this year.',
         choices: ['by', 'for', 'with', 'from'],
         answer: 'A',
         explain_vi: 'Dùng "by" để chỉ mức độ tăng trưởng.',

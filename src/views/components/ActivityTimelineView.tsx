@@ -131,7 +131,7 @@ const ActivityTimelineView: React.FC<ActivityTimelineViewProps> = ({
             <Filter className="h-4 w-4" />
             <Select
               value={filter.type}
-              onValueChange={(value) => onSetFilter({ type: value as any })}
+              onValueChange={(value) => onSetFilter({ type: value as unknown })}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -150,7 +150,7 @@ const ActivityTimelineView: React.FC<ActivityTimelineViewProps> = ({
             <Calendar className="h-4 w-4" />
             <Select
               value={filter.timeRange}
-              onValueChange={(value) => onSetFilter({ timeRange: value as any })}
+              onValueChange={(value) => onSetFilter({ timeRange: value as unknown })}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />

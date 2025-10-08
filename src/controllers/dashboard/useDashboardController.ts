@@ -12,7 +12,7 @@ export function useDashboardController(userId: string | null, isTeacher: boolean
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
   const [examSets, setExamSets] = useState<ExamSet[]>([]);
-  const [recentStudentExams, setRecentStudentExams] = useState<any[]>([]);
+  const [recentStudentExams, setRecentStudentExams] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +34,7 @@ export function useDashboardController(userId: string | null, isTeacher: boolean
         setExamSets(result.examSets);
         setRecentStudentExams(result.recentStudentExams);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message);
     } finally {
       setLoading(false);

@@ -33,7 +33,7 @@ const Dashboard = () => {
   const [reviewCount, setReviewCount] = useState(0);
   const [examSets, setExamSets] = useState<ExamSet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [recentStudentExams, setRecentStudentExams] = useState<any[]>([]);
+  const [recentStudentExams, setRecentStudentExams] = useState<unknown[]>([]);
 
   useEffect(() => {
     if (user) {

@@ -104,7 +104,7 @@ const ExamManagementDashboard = () => {
       })) || [];
 
       setExamSets(examSetsWithStats);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -148,7 +148,7 @@ const ExamManagementDashboard = () => {
         totalQuestions
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching statistics:', error);
     }
   };
@@ -168,7 +168,7 @@ const ExamManagementDashboard = () => {
       });
 
       fetchExamSets();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -194,7 +194,7 @@ const ExamManagementDashboard = () => {
       });
 
       fetchExamSets();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

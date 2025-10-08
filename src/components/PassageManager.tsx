@@ -146,13 +146,13 @@ const PassageManager: React.FC = () => {
     }
   };
 
-  const handleFormChange = (field: string, value: any) => {
+  const handleFormChange = (field: string, value: unknown) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setFormData(prev => ({
         ...prev,
         [parent]: {
-          ...(prev[parent as keyof PassageFormData] as any),
+          ...(prev[parent as keyof PassageFormData] as unknown),
           [child]: value
         }
       }));
@@ -234,7 +234,7 @@ const PassageManager: React.FC = () => {
       setActiveTab('list');
       fetchPassages();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving passage:', error);
       toast({
         title: 'Lỗi',
@@ -250,12 +250,37 @@ const PassageManager: React.FC = () => {
     if (!confirm('Bạn có chắc chắn muốn xóa đoạn văn này?')) return;
 
     try {
+      console.log('🔍 DEBUG: Deleting single passage:', passageId);
+      
+      // Check if we have questions using this passage first
+      const { data: questionsUsingPassage, error: checkError } = await supabase
+        .from('questions')
+        .select('id, prompt_text')
+        .eq('passage_id', passageId);
+
+      if (checkError) {
+        console.error('Error checking questions:', checkError);
+        throw new Error('Không thể kiểm tra câu hỏi liên quan');
+      }
+
+      if (questionsUsingPassage && questionsUsingPassage.length > 0) {
+        toast({
+          title: 'Lỗi',
+          description: `Không thể xóa vì có ${questionsUsingPassage.length} câu hỏi đang sử dụng đoạn văn này. Vui lòng xóa câu hỏi trước.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('passages')
         .delete()
         .eq('id', passageId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
 
       toast({
         title: 'Thành công',
@@ -263,11 +288,25 @@ const PassageManager: React.FC = () => {
       });
 
       fetchPassages();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting passage:', error);
+      
+      // Better error handling
+      let errorMessage = 'Không thể xóa đoạn văn';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.';
+        } else if (error.message.includes('connection')) {
+          errorMessage = 'Lỗi kết nối đến server. Vui lòng thử lại sau.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: 'Lỗi',
-        description: 'Không thể xóa đoạn văn',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -282,12 +321,37 @@ const PassageManager: React.FC = () => {
     try {
       setDeleting(true);
       
+      console.log('🔍 DEBUG: Deleting passages:', Array.from(selectedPassages));
+      
+      // Check if we have questions using these passages first
+      const { data: questionsUsingPassages, error: checkError } = await supabase
+        .from('questions')
+        .select('id, prompt_text')
+        .in('passage_id', Array.from(selectedPassages));
+
+      if (checkError) {
+        console.error('Error checking questions:', checkError);
+        throw new Error('Không thể kiểm tra câu hỏi liên quan');
+      }
+
+      if (questionsUsingPassages && questionsUsingPassages.length > 0) {
+        toast({
+          title: 'Lỗi',
+          description: `Không thể xóa vì có ${questionsUsingPassages.length} câu hỏi đang sử dụng các đoạn văn này. Vui lòng xóa câu hỏi trước.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       const { error } = await supabase
         .from('passages')
         .delete()
         .in('id', Array.from(selectedPassages));
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
 
       toast({
         title: 'Thành công',
@@ -296,11 +360,25 @@ const PassageManager: React.FC = () => {
 
       setSelectedPassages(new Set());
       fetchPassages();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting passages:', error);
+      
+      // Better error handling
+      let errorMessage = 'Không thể xóa các đoạn văn đã chọn';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.';
+        } else if (error.message.includes('connection')) {
+          errorMessage = 'Lỗi kết nối đến server. Vui lòng thử lại sau.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: 'Lỗi',
-        description: 'Không thể xóa các đoạn văn đã chọn',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -331,9 +409,9 @@ const PassageManager: React.FC = () => {
       part: passage.part,
       passage_type: passage.passage_type,
       texts: {
-        title: passage.texts.title,
-        content: passage.texts.content,
-        additional: passage.texts.additional || ''
+        title: passage.texts?.title || '',
+        content: passage.texts?.content || '',
+        additional: passage.texts?.additional || ''
       },
       audio_url: passage.audio_url || '',
       image_url: passage.image_url || '',
@@ -361,7 +439,7 @@ const PassageManager: React.FC = () => {
         part: 3,
         passage_type: 'single',
         title: 'Restaurant Reservation',
-        content: 'Man: Hello, I\'d like to make a reservation for dinner tonight. Woman: Certainly, sir. How many people will be in your party? Man: There will be four of us. Woman: What time would you prefer? Man: Around 7:30 PM would be perfect. Woman: I\'m sorry, but we\'re fully booked at that time. Would 8:00 PM work for you? Man: Yes, that\'s fine. Woman: Great, I\'ll reserve a table for four at 8:00 PM. May I have your name and phone number?',
+        content: 'Man: Hello, I\'d like to make a reservation for dinner tonight. Woman: Certainly, sir. How munknown people will be in your party? Man: There will be four of us. Woman: What time would you prefer? Man: Around 7:30 PM would be perfect. Woman: I\'m sorry, but we\'re fully booked at that time. Would 8:00 PM work for you? Man: Yes, that\'s fine. Woman: Great, I\'ll reserve a table for four at 8:00 PM. May I have your name and phone number?',
         audio_url: 'https://example.com/audio/part3-conversation2.mp3',
         image_url: 'https://example.com/images/restaurant.jpg',
         topic: 'Restaurant',
@@ -398,7 +476,7 @@ const PassageManager: React.FC = () => {
       let errorCount = 0;
 
       for (let i = 0; i < jsonData.length; i++) {
-        const row = jsonData[i] as any;
+        const row = jsonData[i] as unknown;
         
         try {
           // Validate required fields
@@ -449,7 +527,7 @@ const PassageManager: React.FC = () => {
           if (error) throw error;
 
           successCount++;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Error importing row ${i + 1}:`, error);
           errorCount++;
         }
@@ -467,7 +545,7 @@ const PassageManager: React.FC = () => {
       // Refresh passages list
       fetchPassages();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error importing passages:', error);
       toast({
         title: 'Import failed',
@@ -482,8 +560,10 @@ const PassageManager: React.FC = () => {
 
 
   const filteredPassages = passages.filter(passage => {
-    const matchesSearch = passage.texts.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         passage.texts.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const title = passage.texts?.title || '';
+    const content = passage.texts?.content || '';
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPart = filterPart === 'all' || passage.part.toString() === filterPart;
     return matchesSearch && matchesPart;
   });
@@ -672,21 +752,21 @@ const PassageManager: React.FC = () => {
                             </div>
                             
                             <h3 className="text-lg font-semibold mb-2">
-                              {passage.texts.title}
+                              {passage.texts?.title || 'No title'}
                             </h3>
                             
                             <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                              {passage.texts.content}
+                              {passage.texts?.content || 'No content'}
                             </p>
                             
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <FileText className="h-4 w-4" />
-                                {passage.meta.word_count} từ
+                                {passage.meta?.word_count || 0} từ
                               </div>
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-4 w-4" />
-                                {passage.meta.reading_time} phút
+                                {passage.meta?.reading_time || 0} phút
                               </div>
                               {passage.audio_url && (
                                 <div className="flex items-center gap-1">
@@ -804,7 +884,7 @@ const PassageManager: React.FC = () => {
                   className="resize-none"
                 />
                 <div className="text-sm text-muted-foreground">
-                  {formData.meta.word_count} từ • {formData.meta.reading_time} phút đọc
+                  {formData.meta?.word_count || 0} từ • {formData.meta?.reading_time || 0} phút đọc
                 </div>
               </div>
 
@@ -836,7 +916,7 @@ const PassageManager: React.FC = () => {
                 <div className="space-y-2">
                   <Label>Chủ đề</Label>
                   <Input
-                    value={formData.meta.topic}
+                    value={formData.meta?.topic || ''}
                     onChange={(e) => handleFormChange('meta.topic', e.target.value)}
                     placeholder="Ví dụ: Business, Travel, Education..."
                   />
@@ -846,7 +926,7 @@ const PassageManager: React.FC = () => {
                   <Label>Thời gian đọc (phút)</Label>
                   <Input
                     type="number"
-                    value={formData.meta.reading_time}
+                    value={formData.meta?.reading_time || 0}
                     onChange={(e) => handleFormChange('meta.reading_time', parseInt(e.target.value) || 0)}
                     placeholder="0"
                   />

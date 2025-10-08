@@ -15,7 +15,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get overall system statistics
    */
-  async getSystemStats(): Promise<{ data: any; error: any }> {
+  async getSystemStats(): Promise<{ data: unknown; error: unknown }> {
     this.log('getSystemStats');
 
     try {
@@ -66,7 +66,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get question analytics
    */
-  async getQuestionAnalytics(): Promise<{ data: any; error: any }> {
+  async getQuestionAnalytics(): Promise<{ data: unknown; error: unknown }> {
     this.log('getQuestionAnalytics');
 
     try {
@@ -144,7 +144,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get exam analytics
    */
-  async getExamAnalytics(): Promise<{ data: any; error: any }> {
+  async getExamAnalytics(): Promise<{ data: unknown; error: unknown }> {
     this.log('getExamAnalytics');
 
     try {
@@ -231,7 +231,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get user analytics
    */
-  async getUserAnalytics(): Promise<{ data: any; error: any }> {
+  async getUserAnalytics(): Promise<{ data: unknown; error: unknown }> {
     this.log('getUserAnalytics');
 
     try {
@@ -299,7 +299,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get exam session analytics
    */
-  async getSessionAnalytics(): Promise<{ data: any; error: any }> {
+  async getSessionAnalytics(): Promise<{ data: unknown; error: unknown }> {
     this.log('getSessionAnalytics');
 
     try {
@@ -354,7 +354,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get performance analytics
    */
-  async getPerformanceAnalytics(): Promise<{ data: any; error: any }> {
+  async getPerformanceAnalytics(): Promise<{ data: unknown; error: unknown }> {
     this.log('getPerformanceAnalytics');
 
     try {
@@ -374,13 +374,13 @@ export class AnalyticsService extends BaseService {
         correctAnswers: attempts?.filter(a => a.correct).length || 0,
         overallAccuracy: 0,
         averageTimePerQuestion: 0,
-        byPart: {} as Record<number, any>,
+        byPart: {} as Record<number, unknown>,
         byDifficulty: {
           easy: { attempts: 0, correct: 0, accuracy: 0 },
           medium: { attempts: 0, correct: 0, accuracy: 0 },
           hard: { attempts: 0, correct: 0, accuracy: 0 }
         },
-        byQuestion: {} as Record<string, any>
+        byQuestion: {} as Record<string, unknown>
       };
 
       if (attempts && attempts.length > 0) {
@@ -448,7 +448,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get dashboard summary
    */
-  async getDashboardSummary(): Promise<{ data: any; error: any }> {
+  async getDashboardSummary(): Promise<{ data: unknown; error: unknown }> {
     this.log('getDashboardSummary');
 
     try {
@@ -485,7 +485,7 @@ export class AnalyticsService extends BaseService {
   /**
    * Get trends over time
    */
-  async getTrends(days: number = 30): Promise<{ data: any; error: any }> {
+  async getTrends(days: number = 30): Promise<{ data: unknown; error: unknown }> {
     this.log('getTrends', { days });
 
     try {
@@ -493,10 +493,10 @@ export class AnalyticsService extends BaseService {
       startDate.setDate(startDate.getDate() - days);
 
       const trends = {
-        questionsCreated: [] as any[],
-        examSetsCreated: [] as any[],
-        sessionsStarted: [] as any[],
-        usersRegistered: [] as any[]
+        questionsCreated: [] as unknown[],
+        examSetsCreated: [] as unknown[],
+        sessionsStarted: [] as unknown[],
+        usersRegistered: [] as unknown[]
       };
 
       // Get questions created over time
@@ -528,7 +528,7 @@ export class AnalyticsService extends BaseService {
         .order('created_at', { ascending: true });
 
       // Process data into daily counts
-      const processData = (data: any[], key: string) => {
+      const processData = (data: unknown[], key: string) => {
         const dailyCounts: Record<string, number> = {};
         
         data?.forEach(item => {

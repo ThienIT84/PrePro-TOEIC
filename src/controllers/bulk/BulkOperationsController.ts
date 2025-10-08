@@ -196,7 +196,7 @@ export class BulkOperationsController {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      const parsedQuestions: BulkQuestion[] = jsonData.map((row: any, index: number) => {
+      const parsedQuestions: BulkQuestion[] = jsonData.map((row: unknown, index: number) => {
         const question: BulkQuestion = {
           type: row.type || 'vocab',
           question: row.question || '',
@@ -228,7 +228,7 @@ export class BulkOperationsController {
         validCount,
         invalidCount
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         questions: [],
@@ -292,7 +292,7 @@ export class BulkOperationsController {
         success: true,
         importedCount
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         importedCount: 0,
@@ -339,7 +339,7 @@ export class BulkOperationsController {
         success: true,
         exportedCount: data.length
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         exportedCount: 0,

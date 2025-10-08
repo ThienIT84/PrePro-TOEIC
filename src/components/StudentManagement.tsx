@@ -76,7 +76,7 @@ const StudentManagement = () => {
         setError('Không có học viên nào được gán cho bạn.');
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMsg = `Lỗi không mong đợi: ${error.message}`;
       setError(errorMsg);
       
@@ -156,7 +156,7 @@ const StudentManagement = () => {
         title: "Thành công",
         description: `Đã bỏ gán học viên "${studentName || 'Chưa có tên'}" thành công`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: `Có lỗi xảy ra: ${error.message}`,

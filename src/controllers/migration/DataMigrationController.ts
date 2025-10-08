@@ -15,8 +15,8 @@ export interface MigrationResult {
   success: boolean;
   originalCount?: number;
   migratedCount?: number;
-  originalData?: any[];
-  migratedData?: any[];
+  originalData?: unknown[];
+  migratedData?: unknown[];
   message: string;
   error?: string;
 }
@@ -199,7 +199,7 @@ export class DataMigrationController {
         success: true,
         data: itemsData
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -210,7 +210,7 @@ export class DataMigrationController {
   /**
    * Insert questions data
    */
-  public async insertQuestionsData(questions: QuestionData[]): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  public async insertQuestionsData(questions: QuestionData[]): Promise<{ success: boolean; data?: unknown[]; error?: string }> {
     try {
       const { data: insertedData, error: insertError } = await supabase
         .from('questions')
@@ -223,7 +223,7 @@ export class DataMigrationController {
         success: true,
         data: insertedData
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -272,7 +272,7 @@ export class DataMigrationController {
       this.setMigrationResult(result);
       return result;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const result: MigrationResult = {
         success: false,
         error: error.message,
@@ -312,7 +312,7 @@ export class DataMigrationController {
         success: true,
         statistics
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -347,7 +347,7 @@ export class DataMigrationController {
         valid: errors.length === 0,
         errors
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       errors.push(`Validation error: ${error.message}`);
       return {
         valid: false,

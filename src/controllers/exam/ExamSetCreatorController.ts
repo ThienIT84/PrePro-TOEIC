@@ -264,7 +264,7 @@ export class ExamSetCreatorController {
       this.setState({ questionBank: questions });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading question bank:', error);
       this.setState({ errors: ['Failed to load question bank'] });
       return {
@@ -310,7 +310,7 @@ export class ExamSetCreatorController {
   /**
    * Update exam part configuration
    */
-  public updatePartConfig(partNumber: number, field: keyof ExamPart, value: any): void {
+  public updatePartConfig(partNumber: number, field: keyof ExamPart, value: unknown): void {
     this.setState({
       examParts: this.state.examParts.map(part => 
         part.part === partNumber 
@@ -457,7 +457,7 @@ export class ExamSetCreatorController {
         success: true, 
         count: totalAssigned 
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in auto-assignment:', error);
       return {
         success: false,
@@ -545,7 +545,7 @@ export class ExamSetCreatorController {
         success: true, 
         examSet 
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating exam set:', error);
       return {
         success: false,

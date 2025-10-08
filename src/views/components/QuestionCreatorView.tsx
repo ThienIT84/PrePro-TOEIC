@@ -41,15 +41,15 @@ export interface QuestionCreatorViewProps {
   };
   loading: boolean;
   activeTab: 'question' | 'passage';
-  passages: any[];
+  passages: unknown[];
   selectedPassageId: string | null;
   newTag: string;
   errors: string[];
 
   // Handlers
-  onQuestionChange: (field: string, value: any) => void;
+  onQuestionChange: (field: string, value: unknown) => void;
   onChoiceChange: (choice: string, value: string) => void;
-  onPassageChange: (field: string, value: any) => void;
+  onPassageChange: (field: string, value: unknown) => void;
   onPassageTextChange: (field: string, value: string) => void;
   onAddTag: () => void;
   onRemoveTag: (tag: string) => void;
@@ -60,7 +60,7 @@ export interface QuestionCreatorViewProps {
   onCreatePassage: () => void;
 
   // Utility functions
-  getCurrentPartInfo: () => any;
+  getCurrentPartInfo: () => unknown;
   needsPassage: (part: TOEICPart) => boolean;
   usesIndividualAudio: (part: TOEICPart) => boolean;
   usesPassageAudio: (part: TOEICPart) => boolean;
@@ -69,7 +69,7 @@ export interface QuestionCreatorViewProps {
   getBlankIndexOptions: () => Array<{ value: number; label: string }>;
   getPassageTypeOptions: () => Array<{ value: PassageType; label: string }>;
   getDifficultyOptions: () => Array<{ value: Difficulty; label: string }>;
-  getToeicPartInfo: () => any;
+  getToeicPartInfo: () => unknown;
 }
 
 export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
@@ -134,7 +134,7 @@ export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(toeicPartInfo).map(([part, info]: [string, any]) => (
+                    {Object.entries(toeicPartInfo).map(([part, info]: [string, unknown]) => (
                       <SelectItem key={part} value={part}>
                         <div className="flex items-center gap-2">
                           <span>{info.icon}</span>

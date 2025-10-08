@@ -1,199 +1,178 @@
-/**
- * usePassageManagerController
- * React hook để integrate PassageManagerController với React components
- */
+import { useState, useCallback, useEffect } from 'react';
+import { PassageManagerController, Passage, PassageFormData, PassageFilters } from './PassageManagerController';
 
-import { useState, useEffect, useCallback } from 'react';
-import { PassageManagerController, PassageManagerState, PassageFormData, Passage } from './PassageManagerController';
-
-export function usePassageManagerController() {
+export const usePassageManagerController = () => {
   const [controller] = useState(() => new PassageManagerController());
-  const [state, setState] = useState<PassageManagerState>(controller.getState());
+  const [state, setState] = useState(controller.getState());
 
-  // Subscribe to controller state changes
-  useEffect(() => {
-    const unsubscribe = controller.subscribe(setState);
-    return unsubscribe;
+  // State Management
+  const updateState = useCallback(() => {
+    setState(controller.getState());
   }, [controller]);
 
-  // State getters
-  const getPassages = useCallback(() => {
-    return state.passages;
-  }, [state.passages]);
+  // Passage Management
+  const handleLoadPassages = useCallback(async () => {
+    try {
+      await controller.loadPassages();
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
 
-  const getFilteredPassages = useCallback(() => {
-    return controller.getFilteredPassages();
-  }, [controller, state.passages, state.searchTerm, state.filterPart]);
+  const handleCreatePassage = useCallback(async (data: PassageFormData) => {
+    try {
+      await controller.createPassage(data);
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
 
-  const getStatistics = useCallback(() => {
-    return controller.getStatistics();
-  }, [controller, state.passages, state.searchTerm, state.filterPart, state.selectedPassages]);
+  const handleUpdatePassage = useCallback(async (id: string, data: Partial<PassageFormData>) => {
+    try {
+      await controller.updatePassage(id, data);
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
 
-  // Search and filter handlers
-  const setSearchTerm = useCallback((searchTerm: string) => {
-    controller.setSearchTerm(searchTerm);
-  }, [controller]);
+  const handleDeletePassage = useCallback(async (id: string) => {
+    try {
+      await controller.deletePassage(id);
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
 
-  const setFilterPart = useCallback((filterPart: string) => {
-    controller.setFilterPart(filterPart);
-  }, [controller]);
+  const handleDeleteSelectedPassages = useCallback(async () => {
+    try {
+      await controller.deleteSelectedPassages();
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
 
-  // Tab navigation handlers
-  const setActiveTab = useCallback((activeTab: string) => {
-    controller.setActiveTab(activeTab);
-  }, [controller]);
+  // Selection Management
+  const handleToggleSelection = useCallback((id: string) => {
+    controller.togglePassageSelection(id);
+    updateState();
+  }, [controller, updateState]);
 
-  // Form handlers
-  const updateFormData = useCallback((field: string, value: any) => {
-    controller.updateFormData(field, value);
-  }, [controller]);
+  const handleSelectAll = useCallback(() => {
+    controller.selectAllPassages();
+    updateState();
+  }, [controller, updateState]);
 
-  const resetFormData = useCallback(() => {
-    controller.resetFormData();
-  }, [controller]);
-
-  const handleContentChange = useCallback((content: string) => {
-    controller.handleContentChange(content);
-  }, [controller]);
-
-  // Selection handlers
-  const toggleSelectAll = useCallback(() => {
-    controller.toggleSelectAll();
-  }, [controller]);
-
-  const toggleSelectPassage = useCallback((passageId: string) => {
-    controller.toggleSelectPassage(passageId);
-  }, [controller]);
-
-  const clearSelection = useCallback(() => {
+  const handleClearSelection = useCallback(() => {
     controller.clearSelection();
-  }, [controller]);
+    updateState();
+  }, [controller, updateState]);
 
-  // Passage management handlers
-  const editPassage = useCallback((passage: Passage) => {
-    controller.editPassage(passage);
-  }, [controller]);
-
-  const setEditingPassage = useCallback((passage: Passage | null) => {
+  // Form Management
+  const handleSetEditingPassage = useCallback((passage: Passage | null) => {
     controller.setEditingPassage(passage);
+    updateState();
+  }, [controller, updateState]);
+
+  const handleSetFormData = useCallback((data: Partial<PassageFormData>) => {
+    controller.setFormData(data);
+    updateState();
+  }, [controller, updateState]);
+
+  // Filtering
+  const handleApplyFilters = useCallback((filters: PassageFilters) => {
+    controller.applyFilters(filters);
+    updateState();
+  }, [controller, updateState]);
+
+  // File Upload
+  const handleUploadAudio = useCallback(async (file: File) => {
+    try {
+      await controller.uploadAudio(file);
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
+
+  const handleUploadImage = useCallback(async (file: File) => {
+    try {
+      await controller.uploadImage(file);
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
+
+  // Import/Export
+  const handleImportFromExcel = useCallback(async (file: File) => {
+    try {
+      await controller.importFromExcel(file);
+      updateState();
+    } catch (error) {
+      updateState();
+      throw error;
+    }
+  }, [controller, updateState]);
+
+  const handleExportToExcel = useCallback(() => {
+    controller.exportToExcel();
   }, [controller]);
 
-  // Loading state handlers
-  const setLoading = useCallback((loading: boolean) => {
-    controller.setLoading(loading);
-  }, [controller]);
+  // Tab Management
+  const handleSetActiveTab = useCallback((tab: 'list' | 'create' | 'edit' | 'import') => {
+    controller.setActiveTab(tab);
+    updateState();
+  }, [controller, updateState]);
 
-  const setSaving = useCallback((saving: boolean) => {
-    controller.setSaving(saving);
-  }, [controller]);
+  // Error Management
+  const handleClearError = useCallback(() => {
+    controller.clearError();
+    updateState();
+  }, [controller, updateState]);
 
-  const setImporting = useCallback((importing: boolean) => {
-    controller.setImporting(importing);
-  }, [controller]);
-
-  const setImportProgress = useCallback((progress: number) => {
-    controller.setImportProgress(progress);
-  }, [controller]);
-
-  const setDeleting = useCallback((deleting: boolean) => {
-    controller.setDeleting(deleting);
-  }, [controller]);
-
-  // Utility functions
-  const getPartName = useCallback((part: number) => {
-    return controller.getPartName(part);
-  }, [controller]);
-
-  const getPartColor = useCallback((part: number) => {
-    return controller.getPartColor(part);
-  }, [controller]);
-
-  const calculateWordCount = useCallback((text: string) => {
-    return controller.calculateWordCount(text);
-  }, [controller]);
-
-  const calculateReadingTime = useCallback((wordCount: number) => {
-    return controller.calculateReadingTime(wordCount);
-  }, [controller]);
-
-  const getTemplateData = useCallback(() => {
-    return controller.getTemplateData();
-  }, [controller]);
-
-  const validatePassageData = useCallback((data: any) => {
-    return controller.validatePassageData(data);
-  }, [controller]);
-
-  const processImportedData = useCallback((jsonData: any[]) => {
-    return controller.processImportedData(jsonData);
-  }, [controller]);
-
-  // State management handlers
-  const reset = useCallback(() => {
-    controller.reset();
-  }, [controller]);
+  // Auto-load passages on mount
+  useEffect(() => {
+    handleLoadPassages();
+  }, [handleLoadPassages]);
 
   return {
     // State
-    state,
+    ...state,
     
-    // Passages data
-    passages: state.passages,
-    loading: state.loading,
-    searchTerm: state.searchTerm,
-    filterPart: state.filterPart,
-    activeTab: state.activeTab,
-    editingPassage: state.editingPassage,
-    saving: state.saving,
-    importing: state.importing,
-    importProgress: state.importProgress,
-    selectedPassages: state.selectedPassages,
-    deleting: state.deleting,
-    formData: state.formData,
-
-    // Data getters
-    getPassages,
-    getFilteredPassages,
-    getStatistics,
-
-    // Search and filter handlers
-    setSearchTerm,
-    setFilterPart,
-
-    // Tab navigation handlers
-    setActiveTab,
-
-    // Form handlers
-    updateFormData,
-    resetFormData,
-    handleContentChange,
-
-    // Selection handlers
-    toggleSelectAll,
-    toggleSelectPassage,
-    clearSelection,
-
-    // Passage management handlers
-    editPassage,
-    setEditingPassage,
-
-    // Loading state handlers
-    setLoading,
-    setSaving,
-    setImporting,
-    setImportProgress,
-    setDeleting,
-
-    // Utility functions
-    getPartName,
-    getPartColor,
-    calculateWordCount,
-    calculateReadingTime,
-    getTemplateData,
-    validatePassageData,
-    processImportedData,
-
-    // State management handlers
-    reset,
+    // Actions
+    handleLoadPassages,
+    handleCreatePassage,
+    handleUpdatePassage,
+    handleDeletePassage,
+    handleDeleteSelectedPassages,
+    handleToggleSelection,
+    handleSelectAll,
+    handleClearSelection,
+    handleSetEditingPassage,
+    handleSetFormData,
+    handleApplyFilters,
+    handleUploadAudio,
+    handleUploadImage,
+    handleImportFromExcel,
+    handleExportToExcel,
+    handleSetActiveTab,
+    handleClearError,
+    
+    // Controller Methods
+    getPartInfo: controller.getPartInfo.bind(controller),
+    calculateWordCount: controller.calculateWordCount.bind(controller),
+    calculateReadingTime: controller.calculateReadingTime.bind(controller)
   };
-}
+};

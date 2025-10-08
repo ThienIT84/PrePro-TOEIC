@@ -39,7 +39,7 @@ export interface QuestionCreatorState {
   passageData: PassageFormData;
   loading: boolean;
   activeTab: 'question' | 'passage';
-  passages: any[];
+  passages: unknown[];
   selectedPassageId: string | null;
   newTag: string;
   errors: string[];
@@ -47,7 +47,7 @@ export interface QuestionCreatorState {
 
 export class QuestionCreatorController {
   private questionService: QuestionService;
-  private passageService: any; // Will be created later
+  private passageService: unknown; // Will be created later
   private state: QuestionCreatorState;
   private listeners: Array<(state: QuestionCreatorState) => void> = [];
 
@@ -144,7 +144,7 @@ export class QuestionCreatorController {
   /**
    * Handle question data changes
    */
-  public handleQuestionChange(field: string, value: any): void {
+  public handleQuestionChange(field: string, value: unknown): void {
     const newQuestionData = {
       ...this.state.questionData,
       [field]: value
@@ -185,7 +185,7 @@ export class QuestionCreatorController {
   /**
    * Handle passage data changes
    */
-  public handlePassageChange(field: string, value: any): void {
+  public handlePassageChange(field: string, value: unknown): void {
     this.setState({
       passageData: {
         ...this.state.passageData,

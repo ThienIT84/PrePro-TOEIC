@@ -21,7 +21,7 @@ export class ExamService extends BaseService {
     is_active?: boolean;
     created_by?: string;
     search?: string;
-  }): Promise<{ data: ExamSetModel[] | null; error: any }> {
+  }): Promise<{ data: ExamSetModel[] | null; error: unknown }> {
     this.log('getExamSets', filters);
 
     try {
@@ -67,7 +67,7 @@ export class ExamService extends BaseService {
   /**
    * Get exam set by ID
    */
-  async getExamSetById(id: string): Promise<{ data: ExamSetModel | null; error: any }> {
+  async getExamSetById(id: string): Promise<{ data: ExamSetModel | null; error: unknown }> {
     this.log('getExamSetById', { id });
 
     try {
@@ -92,7 +92,7 @@ export class ExamService extends BaseService {
   /**
    * Create new exam set
    */
-  async createExamSet(examSetData: Partial<ExamSet>): Promise<{ data: ExamSetModel | null; error: any }> {
+  async createExamSet(examSetData: Partial<ExamSet>): Promise<{ data: ExamSetModel | null; error: unknown }> {
     this.log('createExamSet', { title: examSetData.title });
 
     try {
@@ -129,7 +129,7 @@ export class ExamService extends BaseService {
   /**
    * Update existing exam set
    */
-  async updateExamSet(id: string, updates: Partial<ExamSet>): Promise<{ data: ExamSetModel | null; error: any }> {
+  async updateExamSet(id: string, updates: Partial<ExamSet>): Promise<{ data: ExamSetModel | null; error: unknown }> {
     this.log('updateExamSet', { id, updates });
 
     try {
@@ -165,7 +165,7 @@ export class ExamService extends BaseService {
   /**
    * Delete exam set
    */
-  async deleteExamSet(id: string): Promise<{ error: any }> {
+  async deleteExamSet(id: string): Promise<{ error: unknown }> {
     this.log('deleteExamSet', { id });
 
     try {
@@ -185,7 +185,7 @@ export class ExamService extends BaseService {
   /**
    * Get exam set questions
    */
-  async getExamSetQuestions(examSetId: string): Promise<{ data: any[] | null; error: any }> {
+  async getExamSetQuestions(examSetId: string): Promise<{ data: unknown[] | null; error: unknown }> {
     this.log('getExamSetQuestions', { examSetId });
 
     try {
@@ -212,7 +212,7 @@ export class ExamService extends BaseService {
   /**
    * Add question to exam set
    */
-  async addQuestionToExamSet(examSetId: string, questionId: string, orderIndex: number): Promise<{ data: any | null; error: any }> {
+  async addQuestionToExamSet(examSetId: string, questionId: string, orderIndex: number): Promise<{ data: unknown | null; error: unknown }> {
     this.log('addQuestionToExamSet', { examSetId, questionId, orderIndex });
 
     try {
@@ -240,7 +240,7 @@ export class ExamService extends BaseService {
   /**
    * Remove question from exam set
    */
-  async removeQuestionFromExamSet(examSetId: string, questionId: string): Promise<{ error: any }> {
+  async removeQuestionFromExamSet(examSetId: string, questionId: string): Promise<{ error: unknown }> {
     this.log('removeQuestionFromExamSet', { examSetId, questionId });
 
     try {
@@ -264,7 +264,7 @@ export class ExamService extends BaseService {
   /**
    * Update question order in exam set
    */
-  async updateQuestionOrder(examSetId: string, questionId: string, newOrderIndex: number): Promise<{ error: any }> {
+  async updateQuestionOrder(examSetId: string, questionId: string, newOrderIndex: number): Promise<{ error: unknown }> {
     this.log('updateQuestionOrder', { examSetId, questionId, newOrderIndex });
 
     try {
@@ -292,7 +292,7 @@ export class ExamService extends BaseService {
     exam_set_id?: string;
     user_id?: string;
     status?: string;
-  }): Promise<{ data: any[] | null; error: any }> {
+  }): Promise<{ data: unknown[] | null; error: unknown }> {
     this.log('getExamSessions', filters);
 
     try {
@@ -338,7 +338,7 @@ export class ExamService extends BaseService {
     exam_set_id: string;
     user_id: string;
     status?: string;
-  }): Promise<{ data: any | null; error: any }> {
+  }): Promise<{ data: unknown | null; error: unknown }> {
     this.log('createExamSession', sessionData);
 
     try {
@@ -366,7 +366,7 @@ export class ExamService extends BaseService {
   /**
    * Update exam session
    */
-  async updateExamSession(sessionId: string, updates: any): Promise<{ data: any | null; error: any }> {
+  async updateExamSession(sessionId: string, updates: unknown): Promise<{ data: unknown | null; error: unknown }> {
     this.log('updateExamSession', { sessionId, updates });
 
     try {
@@ -391,7 +391,7 @@ export class ExamService extends BaseService {
   /**
    * Get exam attempts
    */
-  async getExamAttempts(sessionId: string): Promise<{ data: any[] | null; error: any }> {
+  async getExamAttempts(sessionId: string): Promise<{ data: unknown[] | null; error: unknown }> {
     this.log('getExamAttempts', { sessionId });
 
     try {
@@ -422,7 +422,7 @@ export class ExamService extends BaseService {
     question_id: string;
     user_answer: string;
     time_spent?: number;
-  }): Promise<{ data: any | null; error: any }> {
+  }): Promise<{ data: unknown | null; error: unknown }> {
     this.log('submitExamAttempt', attemptData);
 
     try {
@@ -446,7 +446,7 @@ export class ExamService extends BaseService {
   /**
    * Get exam statistics
    */
-  async getExamStats(examSetId?: string): Promise<{ data: any; error: any }> {
+  async getExamStats(examSetId?: string): Promise<{ data: unknown; error: unknown }> {
     this.log('getExamStats', { examSetId });
 
     try {
@@ -497,7 +497,7 @@ export class ExamService extends BaseService {
   /**
    * Search exam sets
    */
-  async searchExamSets(searchTerm: string): Promise<{ data: ExamSetModel[] | null; error: any }> {
+  async searchExamSets(searchTerm: string): Promise<{ data: ExamSetModel[] | null; error: unknown }> {
     this.log('searchExamSets', { searchTerm });
 
     try {
@@ -526,7 +526,7 @@ export class ExamService extends BaseService {
     type?: DrillType;
     difficulty?: Difficulty;
     is_active?: boolean;
-  }): Promise<{ count: number | null; error: any }> {
+  }): Promise<{ count: number | null; error: unknown }> {
     this.log('getExamSetsCount', filters);
 
     return this.countData(this.examSetsTable, filters);

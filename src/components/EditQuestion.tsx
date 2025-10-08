@@ -177,7 +177,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
               <Label htmlFor="part">TOEIC Part</Label>
               <Select
                 value={formData.part.toString()}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, part: parseInt(value) as any }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, part: parseInt(value) as unknown }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -198,7 +198,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
               <Label htmlFor="difficulty">Độ khó</Label>
               <Select
                 value={formData.difficulty}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty: value as any }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty: value as unknown }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -217,7 +217,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
               <Label htmlFor="status">Trạng thái</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as unknown }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -268,7 +268,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
             <Label htmlFor="correct_choice">Đáp án đúng</Label>
             <Select
               value={formData.correct_choice}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, correct_choice: value as any }))}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, correct_choice: value as unknown }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Chọn đáp án đúng" />

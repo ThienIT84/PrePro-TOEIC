@@ -47,7 +47,7 @@ interface QuestionTemplate {
 }
 
 interface OptimizedQuestionCreatorProps {
-  onQuestionCreated?: (question: any) => void;
+  onQuestionCreated?: (question: unknown) => void;
   className?: string;
 }
 
@@ -211,7 +211,7 @@ const OptimizedQuestionCreator: React.FC<OptimizedQuestionCreatorProps> = ({
       });
 
       loadTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -291,7 +291,7 @@ const OptimizedQuestionCreator: React.FC<OptimizedQuestionCreatorProps> = ({
 
       onQuestionCreated?.(data);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -379,7 +379,7 @@ const OptimizedQuestionCreator: React.FC<OptimizedQuestionCreatorProps> = ({
                   <Label htmlFor="type">Question Type</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, type: value }))}
+                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, type: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />

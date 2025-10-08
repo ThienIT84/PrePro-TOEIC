@@ -29,7 +29,7 @@ interface ExamReviewProps {
 
 const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
   const navigate = useNavigate();
-  const [examSession, setExamSession] = useState<any>(null);
+  const [examSession, setExamSession] = useState<unknown>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [examSet, setExamSet] = useState<ExamSet | null>(null);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
@@ -62,7 +62,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
 
       console.log('Session data:', sessionData);
       setExamSession(sessionData);
-      setExamSet(sessionData.exam_sets as any);
+      setExamSet(sessionData.exam_sets as unknown);
 
       // Fetch questions for this exam through exam_questions table
       const { data: examQuestionsData, error: examQuestionsError } = await supabase
@@ -87,7 +87,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
       const questionsData = examQuestionsData?.map(eq => eq.questions).filter(Boolean) || [];
 
       console.log('Questions data:', questionsData);
-      setQuestions(questionsData as any || []);
+      setQuestions(questionsData as unknown || []);
 
       // Fetch user answers from exam_attempts
       const { data: attemptsData, error: attemptsError } = await supabase
@@ -323,18 +323,18 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                   </CardHeader>
                   <CardContent>
                     {/* Passage Audio */}
-                    {(currentQuestion as any).passages?.audio_url && (
+                    {(currentQuestion as unknown).passages?.audio_url && (
                       <div className="mb-4">
                         <SimpleAudioPlayer 
-                          audioUrl={(currentQuestion as any).passages.audio_url} 
-                          transcript={(currentQuestion as any).passages.texts?.content || ''} 
+                          audioUrl={(currentQuestion as unknown).passages.audio_url} 
+                          transcript={(currentQuestion as unknown).passages.texts?.content || ''} 
                         />
                       </div>
                     )}
 
                     {/* Passage Images */}
                     {(() => {
-                      const passage = (currentQuestion as any).passages;
+                      const passage = (currentQuestion as unknown).passages;
                       if (!passage) return null;
 
                       const images = [];
@@ -387,10 +387,10 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                     })()}
 
                     {/* Passage Text */}
-                    {(currentQuestion as any).passages?.texts?.content && (
+                    {(currentQuestion as unknown).passages?.texts?.content && (
                       <div className="prose max-w-none">
                         <div className="text-gray-800 leading-relaxed text-lg whitespace-pre-wrap">
-                          {(currentQuestion as any).passages.texts.content}
+                          {(currentQuestion as unknown).passages.texts.content}
                         </div>
                       </div>
                     )}
@@ -468,7 +468,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                             {/* Choices */}
                             <div className="space-y-3">
                               {['A', 'B', 'C', 'D'].map((choice) => {
-                                const choices = question.choices as any;
+                                const choices = question.choices as unknown;
                                 const choiceText = choices?.[choice] || '';
                                 const isUserAnswer = questionAnswer === choice;
                                 const isCorrectAnswer = question.correct_choice === choice;
@@ -557,7 +557,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                     <div className="space-y-3">
                       <h4 className="font-medium text-lg">Các lựa chọn:</h4>
                       {['A', 'B', 'C', 'D'].map((choice) => {
-                        const choices = currentQuestion.choices as any;
+                        const choices = currentQuestion.choices as unknown;
                         const choiceText = choices?.[choice] || '';
                         const isUserAnswer = currentAnswer === choice;
                         const isCorrectAnswer = currentQuestion.correct_choice === choice;

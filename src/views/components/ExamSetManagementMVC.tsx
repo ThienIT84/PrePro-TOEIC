@@ -92,7 +92,7 @@ const ExamSetManagementMVC: React.FC = () => {
           variant: 'destructive'
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Lỗi',
         description: error.message,
@@ -148,7 +148,7 @@ const ExamSetManagementMVC: React.FC = () => {
           variant: 'destructive'
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Lỗi',
         description: error.message,
@@ -180,7 +180,7 @@ const ExamSetManagementMVC: React.FC = () => {
           variant: 'destructive'
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Lỗi',
         description: error.message,
@@ -190,7 +190,7 @@ const ExamSetManagementMVC: React.FC = () => {
   };
 
   // Handle open edit dialog
-  const handleOpenEditDialog = (examSet: any) => {
+  const handleOpenEditDialog = (examSet: unknown) => {
     openEditDialog(examSet);
   };
 

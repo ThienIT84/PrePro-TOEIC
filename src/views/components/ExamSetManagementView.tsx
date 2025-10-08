@@ -168,7 +168,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
               
               <div>
                 <Label htmlFor="difficulty">Độ khó</Label>
-                <Select value={formData.difficulty} onValueChange={(value: any) => onSetFormData({ difficulty: value })}>
+                <Select value={formData.difficulty} onValueChange={(value: unknown) => onSetFormData({ difficulty: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -182,7 +182,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
               
               <div>
                 <Label htmlFor="status">Trạng thái</Label>
-                <Select value={formData.status} onValueChange={(value: any) => onSetFormData({ status: value })}>
+                <Select value={formData.status} onValueChange={(value: unknown) => onSetFormData({ status: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -344,7 +344,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
             
             <div>
               <Label htmlFor="edit-difficulty">Độ khó</Label>
-              <Select value={formData.difficulty} onValueChange={(value: any) => onSetFormData({ difficulty: value })}>
+              <Select value={formData.difficulty} onValueChange={(value: unknown) => onSetFormData({ difficulty: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -358,7 +358,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
             
             <div>
               <Label htmlFor="edit-status">Trạng thái</Label>
-              <Select value={formData.status} onValueChange={(value: any) => onSetFormData({ status: value })}>
+              <Select value={formData.status} onValueChange={(value: unknown) => onSetFormData({ status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

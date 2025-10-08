@@ -18,7 +18,7 @@ import {
  */
 const DomainServicesDemo = () => {
   const [selectedService, setSelectedService] = useState<string>('question');
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +58,7 @@ const DomainServicesDemo = () => {
         searchResults: searchResults?.slice(0, 3) || [] // Show first 3
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -87,7 +87,7 @@ const DomainServicesDemo = () => {
         stats
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -117,7 +117,7 @@ const DomainServicesDemo = () => {
         stats
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -147,7 +147,7 @@ const DomainServicesDemo = () => {
         dashboard
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -172,7 +172,7 @@ const DomainServicesDemo = () => {
         files: files?.slice(0, 10) || [] // Show first 10
       });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message);
     } finally {
       setLoading(false);
