@@ -525,7 +525,7 @@ export const PassageManagerView: React.FC<PassageManagerViewProps> = ({
 
       {renderError()}
 
-      <Tabs value={activeTab} onValueChange={(value) => onSetActiveTab(value as unknown)}>
+      <Tabs value={activeTab} onValueChange={(value) => onSetActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="list">Passages</TabsTrigger>
           <TabsTrigger value="create">Create</TabsTrigger>

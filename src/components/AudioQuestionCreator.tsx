@@ -71,7 +71,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
   const handleAudioUploadComplete = async (files: unknown[]) => {
     if (files.length === 0 || !user) return;
 
-    const file = files[0];
+    const file = files[0] as any;
     if (file.status === 'completed' && file.url) {
       // Create AudioFileInfo object
       const audioInfo: AudioFileInfo = {
@@ -194,19 +194,35 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
     setIsCreating(true);
 
     try {
+      // Map type to part for database schema
+      const typeToPart: Record<string, number> = {
+        'vocab': 1,
+        'grammar': 5,
+        'listening': 2,
+        'reading': 7,
+        'mix': 1
+      };
+
       const { data, error } = await supabase
         .from('questions')
         .insert({
-          type: formData.type,
+          part: typeToPart[formData.type] || 1,
           difficulty: formData.difficulty,
-          question: formData.question.trim(),
-          choices: formData.choices.filter(c => c.trim()),
-          answer: formData.answer,
+          prompt_text: formData.question.trim(),
+          choices: {
+            A: formData.choices[0] || '',
+            B: formData.choices[1] || '',
+            C: formData.choices[2] || '',
+            D: formData.choices[3] || ''
+          },
+          correct_choice: formData.answer,
           explain_vi: formData.explain_vi.trim(),
           explain_en: formData.explain_en.trim(),
           audio_url: formData.audio_url || null,
           transcript: formData.transcript?.trim() || null,
-          tags: formData.tags
+          tags: formData.tags,
+          status: 'published',
+          created_by: user.id
         })
         .select()
         .single();
@@ -243,7 +259,7 @@ const AudioQuestionCreator: React.FC<AudioQuestionCreatorProps> = ({
       console.error('Create question error:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create question",
+        description: (error as any)?.message || "Failed to create question",
         variant: "destructive",
       });
     } finally {

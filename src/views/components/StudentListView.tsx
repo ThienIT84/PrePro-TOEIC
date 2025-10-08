@@ -390,7 +390,7 @@ export const StudentListView: React.FC<StudentListViewProps> = ({
                         </div>
                       </td>
                       <td className="p-3">
-                        <Badge variant={levelBadge.variant as unknown} className={levelBadge.className}>
+                        <Badge variant={levelBadge.variant as any} className={levelBadge.className}>
                           {levelBadge.text}
                         </Badge>
                       </td>
@@ -423,7 +423,7 @@ export const StudentListView: React.FC<StudentListViewProps> = ({
                           {statusIcon === 'AlertTriangle' && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
                           {statusIcon === 'Clock' && <Clock className="h-4 w-4 text-red-500" />}
                           {statusIcon === 'Users' && <Users className="h-4 w-4 text-gray-500" />}
-                          <Badge variant={statusBadge.variant as unknown} className={statusBadge.className}>
+                          <Badge variant={statusBadge.variant as any} className={statusBadge.className}>
                             {statusBadge.text}
                           </Badge>
                         </div>

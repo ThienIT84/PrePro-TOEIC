@@ -33,7 +33,7 @@ interface ExamSet {
   id: string;
   title: string;
   description: string | null;
-  type: 'vocab' | 'grammar' | 'listening' | 'reading' | 'mix';
+  type: 'full' | 'mini' | 'custom' | 'vocab' | 'grammar' | 'listening' | 'reading' | 'mix';
   difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
   question_count: number;
   time_limit: number;
@@ -41,6 +41,8 @@ interface ExamSet {
   created_by: string;
   created_at: string;
   updated_at: string;
+  allow_multiple_attempts?: boolean;
+  max_attempts?: number;
 }
 
 const ExamSets = () => {
@@ -66,7 +68,7 @@ const ExamSets = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setExamSets(data || []);
+      setExamSets((data || []) as ExamSet[]);
     } catch (error) {
       console.error('Error fetching exam sets:', error);
       toast({

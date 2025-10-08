@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ const StudentManagement = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reassigning, setReassigning] = useState<string | null>(null);
 
   useEffect(() => {
     if (isTeacher() && user) {
@@ -77,7 +79,7 @@ const StudentManagement = () => {
       }
       
     } catch (error: unknown) {
-      const errorMsg = `Lỗi không mong đợi: ${error.message}`;
+      const errorMsg = `Lỗi không mong đợi: ${(error as any).message}`;
       setError(errorMsg);
       
       toast({
@@ -159,7 +161,7 @@ const StudentManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Lỗi",
-        description: `Có lỗi xảy ra: ${error.message}`,
+        description: `Có lỗi xảy ra: ${(error as any).message}`,
         variant: "destructive",
       });
     }

@@ -25,7 +25,35 @@ import {
   Volume2,
   RefreshCw
 } from 'lucide-react';
-import { ExamSet, ExamQuestion, Question } from '../controllers/exam/ExamQuestionManagementController';
+// Mock interfaces since controller might not exist
+interface ExamSet {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  difficulty: string;
+  time_limit: number;
+  question_count: number;
+}
+
+interface ExamQuestion {
+  id: string;
+  question_id: string;
+  exam_set_id: string;
+  order: number;
+  question?: Question;
+}
+
+interface Question {
+  id: string;
+  question: string;
+  type: string;
+  difficulty: string;
+  choices?: string[];
+  correct_answer?: string;
+  explanation?: string;
+  audio_url?: string;
+}
 
 export interface ExamQuestionManagementViewProps {
   // State

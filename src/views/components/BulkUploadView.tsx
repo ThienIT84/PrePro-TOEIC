@@ -156,7 +156,7 @@ export const BulkUploadView: React.FC<BulkUploadViewProps> = ({
                 <Card key={part} className="border-l-4 border-l-primary">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      Part {part}: {info.name}
+                      Part {part}: {(info as any).name}
                       {getPartIcon(parseInt(part)) === '🎧' ? (
                         <Headphones className="h-4 w-4" />
                       ) : (
@@ -165,12 +165,12 @@ export const BulkUploadView: React.FC<BulkUploadViewProps> = ({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <p className="text-xs text-muted-foreground mb-2">{info.description}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{(info as any).description}</p>
                     <div className="flex items-center justify-between text-xs">
                       <Badge variant="outline" className={getPartColor(parseInt(part))}>
-                        {info.type}
+                        {(info as any).type}
                       </Badge>
-                      <span className="text-muted-foreground">{info.count} questions</span>
+                      <span className="text-muted-foreground">{(info as any).count} questions</span>
                     </div>
                   </CardContent>
                 </Card>

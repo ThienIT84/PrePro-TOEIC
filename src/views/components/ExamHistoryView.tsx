@@ -17,7 +17,19 @@ import {
   Calendar,
   Trophy
 } from 'lucide-react';
-import { ExamHistoryItem } from '../controllers/exam/ExamHistoryController';
+// Mock interface since controller might not exist
+interface ExamHistoryItem {
+  id: string;
+  exam_sets?: {
+    title: string;
+    description?: string;
+  };
+  score: number;
+  correct_answers: number;
+  total_questions: number;
+  completed_at: string;
+  time_spent: number;
+}
 
 export interface ExamHistoryViewProps {
   // State

@@ -145,9 +145,27 @@ const QuickQuestionSetup = ({ onQuestionsAdded }: QuickQuestionSetupProps) => {
       let added = 0;
 
       for (const question of allQuestions) {
+        const questionToInsert = {
+          part: question.type === 'listening' ? (question.question.includes('Part 1') ? 1 : 2) : (question.question.includes('Part 5') ? 5 : 7),
+          prompt_text: question.question,
+          choices: {
+            A: question.choices[0],
+            B: question.choices[1],
+            C: question.choices[2],
+            D: question.choices[3]
+          },
+          correct_choice: question.answer,
+          explain_vi: question.explain_vi,
+          explain_en: question.explain_en,
+          difficulty: question.difficulty,
+          tags: question.tags,
+          status: 'published' as const,
+          created_by: user.id
+        };
+
         const { error } = await supabase
           .from('questions')
-          .insert([question]);
+          .insert([questionToInsert]);
 
         if (error) {
           console.error('Error adding question:', error);
@@ -189,9 +207,27 @@ const QuickQuestionSetup = ({ onQuestionsAdded }: QuickQuestionSetupProps) => {
       for (const part of parts) {
         const questions = generateQuestionsForPart(part, questionsPerPart);
         
+        const questionsToInsert = questions.map(q => ({
+          part: part,
+          prompt_text: q.question,
+          choices: {
+            A: q.choices[0],
+            B: q.choices[1],
+            C: q.choices[2],
+            D: q.choices[3]
+          },
+          correct_choice: q.answer,
+          explain_vi: q.explain_vi,
+          explain_en: q.explain_en,
+          difficulty: q.difficulty,
+          tags: q.tags,
+          status: 'published' as const,
+          created_by: user?.id
+        }));
+        
         const { error } = await supabase
           .from('questions')
-          .insert(questions);
+          .insert(questionsToInsert);
 
         if (error) {
           console.error(`Error adding Part ${part} questions:`, error);

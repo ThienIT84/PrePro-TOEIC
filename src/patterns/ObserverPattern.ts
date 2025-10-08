@@ -1,4 +1,5 @@
 // Observer Pattern Implementation for MVC Architecture
+import React from 'react';
 
 export interface Observer<T = unknown> {
   update(data: T): void;
@@ -276,13 +277,13 @@ export class GlobalEventSystem {
   // State System Methods
   createStateSubject<T>(stateKey: string): StateSubject<T> {
     if (!this.stateSubjects.has(stateKey)) {
-      this.stateSubjects.set(stateKey, new StateSubject<T>(stateKey));
+      this.stateSubjects.set(stateKey, new StateSubject<T>(stateKey) as StateSubject<unknown>);
     }
-    return this.stateSubjects.get(stateKey)!;
+    return this.stateSubjects.get(stateKey) as StateSubject<T>;
   }
 
   getStateSubject<T>(stateKey: string): StateSubject<T> | null {
-    return this.stateSubjects.get(stateKey) || null;
+    return (this.stateSubjects.get(stateKey) as StateSubject<T>) || null;
   }
 
   subscribeToState<T>(
@@ -313,7 +314,7 @@ export class GlobalEventSystem {
 
   getStateValue<T>(stateKey: string): T | null {
     const subject = this.stateSubjects.get(stateKey);
-    return subject ? subject.getCurrentValue() : null;
+    return subject ? (subject.getCurrentValue() as T) : null;
   }
 
   // Utility Methods
@@ -385,5 +386,8 @@ export const useEvent = (
 
 // Export global event system instance
 export const globalEventSystem = GlobalEventSystem.getInstance();
+
+
+
 
 

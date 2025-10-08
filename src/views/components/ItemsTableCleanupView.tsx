@@ -9,7 +9,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Trash2, Database, AlertTriangle } from 'lucide-react';
-import { CleanupResult } from '../controllers/cleanup/ItemsTableCleanupController';
+// Mock interface since controller might not exist
+interface CleanupResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  itemsDeleted: number;
+  dataMigrated: number;
+  backupCreated: boolean;
+  steps?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    duration?: number;
+  }>;
+}
 
 export interface ItemsTableCleanupViewProps {
   // State
@@ -118,9 +133,9 @@ const ItemsTableCleanupView: React.FC<ItemsTableCleanupViewProps> = ({
                   <div className="space-y-2">
                     <p className="font-medium">📋 Chi tiết các bước:</p>
                     <div className="space-y-1">
-                      {cleanupResult.steps.map((step: string, index: number) => (
+                      {cleanupResult.steps.map((step: any, index: number) => (
                         <p key={index} className="text-sm text-gray-600">
-                          {step}
+                          {typeof step === 'string' ? step : step.title}
                         </p>
                       ))}
                     </div>

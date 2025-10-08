@@ -32,7 +32,7 @@ export abstract class BaseRepository<T> implements Repository<T> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase
-        .from(this.getEntityName())
+        .from(this.getEntityName() as any)
         .select('*')
         .eq(this.getPrimaryKey(), id)
         .single();
@@ -53,7 +53,7 @@ export abstract class BaseRepository<T> implements Repository<T> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase
-        .from(this.getEntityName())
+        .from(this.getEntityName() as any)
         .select('*');
 
       if (error) {
@@ -72,7 +72,7 @@ export abstract class BaseRepository<T> implements Repository<T> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase
-        .from(this.getEntityName())
+        .from(this.getEntityName() as any)
         .insert(entity)
         .select()
         .single();
@@ -92,7 +92,7 @@ export abstract class BaseRepository<T> implements Repository<T> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase
-        .from(this.getEntityName())
+        .from(this.getEntityName() as any)
         .update(entity)
         .eq(this.getPrimaryKey(), id)
         .select()
@@ -113,7 +113,7 @@ export abstract class BaseRepository<T> implements Repository<T> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { error } = await supabase
-        .from(this.getEntityName())
+        .from(this.getEntityName() as any)
         .delete()
         .eq(this.getPrimaryKey(), id);
 
@@ -140,7 +140,7 @@ export abstract class BaseRepository<T> implements Repository<T> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { count, error } = await supabase
-        .from(this.getEntityName())
+        .from(this.getEntityName() as any)
         .select('*', { count: 'exact', head: true });
 
       if (error) {
@@ -225,7 +225,7 @@ export abstract class BaseCacheRepository<T> extends BaseRepository<T> implement
     // Fetch from database
     const entities = await super.findAll();
     if (entities.length > 0) {
-      await this.setToCache(cacheKey, entities as unknown);
+      await this.setToCache(cacheKey, entities as any);
     }
 
     return entities;
@@ -252,7 +252,7 @@ export abstract class BaseMockRepository<T> implements MockRepository<T> {
   }
 
   async findById(id: string): Promise<T | null> {
-    return this.mockData.find((entity: unknown) => entity.id === id) || null;
+    return this.mockData.find((entity: any) => entity.id === id) || null;
   }
 
   async findAll(): Promise<T[]> {
@@ -266,7 +266,7 @@ export abstract class BaseMockRepository<T> implements MockRepository<T> {
   }
 
   async update(id: string, entity: Partial<T>): Promise<T> {
-    const index = this.mockData.findIndex((item: unknown) => item.id === id);
+    const index = this.mockData.findIndex((item: any) => item.id === id);
     if (index === -1) {
       throw new Error(`Entity with id ${id} not found`);
     }
@@ -276,7 +276,7 @@ export abstract class BaseMockRepository<T> implements MockRepository<T> {
   }
 
   async delete(id: string): Promise<void> {
-    const index = this.mockData.findIndex((item: unknown) => item.id === id);
+    const index = this.mockData.findIndex((item: any) => item.id === id);
     if (index === -1) {
       throw new Error(`Entity with id ${id} not found`);
     }
@@ -296,7 +296,7 @@ export abstract class BaseMockRepository<T> implements MockRepository<T> {
 // Repository Factory
 export class RepositoryFactory {
   private static instance: RepositoryFactory;
-  private repositories = new Map<string, Repository<unknown>>();
+  private repositories = new Map<string, Repository<any>>();
 
   static getInstance(): RepositoryFactory {
     if (!RepositoryFactory.instance) {
@@ -341,7 +341,7 @@ export class RepositoryFactory {
 }
 
 // Specific Repository Implementations
-export class QuestionRepository extends BaseCacheRepository<unknown> {
+export class QuestionRepository extends BaseCacheRepository<any> {
   protected getEntityName(): string {
     return 'questions';
   }
@@ -350,22 +350,22 @@ export class QuestionRepository extends BaseCacheRepository<unknown> {
     return 'id';
   }
 
-  async findByPart(part: number): Promise<unknown[]> {
-    return this.findWhere((question: unknown) => question.part === part);
+  async findByPart(part: number): Promise<any[]> {
+    return this.findWhere((question: any) => question.part === part);
   }
 
-  async findByDifficulty(difficulty: string): Promise<unknown[]> {
-    return this.findWhere((question: unknown) => question.difficulty === difficulty);
+  async findByDifficulty(difficulty: string): Promise<any[]> {
+    return this.findWhere((question: any) => question.difficulty === difficulty);
   }
 
-  async findByTags(tags: string[]): Promise<unknown[]> {
-    return this.findWhere((question: unknown) => 
+  async findByTags(tags: string[]): Promise<any[]> {
+    return this.findWhere((question: any) => 
       tags.some(tag => question.tags?.includes(tag))
     );
   }
 }
 
-export class ExamRepository extends BaseCacheRepository<unknown> {
+export class ExamRepository extends BaseCacheRepository<any> {
   protected getEntityName(): string {
     return 'exam_sets';
   }
@@ -374,16 +374,16 @@ export class ExamRepository extends BaseCacheRepository<unknown> {
     return 'id';
   }
 
-  async findByStatus(status: string): Promise<unknown[]> {
-    return this.findWhere((exam: unknown) => exam.status === status);
+  async findByStatus(status: string): Promise<any[]> {
+    return this.findWhere((exam: any) => exam.status === status);
   }
 
-  async findByCreator(creatorId: string): Promise<unknown[]> {
-    return this.findWhere((exam: unknown) => exam.created_by === creatorId);
+  async findByCreator(creatorId: string): Promise<any[]> {
+    return this.findWhere((exam: any) => exam.created_by === creatorId);
   }
 }
 
-export class UserRepository extends BaseCacheRepository<unknown> {
+export class UserRepository extends BaseCacheRepository<any> {
   protected getEntityName(): string {
     return 'profiles';
   }
@@ -392,17 +392,17 @@ export class UserRepository extends BaseCacheRepository<unknown> {
     return 'id';
   }
 
-  async findByRole(role: string): Promise<unknown[]> {
-    return this.findWhere((user: unknown) => user.role === role);
+  async findByRole(role: string): Promise<any[]> {
+    return this.findWhere((user: any) => user.role === role);
   }
 
-  async findByEmail(email: string): Promise<unknown | null> {
-    const users = await this.findWhere((user: unknown) => user.email === email);
+  async findByEmail(email: string): Promise<any | null> {
+    const users = await this.findWhere((user: any) => user.email === email);
     return users.length > 0 ? users[0] : null;
   }
 }
 
-export class PassageRepository extends BaseCacheRepository<unknown> {
+export class PassageRepository extends BaseCacheRepository<any> {
   protected getEntityName(): string {
     return 'passages';
   }
@@ -411,16 +411,19 @@ export class PassageRepository extends BaseCacheRepository<unknown> {
     return 'id';
   }
 
-  async findByPart(part: number): Promise<unknown[]> {
-    return this.findWhere((passage: unknown) => passage.part === part);
+  async findByPart(part: number): Promise<any[]> {
+    return this.findWhere((passage: any) => passage.part === part);
   }
 
-  async findByType(type: string): Promise<unknown[]> {
-    return this.findWhere((passage: unknown) => passage.passage_type === type);
+  async findByType(type: string): Promise<any[]> {
+    return this.findWhere((passage: any) => passage.passage_type === type);
   }
 }
 
 // Export repository factory instance
 export const repositoryFactory = RepositoryFactory.getInstance();
+
+
+
 
 

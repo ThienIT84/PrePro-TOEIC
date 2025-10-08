@@ -56,7 +56,7 @@ const STATUS_COLORS = {
 
 const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) => {
   const { toast } = useToast();
-  const [questions, setQuestions] = useState<unknown[]>([]);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPart, setFilterPart] = useState<string>('all');
@@ -174,11 +174,12 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
   };
 
   const filteredQuestions = questions.filter(question => {
-    const matchesSearch = question.prompt_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         question.explain_vi.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPart = filterPart === 'all' || question.part.toString() === filterPart;
-    const matchesDifficulty = filterDifficulty === 'all' || question.difficulty === filterDifficulty;
-    const matchesStatus = filterStatus === 'all' || question.status === filterStatus;
+    const q = question as any;
+    const matchesSearch = q.prompt_text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         q.explain_vi?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPart = filterPart === 'all' || q.part?.toString() === filterPart;
+    const matchesDifficulty = filterDifficulty === 'all' || q.difficulty === filterDifficulty;
+    const matchesStatus = filterStatus === 'all' || q.status === filterStatus;
 
     return matchesSearch && matchesPart && matchesDifficulty && matchesStatus;
   });
@@ -350,10 +351,11 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
             {/* Questions List */}
             <div className="grid gap-4">
               {filteredQuestions.map((question) => {
-                const partInfo = getPartInfo(question.part);
-                const isSelected = selectedQuestions.includes(question.id);
+                const q = question as any;
+                const partInfo = getPartInfo(q.part);
+                const isSelected = selectedQuestions.includes(q.id);
                 return (
-                  <Card key={question.id} className={`hover:shadow-md transition-shadow ${
+                  <Card key={q.id} className={`hover:shadow-md transition-shadow ${
                     isSelected ? 'ring-2 ring-red-200 bg-red-50' : ''
                   }`}>
                     <CardContent className="p-6">
@@ -361,9 +363,9 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                         <div className="flex items-start gap-3 flex-1">
                           {/* Selection Checkbox */}
                           <Checkbox
-                            id={`question-${question.id}`}
+                            id={`question-${q.id}`}
                             checked={isSelected}
-                            onCheckedChange={(checked) => handleSelectQuestion(question.id, checked as boolean)}
+                            onCheckedChange={(checked) => handleSelectQuestion(q.id, checked as boolean)}
                           />
                           
                           <div className="flex-1 space-y-3">
@@ -372,13 +374,13 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                           <Badge className={`${partInfo.color} font-medium`}>
                             {partInfo.icon} {partInfo.name}
                           </Badge>
-                          <Badge className={DIFFICULTY_COLORS[question.difficulty]}>
-                            {question.difficulty}
+                          <Badge className={DIFFICULTY_COLORS[q.difficulty]}>
+                            {q.difficulty}
                           </Badge>
-                          <Badge className={STATUS_COLORS[question.status]}>
-                            {question.status}
+                          <Badge className={STATUS_COLORS[q.status]}>
+                            {q.status}
                           </Badge>
-                          {question.passage_id && (
+                          {q.passage_id && (
                             <Badge variant="outline" className="flex items-center gap-1">
                               <FileText className="h-3 w-3" />
                               Có đoạn văn
@@ -389,24 +391,24 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                         {/* Question Text */}
                         <div className="space-y-2">
                           <h4 className="font-medium text-lg">Câu hỏi:</h4>
-                          <p className="text-gray-700">{question.prompt_text}</p>
+                          <p className="text-gray-700">{q.prompt_text}</p>
                         </div>
 
                         {/* Choices */}
                         <div className="space-y-1">
                           <h5 className="font-medium">Lựa chọn:</h5>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {Object.entries(question.choices).map(([choice, text]) => (
+                            {Object.entries(q.choices || {}).map(([choice, text]) => (
                               <div key={choice} className="flex items-center gap-2">
                                 <span className={`font-medium w-6 ${
-                                  choice === question.correct_choice ? 'text-green-600' : 'text-gray-500'
+                                  choice === q.correct_choice ? 'text-green-600' : 'text-gray-500'
                                 }`}>
                                   {choice}.
                                 </span>
-                                <span className={choice === question.correct_choice ? 'font-medium text-green-600' : ''}>
+                                <span className={choice === q.correct_choice ? 'font-medium text-green-600' : ''}>
                                   {text as string}
                                 </span>
-                                {choice === question.correct_choice && (
+                                {choice === q.correct_choice && (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
                                 )}
                               </div>
@@ -415,23 +417,23 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                         </div>
 
                         {/* Passage Info */}
-                        {question.passages && (
+                        {q.passages && (
                           <div className="space-y-1">
                             <h5 className="font-medium">Đoạn văn:</h5>
                             <p className="text-sm text-gray-600">
-                              {question.passages.texts.title || 'Không có tiêu đề'} • 
-                              {question.passages.passage_type} • 
-                              {question.passages.texts.content.slice(0, 100)}...
+                              {q.passages?.texts?.title || 'Không có tiêu đề'} • 
+                              {q.passages?.passage_type} • 
+                              {q.passages?.texts?.content?.slice(0, 100)}...
                             </p>
                           </div>
                         )}
 
                         {/* Tags */}
-                        {question.tags && question.tags.length > 0 && (
+                        {q.tags && q.tags.length > 0 && (
                           <div className="flex items-center gap-2">
                             <Tag className="h-4 w-4 text-gray-500" />
                             <div className="flex flex-wrap gap-1">
-                              {question.tags.map((tag: string) => (
+                              {q.tags.map((tag: string) => (
                                 <Badge key={tag} variant="secondary" className="text-xs">
                                   {tag}
                                 </Badge>
@@ -444,18 +446,18 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           <div>
                             <h6 className="font-medium text-gray-700">Giải thích (VI):</h6>
-                            <p className="text-gray-600">{question.explain_vi}</p>
+                            <p className="text-gray-600">{q.explain_vi}</p>
                           </div>
                           <div>
                             <h6 className="font-medium text-gray-700">Explanation (EN):</h6>
-                            <p className="text-gray-600">{question.explain_en}</p>
+                            <p className="text-gray-600">{q.explain_en}</p>
                           </div>
                         </div>
 
                         {/* Audio Info */}
                         {(() => {
-                          const audioUrl = getQuestionAudioUrl(question);
-                          const audioDescription = getAudioSourceDescription(question);
+                          const audioUrl = getQuestionAudioUrl(q);
+                          const audioDescription = getAudioSourceDescription(q);
                           return audioUrl ? (
                             <div className="space-y-1">
                               <h5 className="font-medium">Audio:</h5>
@@ -484,10 +486,10 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {new Date(question.created_at).toLocaleDateString('vi-VN')}
+                            {new Date(q.created_at).toLocaleDateString('vi-VN')}
                           </span>
-                          {question.blank_index && (
-                            <span>Chỗ trống: {question.blank_index}</span>
+                          {q.blank_index && (
+                            <span>Chỗ trống: {q.blank_index}</span>
                           )}
                         </div>
                       </div>
@@ -497,7 +499,7 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => onEdit?.(question.id)}
+                          onClick={() => onEdit?.(q.id)}
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Sửa
@@ -524,7 +526,7 @@ const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) =
                             <AlertDialogFooter>
                               <AlertDialogCancel>Hủy</AlertDialogCancel>
                               <AlertDialogAction 
-                                onClick={() => deleteQuestion(question.id)}
+                                onClick={() => deleteQuestion(q.id)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
                                 Xóa

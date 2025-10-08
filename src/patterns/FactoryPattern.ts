@@ -1,4 +1,5 @@
 // Factory Pattern Implementation for MVC Architecture
+import React from 'react';
 
 export interface ComponentFactory<T> {
   create(type: string, props?: unknown): T;
@@ -109,6 +110,19 @@ export abstract class AbstractMVCFactory {
   abstract createComponent(type: string, props?: unknown): unknown;
   abstract createService(type: string, config?: unknown): unknown;
   abstract createController(type: string, params?: unknown): unknown;
+
+  // Utility methods
+  getAvailableComponents(): string[] {
+    return this.componentFactory.getRegisteredTypes();
+  }
+
+  getAvailableServices(): string[] {
+    return this.serviceFactory.getRegisteredTypes();
+  }
+
+  getAvailableControllers(): string[] {
+    return this.controllerFactory.getRegisteredTypes();
+  }
 }
 
 // Concrete MVC Factory Implementation
@@ -198,19 +212,6 @@ export class TOEICMVCFactory extends AbstractMVCFactory {
 
   createController(type: string, params?: unknown): unknown {
     return this.controllerFactory.create(type, params);
-  }
-
-  // Utility methods
-  getAvailableComponents(): string[] {
-    return this.componentFactory.getRegisteredTypes();
-  }
-
-  getAvailableServices(): string[] {
-    return this.serviceFactory.getRegisteredTypes();
-  }
-
-  getAvailableControllers(): string[] {
-    return this.controllerFactory.getRegisteredTypes();
   }
 
   // Dynamic registration
@@ -318,5 +319,7 @@ export const useFactory = (factoryName: string = 'TOEIC') => {
 
 // Export factory registry instance
 export const factoryRegistry = FactoryRegistry.getInstance();
+
+
 
 

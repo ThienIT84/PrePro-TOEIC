@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ExamReviewController, ExamSession, Question, QuestionReview, ExamStatistics } from './ExamReviewController';
+import { ExamReviewController, ExamSession, QuestionReview, ExamStatistics } from './ExamReviewController';
+import { Question } from '@/types';
 
 export const useExamReviewController = (sessionId: string) => {
   const [controller] = useState(() => new ExamReviewController());

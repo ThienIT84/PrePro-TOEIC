@@ -162,7 +162,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
         allActivities.push({
           id: exam.id,
           student_id: exam.user_id,
-          student_name: exam.profiles?.name || 'Unknown',
+          student_name: (exam as any).profiles?.name || 'Unknown',
           type: 'exam',
           title: exam.exam_sets?.title || 'Exam',
           score: exam.score,
@@ -182,8 +182,8 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
       });
 
       drillSessions.forEach((sessionAttempts, sessionKey) => {
-        const firstAttempt = sessionAttempts[0];
-        const correctCount = sessionAttempts.filter(a => a.correct).length;
+        const firstAttempt = sessionAttempts[0] as any;
+        const correctCount = sessionAttempts.filter((a: any) => a.correct).length;
         const totalCount = sessionAttempts.length;
         const avgScore = Math.round((correctCount / totalCount) * 100);
 
@@ -192,7 +192,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
           student_id: firstAttempt.user_id,
           student_name: firstAttempt.profiles?.name || 'Unknown',
           type: 'drill',
-          title: `${firstAttempt.items?.type || 'Unknown'} Practice Session`,
+          title: `${firstAttempt.questions?.part || 'Unknown'} Practice Session`,
           score: avgScore,
           timestamp: firstAttempt.created_at,
           details: `${correctCount}/${totalCount} correct (${avgScore}%)`
@@ -328,7 +328,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
             <Filter className="h-4 w-4" />
             <Select
               value={filter.type}
-              onValueChange={(value) => setFilter(prev => ({ ...prev, type: value as unknown }))}
+              onValueChange={(value) => setFilter(prev => ({ ...prev, type: value as 'all' | 'exam' | 'drill' | 'review' | 'achievement' }))}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -347,7 +347,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
             <Calendar className="h-4 w-4" />
             <Select
               value={filter.timeRange}
-              onValueChange={(value) => setFilter(prev => ({ ...prev, timeRange: value as unknown }))}
+              onValueChange={(value) => setFilter(prev => ({ ...prev, timeRange: value as 'today' | 'week' | 'month' | 'all' }))}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />

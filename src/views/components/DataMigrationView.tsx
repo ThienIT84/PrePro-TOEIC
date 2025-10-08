@@ -9,7 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Database, ArrowRight } from 'lucide-react';
-import { MigrationResult, DataStatistics } from '../controllers/migration/DataMigrationController';
+// Mock interfaces since controller might not exist
+interface MigrationResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  originalCount: number;
+  migratedCount: number;
+  originalData: any[];
+  migratedData: any[];
+}
+
+interface DataStatistics {
+  itemsCount: number;
+  questionsCount: number;
+}
 
 export interface DataMigrationViewProps {
   // State

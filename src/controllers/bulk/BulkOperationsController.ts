@@ -197,18 +197,19 @@ export class BulkOperationsController {
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
       const parsedQuestions: BulkQuestion[] = jsonData.map((row: unknown, index: number) => {
+        const r = row as any;
         const question: BulkQuestion = {
-          type: row.type || 'vocab',
-          question: row.question || '',
-          choiceA: row.choiceA || row['Choice A'] || '',
-          choiceB: row.choiceB || row['Choice B'] || '',
-          choiceC: row.choiceC || row['Choice C'] || '',
-          choiceD: row.choiceD || row['Choice D'] || '',
-          answer: row.answer || row.correct_answer || '',
-          explanation: row.explanation || row.explain_vi || '',
-          tags: row.tags || '',
-          audio_url: row.audio_url || '',
-          transcript: row.transcript || '',
+          type: r.type || 'vocab',
+          question: r.question || '',
+          choiceA: r.choiceA || r['Choice A'] || '',
+          choiceB: r.choiceB || r['Choice B'] || '',
+          choiceC: r.choiceC || r['Choice C'] || '',
+          choiceD: r.choiceD || r['Choice D'] || '',
+          answer: r.answer || r.correct_answer || '',
+          explanation: r.explanation || r.explain_vi || '',
+          tags: r.tags || '',
+          audio_url: r.audio_url || '',
+          transcript: r.transcript || '',
           status: 'pending'
         };
 
@@ -234,7 +235,7 @@ export class BulkOperationsController {
         questions: [],
         validCount: 0,
         invalidCount: 0,
-        error: error.message
+        error: (error as any).message
       };
     }
   }
@@ -261,9 +262,16 @@ export class BulkOperationsController {
         
         const questionsToInsert = batch.map(q => ({
           type: q.type,
-          question: q.question.trim(),
-          choices: [q.choiceA.trim(), q.choiceB.trim(), q.choiceC.trim(), q.choiceD.trim()],
-          answer: q.answer.toUpperCase(),
+          part: 5, // Default to Part 5 for bulk questions
+          prompt_text: q.question.trim(),
+          choices: {
+            A: q.choiceA.trim(),
+            B: q.choiceB.trim(),
+            C: q.choiceC.trim(),
+            D: q.choiceD.trim()
+          },
+          correct_choice: q.answer.toUpperCase(),
+          difficulty: 'medium',
           explain_vi: q.explanation.trim(),
           explain_en: q.explanation.trim(),
           audio_url: q.audio_url || null,
@@ -296,7 +304,7 @@ export class BulkOperationsController {
       return {
         success: false,
         importedCount: 0,
-        error: error.message
+        error: (error as any).message
       };
     }
   }
@@ -313,13 +321,13 @@ export class BulkOperationsController {
 
       if (error) throw error;
 
-      const exportData = data.map(item => ({
+      const exportData = data.map((item: any) => ({
         type: item.type,
         question: item.question,
-        'Choice A': item.choices[0] || '',
-        'Choice B': item.choices[1] || '',
-        'Choice C': item.choices[2] || '',
-        'Choice D': item.choices[3] || '',
+        'Choice A': item.choices?.[0] || '',
+        'Choice B': item.choices?.[1] || '',
+        'Choice C': item.choices?.[2] || '',
+        'Choice D': item.choices?.[3] || '',
         correct_answer: item.answer,
         explain_vi: item.explain_vi,
         explain_en: item.explain_en,
@@ -343,7 +351,7 @@ export class BulkOperationsController {
       return {
         success: false,
         exportedCount: 0,
-        error: error.message
+        error: (error as any).message
       };
     }
   }

@@ -33,8 +33,8 @@ export const StudentListMVC: React.FC<StudentListMVCProps> = ({
     updateFilters,
     clearFilters,
     toggleFilters,
-    handleSelectAll,
-    handleSelectStudent,
+    handleSelectAll: controllerHandleSelectAll,
+    handleSelectStudent: controllerHandleSelectStudent,
     getBulkActions,
     setBulkMessage,
     sendBulkMessage,
@@ -66,12 +66,12 @@ export const StudentListMVC: React.FC<StudentListMVCProps> = ({
 
   // Handle select all
   const handleSelectAll = () => {
-    handleSelectAll();
+    controllerHandleSelectAll();
   };
 
   // Handle select student
   const handleSelectStudent = (studentId: string) => {
-    handleSelectStudent(studentId);
+    controllerHandleSelectStudent(studentId);
   };
 
   // Handle bulk action

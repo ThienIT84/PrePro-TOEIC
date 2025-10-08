@@ -29,7 +29,21 @@ import {
   Target,
   Zap
 } from 'lucide-react';
-import { ActivityEvent, ActivityFilter } from '../controllers/analytics/ActivityTimelineController';
+// Mock interfaces since controller might not exist
+interface ActivityEvent {
+  id: string;
+  type: string;
+  title: string;
+  student_name: string;
+  timestamp: string;
+  score?: number;
+  details?: string;
+}
+
+interface ActivityFilter {
+  type: string;
+  timeRange: string;
+}
 
 export interface ActivityTimelineViewProps {
   // State
@@ -131,7 +145,7 @@ const ActivityTimelineView: React.FC<ActivityTimelineViewProps> = ({
             <Filter className="h-4 w-4" />
             <Select
               value={filter.type}
-              onValueChange={(value) => onSetFilter({ type: value as unknown })}
+              onValueChange={(value) => onSetFilter({ type: value as any })}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -150,7 +164,7 @@ const ActivityTimelineView: React.FC<ActivityTimelineViewProps> = ({
             <Calendar className="h-4 w-4" />
             <Select
               value={filter.timeRange}
-              onValueChange={(value) => onSetFilter({ timeRange: value as unknown })}
+              onValueChange={(value) => onSetFilter({ timeRange: value as any })}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />

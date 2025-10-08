@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import type { DrillType, Difficulty } from '@/types';
 import { X, Plus } from 'lucide-react';
@@ -17,6 +18,7 @@ interface AddQuestionFormProps {
 
 const AddQuestionForm = ({ onSuccess }: AddQuestionFormProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: 'vocab' as DrillType,
@@ -124,16 +126,20 @@ const AddQuestionForm = ({ onSuccess }: AddQuestionFormProps) => {
 
       // Prepare data for insertion
       const insertData = {
-        type: formData.type,
+        part: formData.type === 'listening' ? 1 : 5, // Default part based on type
         difficulty: formData.difficulty,
         question: formData.question.trim(),
         choices: formData.choices.filter(c => c.trim()),
-        answer: formData.answer.trim().toUpperCase(),
+        correct_choice: formData.answer.trim().toUpperCase(),
         explain_vi: formData.explain_vi.trim(),
         explain_en: formData.explain_en.trim(),
         audio_url: formData.audio_url.trim() || null,
         transcript: formData.transcript.trim() || null,
         tags: formData.tags.length > 0 ? formData.tags : null,
+        prompt_text: formData.question.trim(), // Use question as prompt_text
+        blank_index: 0, // Default value
+        status: 'active', // Default status
+        created_by: user?.id || null,
       };
 
       console.log('Inserting data:', insertData);

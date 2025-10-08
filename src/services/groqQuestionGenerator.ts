@@ -739,12 +739,12 @@ CRITICAL:
       }
 
       return {
-        passages: parsed.passages.map((p: unknown) => ({
+        passages: parsed.passages.map((p: any) => ({
           content: p.content || '',
           type: p.type || 'email',
           title: p.title || ''
         })),
-        questions: parsed.questions.map((q: unknown, index: number) => ({
+        questions: parsed.questions.map((q: any, index: number) => ({
           question: q.question || `Question ${index + 1}`,
           choices: Array.isArray(q.choices) ? q.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
           answer: q.answer || 'A',
@@ -831,7 +831,7 @@ CRITICAL:
           content: parsed.passage.content || '',
           blanks: parsed.passage.blanks || [1, 2, 3, 4]
         },
-        questions: parsed.answers.map((a: unknown, index: number) => ({
+        questions: parsed.answers.map((a: any, index: number) => ({
           question: `Blank ${a.blank_index || index + 1}`,
           choices: Array.isArray(a.choices) ? a.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
           answer: a.answer || 'A',
@@ -883,7 +883,7 @@ CRITICAL:
         throw new Error('Invalid response format');
       }
 
-      return parsed.questions.map((q: unknown, index: number) => ({
+      return parsed.questions.map((q: any, index: number) => ({
         question: q.question || `Question ${index + 1}`,
         choices: Array.isArray(q.choices) ? q.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
         answer: q.answer || 'A',

@@ -62,7 +62,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
 
       console.log('Session data:', sessionData);
       setExamSession(sessionData);
-      setExamSet(sessionData.exam_sets as unknown);
+      setExamSet(sessionData.exam_sets as any);
 
       // Fetch questions for this exam through exam_questions table
       const { data: examQuestionsData, error: examQuestionsError } = await supabase
@@ -87,7 +87,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
       const questionsData = examQuestionsData?.map(eq => eq.questions).filter(Boolean) || [];
 
       console.log('Questions data:', questionsData);
-      setQuestions(questionsData as unknown || []);
+      setQuestions(questionsData as any || []);
 
       // Fetch user answers from exam_attempts
       const { data: attemptsData, error: attemptsError } = await supabase
@@ -258,8 +258,8 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <div className="text-sm text-gray-600">Điểm số</div>
-              <div className={`text-2xl font-bold ${getScoreColor(examSession.score)}`}>
-                {examSession.score}%
+              <div className={`text-2xl font-bold ${getScoreColor((examSession as any).score)}`}>
+                {(examSession as any).score}%
               </div>
               <div className="text-xs text-blue-600 font-medium">
                 ~{estimatedTOEICScore} TOEIC
@@ -323,18 +323,18 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                   </CardHeader>
                   <CardContent>
                     {/* Passage Audio */}
-                    {(currentQuestion as unknown).passages?.audio_url && (
+                    {(currentQuestion as any).passages?.audio_url && (
                       <div className="mb-4">
                         <SimpleAudioPlayer 
-                          audioUrl={(currentQuestion as unknown).passages.audio_url} 
-                          transcript={(currentQuestion as unknown).passages.texts?.content || ''} 
+                          audioUrl={(currentQuestion as any).passages.audio_url} 
+                          transcript={(currentQuestion as any).passages.texts?.content || ''} 
                         />
                       </div>
                     )}
 
                     {/* Passage Images */}
                     {(() => {
-                      const passage = (currentQuestion as unknown).passages;
+                      const passage = (currentQuestion as any).passages;
                       if (!passage) return null;
 
                       const images = [];
@@ -387,10 +387,10 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                     })()}
 
                     {/* Passage Text */}
-                    {(currentQuestion as unknown).passages?.texts?.content && (
+                    {(currentQuestion as any).passages?.texts?.content && (
                       <div className="prose max-w-none">
                         <div className="text-gray-800 leading-relaxed text-lg whitespace-pre-wrap">
-                          {(currentQuestion as unknown).passages.texts.content}
+                          {(currentQuestion as any).passages.texts.content}
                         </div>
                       </div>
                     )}
@@ -661,8 +661,8 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                 <div className="space-y-4">
                   {/* Overall Score */}
                   <div className="text-center">
-                    <div className={`text-3xl font-bold ${getScoreColor(examSession.score)}`}>
-                      {examSession.score}%
+                    <div className={`text-3xl font-bold ${getScoreColor((examSession as any).score)}`}>
+                      {(examSession as any).score}%
                     </div>
                     <div className="text-sm text-gray-600">Độ chính xác</div>
                   </div>
@@ -690,7 +690,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                   {/* Time Spent */}
                   <div className="text-center p-2 bg-gray-50 rounded">
                     <div className="text-sm font-medium text-gray-700">
-                      Thời gian: {Math.floor(examSession.time_spent / 60)} phút
+                      Thời gian: {Math.floor((examSession as any).time_spent / 60)} phút
                     </div>
                   </div>
                 </div>
@@ -787,7 +787,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
 
             {/* Time Statistics */}
             <TimeStatistics
-              timeSpent={examSession.time_spent}
+              timeSpent={(examSession as any).time_spent}
               totalQuestions={totalQuestions}
               correctAnswers={correctAnswers}
               partStatistics={partStatistics}
@@ -895,7 +895,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                   className="w-full"
                   onClick={() => {
                     // TODO: Implement save/share functionality
-                    navigator.clipboard.writeText(`Tôi vừa hoàn thành bài thi TOEIC với điểm số ${examSession.score}% (ước tính ~${estimatedTOEICScore} điểm TOEIC). Hãy cùng luyện tập nhé!`);
+                    navigator.clipboard.writeText(`Tôi vừa hoàn thành bài thi TOEIC với điểm số ${(examSession as any).score}% (ước tính ~${estimatedTOEICScore} điểm TOEIC). Hãy cùng luyện tập nhé!`);
                   }}
                 >
                   <Flag className="h-4 w-4 mr-2" />

@@ -7,7 +7,7 @@ export abstract class BaseModel {
   public created_at: string;
   public updated_at: string;
 
-  constructor(data: unknown) {
+  constructor(data: any) {
     this.id = data.id;
     this.created_at = data.created_at;
     this.updated_at = data.updated_at;
@@ -16,7 +16,7 @@ export abstract class BaseModel {
   /**
    * Validate required fields
    */
-  protected validateRequired(fields: string[], data: unknown): string[] {
+  protected validateRequired(fields: string[], data: any): string[] {
     const errors: string[] = [];
     
     fields.forEach(field => {
@@ -54,14 +54,14 @@ export abstract class BaseModel {
   /**
    * Convert model to plain object
    */
-  toJSON(): unknown {
+  toJSON(): any {
     return { ...this };
   }
 
   /**
    * Create model from plain object
    */
-  static fromJSON<T extends BaseModel>(this: new (data: unknown) => T, data: unknown): T {
+  static fromJSON<T extends BaseModel>(this: new (data: any) => T, data: any): T {
     return new this(data);
   }
 }

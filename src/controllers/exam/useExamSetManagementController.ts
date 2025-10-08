@@ -205,8 +205,6 @@ export function useExamSetManagementController() {
 
     // State getters
     isLoading,
-    isCreateDialogOpen,
-    isEditDialogOpen,
     getEditingExamSet,
     getFormData,
     getExamSets,

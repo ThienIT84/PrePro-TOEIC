@@ -586,8 +586,8 @@ const StudentListWithFilters = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="border-b hover:bg-muted/50">
+                {filteredStudents.map((student, index) => (
+                  <tr key={`student-${student.id}-${index}`} className="border-b hover:bg-muted/50">
                     <td className="p-3">
                       <Checkbox
                         checked={selectedStudents.includes(student.id)}

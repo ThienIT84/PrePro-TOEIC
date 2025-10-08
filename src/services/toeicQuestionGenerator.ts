@@ -237,8 +237,8 @@ class TOEICQuestionGenerator {
       let { data: existingQuestions, error } = await supabase
         .from('questions')
         .select('*')
-        .eq('type', dbType)
-        .limit(count);
+        .eq('part', part)
+        .limit(count) as any;
 
       // If not enough questions with specific difficulty, try unknown difficulty
       if (!error && existingQuestions && existingQuestions.length < count) {
@@ -246,8 +246,8 @@ class TOEICQuestionGenerator {
         const { data: moreQuestions, error: moreError } = await supabase
           .from('questions')
           .select('*')
-          .eq('type', dbType)
-          .limit(count);
+          .eq('part', part)
+          .limit(count) as any;
         
         if (!moreError && moreQuestions) {
           existingQuestions = moreQuestions;
@@ -267,13 +267,13 @@ class TOEICQuestionGenerator {
         // If not enough real questions, supplement with mock questions
         const remainingCount = count - convertedQuestions.length;
         console.log(`🎭 Supplementing with ${remainingCount} mock questions for Part ${part}`);
-        const mockQuestions = this.generateMockPartQuestions(part, remainingCount, difficulty);
+        const mockQuestions = this.generateMockPartQuestions(part, remainingCount, 'medium');
         return [...convertedQuestions, ...mockQuestions];
       }
 
       // If no real questions at all, generate all mock questions
       console.log(`🎭 Generating ${count} mock questions for Part ${part}`);
-      const mockQuestions = this.generateMockPartQuestions(part, count, difficulty);
+      const mockQuestions = this.generateMockPartQuestions(part, count, 'medium');
       
       // Ensure we have the right number of questions
       if (mockQuestions.length !== count) {
@@ -284,7 +284,7 @@ class TOEICQuestionGenerator {
     } catch (error) {
       console.error(`❌ Error generating Part ${part} questions:`, error);
       console.log(`🔄 Falling back to mock questions for Part ${part}`);
-      const fallbackQuestions = this.generateMockPartQuestions(part, count, difficulty);
+      const fallbackQuestions = this.generateMockPartQuestions(part, count, 'medium');
       
       // Ensure we have the right number of questions even in fallback
       if (fallbackQuestions.length !== count) {
@@ -298,7 +298,7 @@ class TOEICQuestionGenerator {
   /**
    * Convert database item to TOEIC question format
    */
-  private convertQuestionToTOEICQuestion(question: unknown, part: number): TOEICQuestion {
+  private convertQuestionToTOEICQuestion(question: any, part: number): TOEICQuestion {
     return {
       id: question.id,
       part,
@@ -310,7 +310,6 @@ class TOEICQuestionGenerator {
       audio_url: question.audio_url,
       image_url: question.image_url,
       transcript: question.transcript,
-      difficulty: question.difficulty,
       tags: question.tags || [],
       created_at: question.created_at
     };
@@ -429,7 +428,6 @@ class TOEICQuestionGenerator {
       explanation: `This is a Part 1 listening question. The correct answer describes what is happening in the picture.`,
       audio_url: `/audio/part1_${index}.mp3`,
       image_url: `/images/part1_${index}.jpg`,
-      difficulty,
       tags: ['photos', 'listening', 'part1'],
       created_at: timestamp
     };
@@ -497,7 +495,6 @@ class TOEICQuestionGenerator {
       correct_answer: correctAnswer,
       explanation: `This is a Part 2 listening question. Listen to the question and choose the most appropriate response.`,
       audio_url: `/audio/part2_${index}.mp3`,
-      difficulty,
       tags: ['question-response', 'listening', 'part2'],
       created_at: timestamp
     };
@@ -573,7 +570,6 @@ class TOEICQuestionGenerator {
       explanation: `This is a Part 3 listening question. Listen to the conversation and answer the question.`,
       audio_url: `/audio/part3_${index}.mp3`,
       transcript: `Conversation ${index + 1}: ${conversations[convIndex].context}`,
-      difficulty,
       tags: ['conversations', 'listening', 'part3'],
       created_at: timestamp
     };
@@ -649,7 +645,6 @@ class TOEICQuestionGenerator {
       explanation: `This is a Part 4 listening question. Listen to the talk and answer the question.`,
       audio_url: `/audio/part4_${index}.mp3`,
       transcript: `Talk ${index + 1}: ${talks[talkIndex].context}`,
-      difficulty,
       tags: ['talks', 'listening', 'part4'],
       created_at: timestamp
     };
@@ -748,7 +743,6 @@ class TOEICQuestionGenerator {
       choices: sentences[sentIndex].choices,
       correct_answer: correctAnswer,
       explanation: `This is a Part 5 reading question. Choose the word or phrase that best completes the sentence.`,
-      difficulty,
       tags: ['grammar', 'reading', 'part5'],
       created_at: timestamp
     };
@@ -797,7 +791,6 @@ class TOEICQuestionGenerator {
       choices: texts[textIndex].choices,
       correct_answer: correctAnswer,
       explanation: `This is a Part 6 reading question. Read the text and choose the word or phrase that best completes the sentence.`,
-      difficulty,
       tags: ['text-completion', 'reading', 'part6'],
       created_at: timestamp
     };
@@ -851,7 +844,6 @@ class TOEICQuestionGenerator {
       choices: passages[passIndex].choices,
       correct_answer: correctAnswer,
       explanation: `This is a Part 7 reading question. Read the passage and answer the question.`,
-      difficulty,
       tags: ['reading-comprehension', 'reading', 'part7'],
       created_at: timestamp
     };
@@ -869,7 +861,6 @@ class TOEICQuestionGenerator {
       choices: ['Option A', 'Option B', 'Option C', 'Option D'],
       correct_answer: 'A',
       explanation: `This is a sample question for Part ${part}.`,
-      difficulty,
       tags: [`part${part}`, part <= 4 ? 'listening' : 'reading'],
       created_at: timestamp
     };
@@ -883,11 +874,11 @@ class TOEICQuestionGenerator {
       const { data: questions, error } = await supabase
         .from('questions')
         .select('*')
-        .in('id', failedQuestionIds);
+        .in('id', failedQuestionIds) as any;
 
       if (error) throw error;
 
-      return questions?.map(q => this.convertQuestionToTOEICQuestion(q, q.type === 'listening' ? 1 : 5)) || [];
+      return questions?.map(q => this.convertQuestionToTOEICQuestion(q, q.part)) || [];
     } catch (error) {
       console.error('Error fetching failed questions:', error);
       return [];

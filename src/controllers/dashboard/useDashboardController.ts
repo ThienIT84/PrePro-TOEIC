@@ -35,7 +35,7 @@ export function useDashboardController(userId: string | null, isTeacher: boolean
         setRecentStudentExams(result.recentStudentExams);
       }
     } catch (err: unknown) {
-      setError(err.message);
+      setError((err as any)?.message || 'An error occurred');
     } finally {
       setLoading(false);
     }

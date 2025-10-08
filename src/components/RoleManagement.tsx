@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +71,7 @@ const RoleManagement = () => {
       }
 
       // Transform data to include email
-      const transformedData = data.map(item => ({
+      const transformedData = data.map((item: any) => ({
         id: item.id,
         user_id: item.user_id,
         name: item.name,

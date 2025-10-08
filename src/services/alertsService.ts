@@ -69,7 +69,7 @@ class AlertsService {
 
       return data?.map(alert => ({
         id: alert.id,
-        type: alert.type,
+        type: alert.type as 'success' | 'warning' | 'info' | 'danger',
         title: alert.title,
         message: alert.message,
         student_id: alert.student_id,
@@ -99,7 +99,11 @@ class AlertsService {
         return [];
       }
 
-      return data || [];
+      return data?.map(rule => ({
+        ...rule,
+        type: rule.type as 'success' | 'warning' | 'info' | 'danger',
+        notification_type: rule.notification_type as 'in_app' | 'email' | 'both'
+      })) || [];
     } catch (error) {
       console.error('Error in getAlertRules:', error);
       return [];
@@ -222,7 +226,7 @@ class AlertsService {
   /**
    * Generate alerts based on student data
    */
-  async generateAlerts(teacherId: string, students: unknown[]): Promise<void> {
+  async generateAlerts(teacherId: string, students: any[]): Promise<void> {
     try {
       // Get enabled rules
       const rules = await this.getAlertRules(teacherId);
@@ -250,7 +254,7 @@ class AlertsService {
   /**
    * Check rule and create alert if condition is met
    */
-  private async checkRuleAndCreateAlert(teacherId: string, student: unknown, rule: AlertRule): Promise<void> {
+  private async checkRuleAndCreateAlert(teacherId: string, student: any, rule: AlertRule): Promise<void> {
     try {
       // Ensure student has required fields
       if (!student.id && !student.user_id && !student.student_id) {

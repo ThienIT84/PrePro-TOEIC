@@ -152,7 +152,7 @@ const PassageManager: React.FC = () => {
       setFormData(prev => ({
         ...prev,
         [parent]: {
-          ...(prev[parent as keyof PassageFormData] as unknown),
+          ...(prev[parent as keyof PassageFormData] as any),
           [child]: value
         }
       }));
@@ -238,7 +238,7 @@ const PassageManager: React.FC = () => {
       console.error('Error saving passage:', error);
       toast({
         title: 'Lỗi',
-        description: error.message || 'Không thể lưu đoạn văn',
+        description: (error as any)?.message || 'Không thể lưu đoạn văn',
         variant: 'destructive',
       });
     } finally {
@@ -476,7 +476,7 @@ const PassageManager: React.FC = () => {
       let errorCount = 0;
 
       for (let i = 0; i < jsonData.length; i++) {
-        const row = jsonData[i] as unknown;
+        const row = jsonData[i] as any;
         
         try {
           // Validate required fields
@@ -549,7 +549,7 @@ const PassageManager: React.FC = () => {
       console.error('Error importing passages:', error);
       toast({
         title: 'Import failed',
-        description: error.message || 'Không thể import file Excel',
+        description: (error as any)?.message || 'Không thể import file Excel',
         variant: 'destructive',
       });
     } finally {
