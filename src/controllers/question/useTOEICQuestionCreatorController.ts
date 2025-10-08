@@ -29,19 +29,15 @@ export const useTOEICQuestionCreatorController = () => {
   }, [state.questionData, updateState]);
 
   const handleQuestionSubmit = useCallback(async (data: QuestionCreateData) => {
-    try {
-      const question = await controller.createQuestion(data);
-      
-      // Reset form after successful creation
-      updateState({
-        questionData: controller.getInitialState().questionData,
-        error: null
-      });
-      
-      return question;
-    } catch (error) {
-      throw error;
-    }
+    const question = await controller.createQuestion(data);
+    
+    // Reset form after successful creation
+    updateState({
+      questionData: controller.getInitialState().questionData,
+      error: null
+    });
+    
+    return question;
   }, [controller, updateState]);
 
   // Passage Management
@@ -51,60 +47,44 @@ export const useTOEICQuestionCreatorController = () => {
   }, [state.passageData, updateState]);
 
   const handlePassageSubmit = useCallback(async (data: PassageCreateData) => {
-    try {
-      const passage = await controller.createPassage(data);
-      
-      // Reset form after successful creation
-      updateState({
-        passageData: controller.getInitialState().passageData,
-        error: null
-      });
-      
-      return passage;
-    } catch (error) {
-      throw error;
-    }
+    const passage = await controller.createPassage(data);
+    
+    // Reset form after successful creation
+    updateState({
+      passageData: controller.getInitialState().passageData,
+      error: null
+    });
+    
+    return passage;
   }, [controller, updateState]);
 
   // Load Passages
   const handleLoadPassages = useCallback(async (part: TOEICPart) => {
-    try {
-      const passages = await controller.loadPassages(part);
-      return passages;
-    } catch (error) {
-      throw error;
-    }
+    const passages = await controller.loadPassages(part);
+    return passages;
   }, [controller]);
 
   // File Upload
   const handleAudioUpload = useCallback(async (file: File) => {
-    try {
-      const audioUrl = await controller.uploadAudio(file);
-      
-      // Update question data with audio URL
-      if (state.activeTab === 'question') {
-        handleQuestionDataChange({ audio_url: audioUrl });
-      } else {
-        handlePassageDataChange({ audio_url: audioUrl });
-      }
-      
-      return audioUrl;
-    } catch (error) {
-      throw error;
+    const audioUrl = await controller.uploadAudio(file);
+    
+    // Update question data with audio URL
+    if (state.activeTab === 'question') {
+      handleQuestionDataChange({ audio_url: audioUrl });
+    } else {
+      handlePassageDataChange({ audio_url: audioUrl });
     }
+    
+    return audioUrl;
   }, [controller, state.activeTab, handleQuestionDataChange, handlePassageDataChange]);
 
   const handleImageUpload = useCallback(async (file: File) => {
-    try {
-      const imageUrl = await controller.uploadImage(file);
-      
-      // Update question data with image URL
-      handleQuestionDataChange({ image_url: imageUrl });
-      
-      return imageUrl;
-    } catch (error) {
-      throw error;
-    }
+    const imageUrl = await controller.uploadImage(file);
+    
+    // Update question data with image URL
+    handleQuestionDataChange({ image_url: imageUrl });
+    
+    return imageUrl;
   }, [controller, handleQuestionDataChange]);
 
   // Tag Management
@@ -154,7 +134,7 @@ export const useTOEICQuestionCreatorController = () => {
     if (controller.needsPassage(state.questionData.part)) {
       handleLoadPassages(state.questionData.part).catch(console.error);
     }
-  }, [state.questionData.part, handleLoadPassages]);
+  }, [state.questionData.part, handleLoadPassages, controller]);
 
   return {
     // State

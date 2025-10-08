@@ -7,7 +7,7 @@ import { ControllerFactory } from '@/controllers/ControllerLifecycle';
 
 export class PerformanceTestRunner {
   private static instance: PerformanceTestRunner;
-  private testResults: any[] = [];
+  private testResults: unknown[] = [];
 
   static getInstance(): PerformanceTestRunner {
     if (!PerformanceTestRunner.instance) {
@@ -71,8 +71,8 @@ export class PerformanceTestRunner {
     components.length = 0;
     
     // Force garbage collection
-    if ((window as any).gc) {
-      (window as any).gc();
+    if ((window as unknown).gc) {
+      (window as unknown).gc();
     }
     
     // Test memory after cleanup
@@ -249,7 +249,7 @@ export class PerformanceTestRunner {
   }
 
   // Get test results
-  getTestResults(): any[] {
+  getTestResults(): unknown[] {
     return this.testResults;
   }
 
@@ -297,7 +297,7 @@ ${this.generateRecommendations(latest)}
   }
 
   // Calculate average metrics
-  private calculateAverageMetrics(metrics: any[]): any {
+  private calculateAverageMetrics(metrics: unknown[]): unknown {
     if (metrics.length === 0) return {};
     
     const sum = metrics.reduce((acc, metric) => ({
@@ -319,7 +319,7 @@ ${this.generateRecommendations(latest)}
   }
 
   // Analyze performance
-  private analyzePerformance(latest: any, average: any): string {
+  private analyzePerformance(latest: unknown, average: unknown): string {
     const analysis: string[] = [];
     
     if (latest.memoryUsage > 80) {
@@ -346,7 +346,7 @@ ${this.generateRecommendations(latest)}
   }
 
   // Generate recommendations
-  private generateRecommendations(latest: any): string {
+  private generateRecommendations(latest: unknown): string {
     const recommendations: string[] = [];
     
     if (latest.memoryUsage > 80) {
@@ -379,3 +379,5 @@ ${this.generateRecommendations(latest)}
 
 // Export singleton instance
 export const performanceTestRunner = PerformanceTestRunner.getInstance();
+
+

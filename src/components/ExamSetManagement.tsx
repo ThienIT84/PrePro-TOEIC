@@ -309,7 +309,7 @@ const ExamSetManagement = () => {
               
               <div>
                 <Label htmlFor="difficulty">Độ khó</Label>
-                <Select value={formData.difficulty} onValueChange={(value: any) => setFormData(prev => ({ ...prev, difficulty: value }))}>
+                <Select value={formData.difficulty} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, difficulty: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -323,7 +323,7 @@ const ExamSetManagement = () => {
               
               <div>
                 <Label htmlFor="status">Trạng thái</Label>
-                <Select value={formData.status} onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}>
+                <Select value={formData.status} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, status: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -486,7 +486,7 @@ const ExamSetManagement = () => {
             
             <div>
               <Label htmlFor="edit-difficulty">Độ khó</Label>
-              <Select value={formData.difficulty} onValueChange={(value: any) => setFormData(prev => ({ ...prev, difficulty: value }))}>
+              <Select value={formData.difficulty} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, difficulty: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -500,7 +500,7 @@ const ExamSetManagement = () => {
             
             <div>
               <Label htmlFor="edit-status">Trạng thái</Label>
-              <Select value={formData.status} onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}>
+              <Select value={formData.status} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, status: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

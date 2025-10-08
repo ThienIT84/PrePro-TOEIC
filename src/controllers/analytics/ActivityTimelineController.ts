@@ -270,7 +270,7 @@ export class ActivityTimelineController {
         success: true,
         data: searchFilteredActivities
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -303,8 +303,8 @@ export class ActivityTimelineController {
   /**
    * Group drill sessions by user and date
    */
-  private groupDrillSessions(attempts: any[]): Map<string, any[]> {
-    const drillSessions = new Map<string, any[]>();
+  private groupDrillSessions(attempts: unknown[]): Map<string, unknown[]> {
+    const drillSessions = new Map<string, unknown[]>();
     
     attempts.forEach(attempt => {
       const sessionKey = `${attempt.user_id}_${attempt.created_at.split('T')[0]}`;

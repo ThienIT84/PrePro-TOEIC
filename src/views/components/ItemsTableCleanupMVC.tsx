@@ -68,7 +68,7 @@ const ItemsTableCleanupMVC: React.FC = () => {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorResult = {
         success: false,
         message: "Cleanup thất bại",

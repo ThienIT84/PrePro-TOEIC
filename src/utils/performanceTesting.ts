@@ -98,7 +98,7 @@ export class PerformanceTester {
   }
 
   // Test cache performance
-  testCachePerformance(cache: any, operations: number = 1000): {
+  testCachePerformance(cache: unknown, operations: number = 1000): {
     hitRate: number;
     averageTime: number;
     efficiency: number;
@@ -145,7 +145,7 @@ export class PerformanceTester {
     total: number;
     percentage: number;
   } {
-    const memory = (performance as any).memory;
+    const memory = (performance as unknown).memory;
     if (!memory) {
       return { used: 0, total: 0, percentage: 0 };
     }
@@ -207,7 +207,7 @@ export class PerformanceTester {
 
   // Get memory usage
   private getMemoryUsage(): number {
-    const memory = (performance as any).memory;
+    const memory = (performance as unknown).memory;
     if (!memory) return 0;
     
     return (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
@@ -344,3 +344,5 @@ export const usePerformanceMonitoring = () => {
   
   return metrics;
 };
+
+

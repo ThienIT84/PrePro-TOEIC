@@ -196,7 +196,7 @@ export class ExamManagementDashboardController {
         success: true,
         data: examSetsWithStats
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -247,7 +247,7 @@ export class ExamManagementDashboardController {
         success: true,
         data: statistics
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -270,7 +270,7 @@ export class ExamManagementDashboardController {
       // Refresh exam sets after deletion
       await this.fetchExamSets();
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -295,7 +295,7 @@ export class ExamManagementDashboardController {
       // Refresh exam sets after status change
       await this.fetchExamSets();
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message

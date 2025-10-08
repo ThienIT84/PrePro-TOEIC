@@ -254,7 +254,7 @@ export class ExamReviewController {
     const isListening = part >= 1 && part <= 4;
     const isReading = part >= 5 && part <= 7;
 
-    let skills: string[] = [];
+    const skills: string[] = [];
     if (isListening) {
       skills.push('Listening');
       if (part === 1) skills.push('Visual Description');

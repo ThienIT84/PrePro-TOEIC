@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TOEICQuestionCreatorController, QuestionCreateData, PassageCreateData } from '@/controllers/question/TOEICQuestionCreatorController';
-import { TOEICPart, Difficulty, CorrectChoice, PassageType } from '@/types';
+import { TOEICPart, Difficulty, CorrectChoice, PassageType, Question, Passage } from '@/types';
 import { X, Plus, Upload, FileText, Headphones, BookOpen, Loader2 } from 'lucide-react';
 
 interface TOEICQuestionCreatorViewProps {
@@ -17,7 +17,7 @@ interface TOEICQuestionCreatorViewProps {
   state: {
     questionData: QuestionCreateData;
     passageData: PassageCreateData;
-    passages: any[];
+    passages: Passage[];
     selectedPassageId: string | null;
     loading: boolean;
     error: string | null;
@@ -56,11 +56,11 @@ export const TOEICQuestionCreatorView: React.FC<TOEICQuestionCreatorViewProps> =
   const { questionData, passageData, passages, selectedPassageId, loading, error, activeTab } = state;
 
   // Event Handlers
-  const handleQuestionChange = (field: keyof QuestionCreateData, value: any) => {
+  const handleQuestionChange = (field: keyof QuestionCreateData, value: string | number | { A: string; B: string; C: string; D: string } | CorrectChoice | string[]) => {
     onQuestionDataChange({ [field]: value });
   };
 
-  const handlePassageChange = (field: keyof PassageCreateData, value: any) => {
+  const handlePassageChange = (field: keyof PassageCreateData, value: string | number | TOEICPart | PassageType | { title: string; content: string; additional: string } | { images: string[]; charts: string[] } | { word_count: number; reading_time: number; topic: string }) => {
     onPassageDataChange({ [field]: value });
   };
 

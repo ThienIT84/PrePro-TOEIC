@@ -177,7 +177,7 @@ class TOEICQuestionGenerator {
       }
     }
 
-    // If we have too many questions, trim to target
+    // If we have too munknown questions, trim to target
     if (questions.length > questionCount) {
       questions.splice(questionCount);
       console.log(`✂️ Trimmed to ${questionCount} questions`);
@@ -240,7 +240,7 @@ class TOEICQuestionGenerator {
         .eq('type', dbType)
         .limit(count);
 
-      // If not enough questions with specific difficulty, try any difficulty
+      // If not enough questions with specific difficulty, try unknown difficulty
       if (!error && existingQuestions && existingQuestions.length < count) {
         console.log(`📚 Found only ${existingQuestions.length} questions, trying to get more...`);
         const { data: moreQuestions, error: moreError } = await supabase
@@ -298,7 +298,7 @@ class TOEICQuestionGenerator {
   /**
    * Convert database item to TOEIC question format
    */
-  private convertQuestionToTOEICQuestion(question: any, part: number): TOEICQuestion {
+  private convertQuestionToTOEICQuestion(question: unknown, part: number): TOEICQuestion {
     return {
       id: question.id,
       part,
@@ -453,7 +453,7 @@ class TOEICQuestionGenerator {
       'How long will it take?',
       'What\'s the weather like?',
       'Where did you buy this?',
-      'How many people are coming?',
+      'How munknown people are coming?',
       'What\'s your phone number?',
       'When did you arrive?',
       'How far is the airport?',
@@ -590,7 +590,7 @@ class TOEICQuestionGenerator {
         choices: ['Check the departure board.', 'Go to gate 12.', 'Contact customer service.', 'Wait in the lounge.']
       },
       {
-        context: 'Company meeting about new policies',
+        context: 'Compunknown meeting about new policies',
         question: 'What is the main topic?',
         choices: ['New vacation policy.', 'Office relocation.', 'Salary increases.', 'Health benefits.']
       },
@@ -681,7 +681,7 @@ class TOEICQuestionGenerator {
         correct: 'submit'
       },
       {
-        sentence: 'The company _____ its profits increased this year.',
+        sentence: 'The compunknown _____ its profits increased this year.',
         choices: ['announced', 'announce', 'announcing', 'announcement'],
         correct: 'announced'
       },
@@ -706,7 +706,7 @@ class TOEICQuestionGenerator {
         correct: 'better'
       },
       {
-        sentence: 'Please _____ me know if you have any questions.',
+        sentence: 'Please _____ me know if you have unknown questions.',
         choices: ['let', 'lets', 'letting', 'let\'s'],
         correct: 'let'
       },
@@ -721,7 +721,7 @@ class TOEICQuestionGenerator {
         correct: 'need'
       },
       {
-        sentence: 'The company has _____ many changes recently.',
+        sentence: 'The compunknown has _____ munknown changes recently.',
         choices: ['made', 'make', 'making', 'makes'],
         correct: 'made'
       },
@@ -760,7 +760,7 @@ class TOEICQuestionGenerator {
   private createPart6Question(id: string, index: number, difficulty: 'easy' | 'medium' | 'hard', timestamp: string): TOEICQuestion {
     const texts = [
       {
-        text: 'Dear Mr. Johnson,\n\nThank you for your interest in our company. We have reviewed your application and would like to invite you for an interview. The interview will be held _____ our main office next Tuesday at 2 PM.',
+        text: 'Dear Mr. Johnson,\n\nThank you for your interest in our compunknown. We have reviewed your application and would like to invite you for an interview. The interview will be held _____ our main office next Tuesday at 2 PM.',
         choices: ['at', 'in', 'on', 'for'],
         correct: 'at'
       },
@@ -770,7 +770,7 @@ class TOEICQuestionGenerator {
         correct: 'With'
       },
       {
-        text: 'We are pleased to announce that our company has achieved record sales this quarter. _____ the previous quarter, we have seen a 25% increase in revenue.',
+        text: 'We are pleased to announce that our compunknown has achieved record sales this quarter. _____ the previous quarter, we have seen a 25% increase in revenue.',
         choices: ['Compared to', 'Compared with', 'Comparing to', 'Comparing with'],
         correct: 'Compared to'
       },
@@ -809,7 +809,7 @@ class TOEICQuestionGenerator {
   private createPart7Question(id: string, index: number, difficulty: 'easy' | 'medium' | 'hard', timestamp: string): TOEICQuestion {
     const passages = [
       {
-        text: 'NOTICE\n\nDue to construction work, the parking lot will be closed from Monday, March 15th to Friday, March 19th. Alternative parking is available at the shopping center across the street. We apologize for any inconvenience.',
+        text: 'NOTICE\n\nDue to construction work, the parking lot will be closed from Monday, March 15th to Friday, March 19th. Alternative parking is available at the shopping center across the street. We apologize for unknown inconvenience.',
         question: 'What is the purpose of this notice?',
         choices: ['To inform about parking changes.', 'To announce new construction.', 'To advertise a shopping center.', 'To apologize for delays.'],
         correct: 'A'
@@ -833,7 +833,7 @@ class TOEICQuestionGenerator {
         correct: 'B'
       },
       {
-        text: 'JOB POSTING\n\nPosition: Marketing Coordinator\nLocation: New York\nRequirements: Bachelor\'s degree, 2 years experience, excellent communication skills\nSalary: $45,000 - $55,000\n\nPlease send your resume and cover letter to hr@company.com',
+        text: 'JOB POSTING\n\nPosition: Marketing Coordinator\nLocation: New York\nRequirements: Bachelor\'s degree, 2 years experience, excellent communication skills\nSalary: $45,000 - $55,000\n\nPlease send your resume and cover letter to hr@compunknown.com',
         question: 'What is required for this position?',
         choices: ['Master\'s degree.', '5 years experience.', 'Bachelor\'s degree.', 'Previous marketing experience.'],
         correct: 'C'

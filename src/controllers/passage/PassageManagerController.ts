@@ -396,7 +396,7 @@ export class PassageManagerController {
       
       // Skip header row
       for (let i = 1; i < jsonData.length; i++) {
-        const row = jsonData[i] as any[];
+        const row = jsonData[i] as unknown[];
         if (row.length === 0) continue;
 
         const passage: PassageFormData = {

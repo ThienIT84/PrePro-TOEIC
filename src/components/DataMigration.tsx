@@ -11,7 +11,7 @@ const DataMigration: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [migrating, setMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<any>(null);
+  const [migrationResult, setMigrationResult] = useState<unknown>(null);
 
   const migrateData = async () => {
     if (!user) {
@@ -102,7 +102,7 @@ const DataMigration: React.FC = () => {
         description: `Đã chuyển ${itemsData.length} câu hỏi từ items sang questions`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Migration error:', error);
       setMigrationResult({
         success: false,
@@ -137,7 +137,7 @@ const DataMigration: React.FC = () => {
         description: `Items: ${itemsData?.[0]?.count || 0}, Questions: ${questionsData?.[0]?.count || 0}`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi kiểm tra",
         description: error.message,

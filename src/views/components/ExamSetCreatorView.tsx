@@ -64,7 +64,7 @@ export interface ExamSetCreatorViewProps {
   // Handlers
   onActiveTabChange: (tab: string) => void;
   onFormDataChange: (updates: Partial<ExamSetCreatorViewProps['formData']>) => void;
-  onPartConfigUpdate: (partNumber: number, field: string, value: any) => void;
+  onPartConfigUpdate: (partNumber: number, field: string, value: unknown) => void;
   onAddQuestionsToPart: (partNumber: number, questionIds: string[]) => void;
   onRemoveQuestionFromPart: (partNumber: number, questionId: string) => void;
   onAutoAssignQuestions: () => void;
@@ -240,7 +240,7 @@ export const ExamSetCreatorView: React.FC<ExamSetCreatorViewProps> = ({
                   <Label htmlFor="type">Exam Type</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value: any) => onFormDataChange({ type: value })}
+                    onValueChange={(value: unknown) => onFormDataChange({ type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -270,7 +270,7 @@ export const ExamSetCreatorView: React.FC<ExamSetCreatorViewProps> = ({
                   <Label htmlFor="difficulty">Difficulty Level</Label>
                   <Select 
                     value={formData.difficulty} 
-                    onValueChange={(value: any) => onFormDataChange({ difficulty: value })}
+                    onValueChange={(value: unknown) => onFormDataChange({ difficulty: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -307,7 +307,7 @@ export const ExamSetCreatorView: React.FC<ExamSetCreatorViewProps> = ({
                   <Label htmlFor="status">Status</Label>
                   <Select 
                     value={formData.status} 
-                    onValueChange={(value: any) => onFormDataChange({ status: value })}
+                    onValueChange={(value: unknown) => onFormDataChange({ status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />

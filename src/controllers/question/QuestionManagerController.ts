@@ -168,7 +168,7 @@ export class QuestionManagerController {
       this.setState({ questions });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching questions:', error);
       this.setState({ errors: ['Không thể tải danh sách câu hỏi'] });
       return {
@@ -196,7 +196,7 @@ export class QuestionManagerController {
       });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting question:', error);
       return {
         success: false,
@@ -234,7 +234,7 @@ export class QuestionManagerController {
         success: true, 
         count: this.state.selectedQuestions.length 
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting questions:', error);
       return {
         success: false,

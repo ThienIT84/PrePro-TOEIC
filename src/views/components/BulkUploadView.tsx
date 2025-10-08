@@ -26,7 +26,7 @@ import { TOEICQuestion } from '@/controllers/upload/BulkUploadController';
 export interface BulkUploadViewProps {
   // State
   questions: TOEICQuestion[];
-  passages: any[];
+  passages: unknown[];
   loading: boolean;
   importing: boolean;
   progress: number;
@@ -52,7 +52,7 @@ export interface BulkUploadViewProps {
   getPartColor: (part: number) => string;
   usesIndividualAudio: (part: number) => boolean;
   usesPassageAudio: (part: number) => boolean;
-  getToeicPartInfo: () => any;
+  getToeicPartInfo: () => unknown;
   getQuestion: (index: number) => TOEICQuestion | null;
   getQuestionsByPart: (part: number) => TOEICQuestion[];
   getQuestionsByStatus: (status: 'pending' | 'valid' | 'invalid' | 'imported') => TOEICQuestion[];
@@ -152,7 +152,7 @@ export const BulkUploadView: React.FC<BulkUploadViewProps> = ({
 
             {/* TOEIC Parts Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(toeicPartInfo).map(([part, info]: [string, any]) => (
+              {Object.entries(toeicPartInfo).map(([part, info]: [string, unknown]) => (
                 <Card key={part} className="border-l-4 border-l-primary">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">

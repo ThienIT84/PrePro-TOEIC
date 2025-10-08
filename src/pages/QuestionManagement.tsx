@@ -106,7 +106,7 @@ const QuestionManagement = () => {
 
       // Refresh data to ensure consistency
       fetchQuestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting question:', error);
       toast({
         title: 'Lỗi',
@@ -139,7 +139,7 @@ const QuestionManagement = () => {
 
       setSelectedQuestions([]);
       fetchQuestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting questions:', error);
       toast({
         title: 'Lỗi',
@@ -211,7 +211,7 @@ const QuestionManagement = () => {
       });
 
       fetchQuestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,
@@ -257,7 +257,7 @@ const QuestionManagement = () => {
         description: `Tìm thấy ${sampleQuestions.length} câu hỏi sample. Đã chọn để xóa.`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,

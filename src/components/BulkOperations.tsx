@@ -74,7 +74,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      const parsedQuestions: BulkQuestion[] = jsonData.map((row: any, index: number) => {
+      const parsedQuestions: BulkQuestion[] = jsonData.map((row: unknown, index: number) => {
         const question: BulkQuestion = {
           type: row.type || 'vocab',
           question: row.question || '',
@@ -116,7 +116,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         description: `${validCount} valid questions, ${invalidCount} invalid questions`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -187,7 +187,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
 
       onQuestionsImported?.(importedCount);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Import failed",
         description: error.message,
@@ -235,7 +235,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         description: `${data.length} questions exported to Excel file`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Export failed",
         description: error.message,

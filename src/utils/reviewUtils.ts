@@ -55,7 +55,7 @@ export const createReviewsForQuestions = async (
 export const updateReview = async (
   reviewId: string,
   quality: 'again' | 'hard' | 'good' | 'easy',
-  currentReview: any
+  currentReview: unknown
 ): Promise<void> => {
   try {
     let newInterval = currentReview.interval_days;
@@ -139,7 +139,7 @@ export const getReviewStats = async (userId: string) => {
     let streak = 0;
     if (allReviews && allReviews.length > 0) {
       const today = new Date();
-      let currentDate = new Date(today);
+      const currentDate = new Date(today);
       
       for (let i = 0; i < 30; i++) { // Check last 30 days
         const dateStr = currentDate.toISOString().split('T')[0];

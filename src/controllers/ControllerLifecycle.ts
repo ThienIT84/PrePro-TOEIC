@@ -10,7 +10,7 @@ export interface ControllerLifecycle {
 
 export interface ControllerPool {
   id: string;
-  controller: any;
+  controller: unknown;
   lastUsed: number;
   accessCount: number;
   isActive: boolean;
@@ -32,7 +32,7 @@ export class ControllerLifecycleManager {
   }
 
   // Register controller in pool
-  registerController(id: string, controller: any): void {
+  registerController(id: string, controller: unknown): void {
     const poolItem: ControllerPool = {
       id,
       controller,
@@ -46,7 +46,7 @@ export class ControllerLifecycleManager {
   }
 
   // Get controller from pool
-  getController(id: string): any | null {
+  getController(id: string): unknown | null {
     const poolItem = this.controllerPool.get(id);
     
     if (!poolItem) {
@@ -198,10 +198,10 @@ export class ControllerFactory {
   }
 
   // Create controller with lifecycle management
-  createController<T extends new (...args: any[]) => any>(
+  createController<T extends new (...args: unknown[]) => unknown>(
     ControllerClass: T,
     id: string,
-    ...args: any[]
+    ...args: unknown[]
   ): InstanceType<T> {
     // Check if controller already exists in pool
     const existingController = this.lifecycleManager.getController(id);
@@ -231,10 +231,10 @@ export class ControllerFactory {
   }
 
   // Get or create controller
-  getOrCreateController<T extends new (...args: any[]) => any>(
+  getOrCreateController<T extends new (...args: unknown[]) => unknown>(
     ControllerClass: T,
     id: string,
-    ...args: any[]
+    ...args: unknown[]
   ): InstanceType<T> {
     const existingController = this.lifecycleManager.getController(id);
     if (existingController) {
@@ -266,7 +266,7 @@ export class ControllerFactory {
 }
 
 // Controller middleware for lifecycle management
-export function withLifecycle<T extends new (...args: any[]) => any>(
+export function withLifecycle<T extends new (...args: unknown[]) => unknown>(
   ControllerClass: T
 ): T {
   return class extends ControllerClass implements ControllerLifecycle {
@@ -274,7 +274,7 @@ export function withLifecycle<T extends new (...args: any[]) => any>(
     private _isDestroyed = false;
     private _isPaused = false;
 
-    constructor(...args: any[]) {
+    constructor(...args: unknown[]) {
       super(...args);
     }
 
@@ -324,7 +324,7 @@ export function withLifecycle<T extends new (...args: any[]) => any>(
 // Controller monitoring
 export class ControllerMonitor {
   private static instance: ControllerMonitor;
-  private metrics = new Map<string, any>();
+  private metrics = new Map<string, unknown>();
   private monitoringInterval = 30000; // 30 seconds
   private intervalId: NodeJS.Timeout | null = null;
 
@@ -367,7 +367,7 @@ export class ControllerMonitor {
   }
 
   // Get metrics
-  getMetrics(): any {
+  getMetrics(): unknown {
     return Object.fromEntries(this.metrics);
   }
 
@@ -391,3 +391,5 @@ export const initializeControllerLifecycle = () => {
     monitor.stop();
   });
 };
+
+

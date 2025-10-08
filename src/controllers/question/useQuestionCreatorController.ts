@@ -18,7 +18,7 @@ export function useQuestionCreatorController() {
   }, [controller]);
 
   // Question handlers
-  const handleQuestionChange = useCallback((field: string, value: any) => {
+  const handleQuestionChange = useCallback((field: string, value: unknown) => {
     controller.handleQuestionChange(field, value);
   }, [controller]);
 
@@ -26,7 +26,7 @@ export function useQuestionCreatorController() {
     controller.handleChoiceChange(choice, value);
   }, [controller]);
 
-  const handlePassageChange = useCallback((field: string, value: any) => {
+  const handlePassageChange = useCallback((field: string, value: unknown) => {
     controller.handlePassageChange(field, value);
   }, [controller]);
 

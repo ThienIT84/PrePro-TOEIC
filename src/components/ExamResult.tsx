@@ -30,7 +30,7 @@ interface ExamResult {
   time_spent: number;
   completed_at: string;
   questions: QuestionResult[];
-  results?: any;
+  results?: unknown;
 }
 
 interface QuestionResult {
@@ -108,12 +108,12 @@ const ExamResult = () => {
           .select('question_id, user_answer, is_correct, time_spent')
           .eq('session_id', sessionId);
 
-        let passageMap: Record<string, any> = {};
+        const passageMap: Record<string, unknown> = {};
 
         if (!attemptsError) {
           const qids = attemptsData.map(a => a.question_id);
           // Merge served questions from session.results (so we can include unanswered)
-          const served = (sessionData as any)?.results?.served_question_ids as string[] | undefined;
+          const served = (sessionData as unknown)?.results?.served_question_ids as string[] | undefined;
           const allIds = Array.from(new Set([...(served || []), ...qids]));
            const { data: qs, error: qErr } = await supabase
              .from('questions')
@@ -123,9 +123,9 @@ const ExamResult = () => {
             console.error('Questions query error:', qErr);
           } else {
             // Merge question details
-            const map: Record<string, any> = {};
+            const map: Record<string, unknown> = {};
             (qs || []).forEach(q => { map[q.id] = q; });
-            attemptsData.forEach(a => { (a as any).question_detail = map[a.question_id]; });
+            attemptsData.forEach(a => { (a as unknown).question_detail = map[a.question_id]; });
 
             // Get passage data for questions with passage_id
             const passageIds = [...new Set((qs || []).map(q => q.passage_id).filter(Boolean))];
@@ -136,7 +136,7 @@ const ExamResult = () => {
                 .in('id', passageIds);
               
               if (!passageError && passages) {
-                passages.forEach((p: any) => {
+                passages.forEach((p: unknown) => {
                   passageMap[p.id] = {
                     audio_url: p.audio_url,
                     image_url: p.image_url,
@@ -157,7 +157,7 @@ const ExamResult = () => {
                   is_correct: false,
                   time_spent: 0,
                   question_detail: map[id]
-                } as any);
+                } as unknown);
               });
             }
           }
@@ -171,15 +171,15 @@ const ExamResult = () => {
 
         // Transform data
         const transformedResult = {
-          session_id: (sessionData as any).id,
-          exam_set_name: (sessionData as any).exam_sets?.title || 'Bài thi',
-          total_questions: (sessionData as any).total_questions,
-          correct_answers: (sessionData as any).correct_answers,
-          score: (sessionData as any).score,
-          time_spent: (sessionData as any).time_spent,
-          completed_at: (sessionData as any).completed_at,
+          session_id: (sessionData as unknown).id,
+          exam_set_name: (sessionData as unknown).exam_sets?.title || 'Bài thi',
+          total_questions: (sessionData as unknown).total_questions,
+          correct_answers: (sessionData as unknown).correct_answers,
+          score: (sessionData as unknown).score,
+          time_spent: (sessionData as unknown).time_spent,
+          completed_at: (sessionData as unknown).completed_at,
           questions: (attemptsData || []).map(attempt => {
-            const questionDetail = (attempt as any).question_detail;
+            const questionDetail = (attempt as unknown).question_detail;
             const passageId = questionDetail?.passage_id;
             const passageData = passageId ? passageMap[passageId] : null;
             

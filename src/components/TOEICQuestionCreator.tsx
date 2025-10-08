@@ -60,7 +60,7 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
   });
 
   const [newTag, setNewTag] = useState('');
-  const [passages, setPassages] = useState<any[]>([]);
+  const [passages, setPassages] = useState<unknown[]>([]);
   const [selectedPassageId, setSelectedPassageId] = useState<string | null>(null);
 
   // Load passages when part changes
@@ -85,7 +85,7 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
     }
   };
 
-  const handleQuestionChange = (field: string, value: any) => {
+  const handleQuestionChange = (field: string, value: unknown) => {
     setQuestionData(prev => {
       const newData = {
         ...prev,
@@ -112,7 +112,7 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
     }));
   };
 
-  const handlePassageChange = (field: string, value: any) => {
+  const handlePassageChange = (field: string, value: unknown) => {
     setPassageData(prev => ({
       ...prev,
       [field]: value

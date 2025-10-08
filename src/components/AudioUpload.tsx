@@ -98,7 +98,7 @@ const AudioUpload: React.FC<AudioUploadProps> = ({
       // Check if we've reached max files
       if (files.length + newFiles.length >= maxFiles) {
         toast({
-          title: "Too many files",
+          title: "Too munknown files",
           description: `Maximum ${maxFiles} files allowed`,
           variant: "destructive",
         });

@@ -95,7 +95,7 @@ const ActivityTimelineMVC: React.FC<ActivityTimelineMVCProps> = ({
           variant: 'destructive'
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!silent) {
         toast({
           title: 'Lỗi',

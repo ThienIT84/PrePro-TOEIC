@@ -58,15 +58,15 @@ export interface QuestionManagerViewProps {
   // Utility functions
   getFilteredQuestions: () => Question[];
   getQuestionById: (questionId: string) => Question | null;
-  getPartInfo: (part: number) => any;
+  getPartInfo: (part: number) => unknown;
   getQuestionAudioUrl: (question: Question) => string | null;
   getAudioSourceDescription: (question: Question) => string;
-  getStatistics: () => any;
+  getStatistics: () => unknown;
   isQuestionSelected: (questionId: string) => boolean;
   areAllFilteredQuestionsSelected: () => boolean;
-  getToeicPartInfo: () => any;
-  getDifficultyColors: () => any;
-  getStatusColors: () => any;
+  getToeicPartInfo: () => unknown;
+  getDifficultyColors: () => unknown;
+  getStatusColors: () => unknown;
 
   // Props
   className?: string;
@@ -155,7 +155,7 @@ export const QuestionManagerView: React.FC<QuestionManagerViewProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  {Object.entries(toeicPartInfo).map(([part, info]: [string, any]) => (
+                  {Object.entries(toeicPartInfo).map(([part, info]: [string, unknown]) => (
                     <SelectItem key={part} value={part}>
                       {info.icon} {info.name}
                     </SelectItem>

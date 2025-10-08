@@ -28,10 +28,10 @@ interface ExamReviewViewProps {
   controller: ExamReviewController;
   state: {
   examSession: ExamSession | null;
-    examSet: any;
+    examSet: unknown;
   questions: Question[];
     questionReviews: QuestionReview[];
-    userAnswers: Record<string, any>;
+    userAnswers: Record<string, unknown>;
     currentQuestionIndex: number;
   loading: boolean;
   error: string | null;

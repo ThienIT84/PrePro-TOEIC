@@ -254,7 +254,7 @@ export class StudentExamResultsController {
       this.setStudentStats(stats);
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error:', error);
       this.setError('Có lỗi xảy ra khi tải dữ liệu');
       return { success: false, error: 'Có lỗi xảy ra khi tải dữ liệu' };

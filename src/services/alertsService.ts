@@ -222,7 +222,7 @@ class AlertsService {
   /**
    * Generate alerts based on student data
    */
-  async generateAlerts(teacherId: string, students: any[]): Promise<void> {
+  async generateAlerts(teacherId: string, students: unknown[]): Promise<void> {
     try {
       // Get enabled rules
       const rules = await this.getAlertRules(teacherId);
@@ -250,7 +250,7 @@ class AlertsService {
   /**
    * Check rule and create alert if condition is met
    */
-  private async checkRuleAndCreateAlert(teacherId: string, student: any, rule: AlertRule): Promise<void> {
+  private async checkRuleAndCreateAlert(teacherId: string, student: unknown, rule: AlertRule): Promise<void> {
     try {
       // Ensure student has required fields
       if (!student.id && !student.user_id && !student.student_id) {
@@ -267,7 +267,7 @@ class AlertsService {
       console.log(`Student data: avg_score=${student.avg_score}, completion_rate=${student.completion_rate}, streak_days=${student.streak_days}, last_activity=${student.last_activity}`);
 
       switch (rule.condition) {
-        case 'inactive_days':
+        case 'inactive_days': {
           const lastActivity = new Date(student.last_activity);
           const daysSinceActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
           console.log(`Inactive days check: ${daysSinceActivity} days since last activity, threshold: ${rule.threshold}`);
@@ -278,6 +278,7 @@ class AlertsService {
             console.log(`✅ Inactive alert triggered: ${daysSinceActivity} > ${rule.threshold}`);
           }
           break;
+        }
 
         case 'score_below':
           console.log(`Score below check: ${student.avg_score} < ${rule.threshold}?`);

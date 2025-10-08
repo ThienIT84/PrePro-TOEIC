@@ -172,7 +172,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
       });
 
       // Add drill activities (grouped by session)
-      const drillSessions = new Map<string, any[]>();
+      const drillSessions = new Map<string, unknown[]>();
       attempts?.forEach(attempt => {
         const sessionKey = `${attempt.user_id}_${attempt.created_at.split('T')[0]}`;
         if (!drillSessions.has(sessionKey)) {
@@ -328,7 +328,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
             <Filter className="h-4 w-4" />
             <Select
               value={filter.type}
-              onValueChange={(value) => setFilter(prev => ({ ...prev, type: value as any }))}
+              onValueChange={(value) => setFilter(prev => ({ ...prev, type: value as unknown }))}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -347,7 +347,7 @@ const EnhancedActivityTimeline = ({ studentIds, refreshTrigger }: EnhancedActivi
             <Calendar className="h-4 w-4" />
             <Select
               value={filter.timeRange}
-              onValueChange={(value) => setFilter(prev => ({ ...prev, timeRange: value as any }))}
+              onValueChange={(value) => setFilter(prev => ({ ...prev, timeRange: value as unknown }))}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />

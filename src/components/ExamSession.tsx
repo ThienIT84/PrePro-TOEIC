@@ -46,8 +46,8 @@ type PassageLite = {
 const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const selectedParts: number[] | undefined = (location.state as any)?.parts;
-  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
+  const selectedParts: number[] | undefined = (location.state as unknown)?.parts;
+  const timeMode: TimeMode = (location.state as unknown)?.timeMode || 'standard';
   const { toast } = useToast();
   
   const [examSet, setExamSet] = useState<ExamSet | null>(null);
@@ -128,8 +128,8 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         }
 
       // Determine policy
-      const allowMultiple = (setRow as any)?.allow_multiple_attempts;
-      const maxAttempts = (setRow as any)?.max_attempts ?? (setRow as any)?.attempt_limit;
+      const allowMultiple = (setRow as unknown)?.allow_multiple_attempts;
+      const maxAttempts = (setRow as unknown)?.max_attempts ?? (setRow as unknown)?.attempt_limit;
       
       console.log('setRow data:', setRow);
       console.log('allowMultiple from DB:', allowMultiple);
@@ -222,14 +222,14 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
       // Order questions by order_index mapping
       const idToQuestion: Record<string, Question> = {};
-      (questionRows || []).forEach((q: any) => { idToQuestion[q.id] = q as Question; });
+      (questionRows || []).forEach((q: unknown) => { idToQuestion[q.id] = q as Question; });
       let orderedQuestions = examQRows
         .map(r => idToQuestion[r.question_id])
         .filter(Boolean) as Question[];
 
       // If user chose specific parts within this exam set, filter accordingly
       if (selectedParts && selectedParts.length > 0) {
-        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as any));
+        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as unknown));
       }
 
       // Load passages for questions that need them (3,4,6,7)
@@ -239,7 +239,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
           .filter((id): id is string => Boolean(id))
       ));
 
-      let map: Record<string, PassageLite> = {};
+      const map: Record<string, PassageLite> = {};
       if (passageIds.length > 0) {
         const { data: passages, error: pErr } = await supabase
           .from('passages')
@@ -248,7 +248,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         if (pErr) {
           console.error('Error fetching passages:', pErr);
         } else {
-          (passages || []).forEach((p: any) => {
+          (passages || []).forEach((p: unknown) => {
             map[p.id] = {
               id: p.id,
               texts: p.texts || null,
@@ -352,7 +352,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         if (answer) {
           // Compare with TOEIC question field 'correct_choice'
           // Fallback to 'answer' if present (legacy)
-          const correct = (question as any).correct_choice || (question as any).answer;
+          const correct = (question as unknown).correct_choice || (question as unknown).answer;
           answer.isCorrect = answer.answer === correct;
           finalAnswers.set(question.id, answer);
         }
@@ -789,7 +789,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
             {currentQuestion.part !== 1 && currentQuestion.part !== 2 && (
               <div>
                 <h2 className="text-lg font-medium mb-4">
-                  {currentQuestion.prompt_text || (currentQuestion as any).question}
+                  {currentQuestion.prompt_text || (currentQuestion as unknown).question}
                 </h2>
               </div>
             )}

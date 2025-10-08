@@ -28,14 +28,14 @@ interface DashboardViewProps {
   analytics: Analytics | null;
   reviewCount: number;
   examSets: ExamSet[];
-  recentStudentExams: any[];
+  recentStudentExams: unknown[];
   
   // Loading state
   loading: boolean;
   error: string | null;
   
   // Computed values
-  toeicParts: any[];
+  toeicParts: unknown[];
   teacherStats: {
     totalExamSets: number;
     totalStudents: number;
@@ -50,8 +50,8 @@ interface DashboardViewProps {
   };
   
   // User info
-  user: any;
-  profile: any;
+  user: unknown;
+  profile: unknown;
   isTeacher: boolean;
   
   // Actions

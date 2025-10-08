@@ -41,7 +41,7 @@ export function useExamSetCreatorController() {
   }, [controller]);
 
   // Exam parts handlers
-  const updatePartConfig = useCallback((partNumber: number, field: keyof any, value: any) => {
+  const updatePartConfig = useCallback((partNumber: number, field: keyof unknown, value: unknown) => {
     controller.updatePartConfig(partNumber, field, value);
   }, [controller]);
 

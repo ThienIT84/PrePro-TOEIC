@@ -1,7 +1,12 @@
-import { lazy, ComponentType } from 'react';
+import React, { lazy, ComponentType } from 'react';
+
+// Simple ErrorBoundary component
+const ErrorBoundary = ({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) => {
+  return <>{children}</>;
+};
 
 // Lazy loading utilities for MVC components
-export const createLazyController = <T extends ComponentType<any>>(
+export const createLazyController = <T extends ComponentType<unknown>>(
   importFn: () => Promise<{ default: T }>
 ) => {
   return lazy(importFn);
@@ -114,7 +119,7 @@ export const LazyDashboard = createLazyController(
 );
 
 // Utility function to preload components
-export const preloadComponent = (importFn: () => Promise<any>) => {
+export const preloadComponent = (importFn: () => Promise<unknown>) => {
   return () => {
     importFn();
   };
@@ -128,13 +133,13 @@ export const preloadCriticalComponents = () => {
 };
 
 // Lazy loading with error boundary
-export const createLazyWithErrorBoundary = <T extends ComponentType<any>>(
+export const createLazyWithErrorBoundary = <T extends ComponentType<Record<string, unknown>>>(
   importFn: () => Promise<{ default: T }>,
-  fallback?: ComponentType<any>
+  fallback?: ComponentType<Record<string, unknown>>
 ) => {
   const LazyComponent = lazy(importFn);
   
-  return (props: any) => {
+  return (props: Record<string, unknown>) => {
     const FallbackComponent = fallback || (() => <div>Loading...</div>);
     
     return (
@@ -147,19 +152,19 @@ export const createLazyWithErrorBoundary = <T extends ComponentType<any>>(
 
 // Simple Error Boundary for lazy loading
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback: React.ComponentType<any> },
+  { children: React.ReactNode; fallback: React.ComponentType<unknown> },
   { hasError: boolean }
 > {
-  constructor(props: any) {
+  constructor(props: unknown) {
     super(props);
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: unknown) {
     return { hasError: true };
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: unknown, errorInfo: unknown) {
     console.error('Lazy loading error:', error, errorInfo);
   }
 

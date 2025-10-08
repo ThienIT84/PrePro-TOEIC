@@ -21,7 +21,7 @@ import { CacheService } from '@/services/cache/CacheService';
 const PerformanceDashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<PerformanceMetrics[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [cacheStats, setCacheStats] = useState<any>(null);
+  const [cacheStats, setCacheStats] = useState<unknown>(null);
 
   // Update metrics every 5 seconds
   useEffect(() => {
@@ -235,7 +235,7 @@ const PerformanceDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.entries(cacheStats).map(([name, stats]: [string, any]) => (
+              {Object.entries(cacheStats).map(([name, stats]: [string, unknown]) => (
                 <div key={name} className="space-y-2">
                   <h4 className="font-medium capitalize">{name} Cache</h4>
                   <div className="space-y-1 text-sm">
@@ -320,3 +320,5 @@ const PerformanceDashboard: React.FC = () => {
 };
 
 export default PerformanceDashboard;
+
+

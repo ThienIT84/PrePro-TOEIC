@@ -26,8 +26,8 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
   
   // Get examSetId from props or params
   const examSetId = propExamSetId || params.examSetId;
-  const selectedParts: number[] | undefined = (location.state as any)?.parts;
-  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
+  const selectedParts: number[] | undefined = (location.state as unknown)?.parts;
+  const timeMode: TimeMode = (location.state as unknown)?.timeMode || 'standard';
 
   // Use exam session controller
   const {
@@ -118,8 +118,8 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
       }
 
       // Determine policy
-      const allowMultiple = (setRow as any)?.allow_multiple_attempts;
-      const maxAttempts = (setRow as any)?.max_attempts ?? (setRow as any)?.attempt_limit;
+      const allowMultiple = (setRow as unknown)?.allow_multiple_attempts;
+      const maxAttempts = (setRow as unknown)?.max_attempts ?? (setRow as unknown)?.attempt_limit;
 
       let completed = false;
       if (typeof maxAttempts === 'number') {
@@ -205,14 +205,14 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
 
       // Order questions by order_index mapping
       const idToQuestion: Record<string, Question> = {};
-      (questionRows || []).forEach((q: any) => { idToQuestion[q.id] = q as Question; });
+      (questionRows || []).forEach((q: unknown) => { idToQuestion[q.id] = q as Question; });
       let orderedQuestions = examQRows
         .map(r => idToQuestion[r.question_id])
         .filter(Boolean) as Question[];
 
       // Filter by selected parts if provided
       if (selectedParts && selectedParts.length > 0) {
-        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as any));
+        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as unknown));
       }
 
       // Load passages for questions that need them
@@ -222,7 +222,7 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
           .filter((id): id is string => Boolean(id))
       ));
 
-      let passageMap: Record<string, PassageLite> = {};
+      const passageMap: Record<string, PassageLite> = {};
       if (passageIds.length > 0) {
         const { data: passages, error: pErr } = await supabase
           .from('passages')
@@ -231,7 +231,7 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
         if (pErr) {
           console.error('Error fetching passages:', pErr);
         } else {
-          (passages || []).forEach((p: any) => {
+          (passages || []).forEach((p: unknown) => {
             passageMap[p.id] = {
               id: p.id,
               texts: p.texts || null,
@@ -298,7 +298,7 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
       questions.forEach(question => {
         const answer = finalAnswers.get(question.id);
         if (answer) {
-          const correct = (question as any).correct_choice || (question as any).answer;
+          const correct = (question as unknown).correct_choice || (question as unknown).answer;
           answer.isCorrect = answer.answer === correct;
           finalAnswers.set(question.id, answer);
         }

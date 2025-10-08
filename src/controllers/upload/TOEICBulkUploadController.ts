@@ -262,7 +262,7 @@ export class TOEICBulkUploadController {
           result.failed++;
           result.errors.push({
             row: i + 1,
-            question: passages[i] as any,
+            question: passages[i] as unknown,
             error: error.message
           });
         }
@@ -413,7 +413,7 @@ export class TOEICBulkUploadController {
   }
 
   // Sheet Parsing
-  private parseQuestionsFromSheet(data: any[][]): TOEICQuestion[] {
+  private parseQuestionsFromSheet(data: unknown[][]): TOEICQuestion[] {
     if (data.length < 2) return [];
 
     const headers = data[0];
@@ -452,7 +452,7 @@ export class TOEICBulkUploadController {
     return questions;
   }
 
-  private parsePassagesFromSheet(data: any[][]): TOEICPassage[] {
+  private parsePassagesFromSheet(data: unknown[][]): TOEICPassage[] {
     if (data.length < 2) return [];
 
     const headers = data[0];
@@ -531,3 +531,5 @@ export class TOEICBulkUploadController {
     return partInfo[part];
   }
 }
+
+

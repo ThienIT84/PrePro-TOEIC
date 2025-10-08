@@ -73,7 +73,7 @@ const ExamHistory = () => {
       }
 
       setExams(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error:', err);
       setError('Có lỗi xảy ra khi tải dữ liệu');
     } finally {

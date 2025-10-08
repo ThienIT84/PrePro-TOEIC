@@ -1,7 +1,7 @@
 import { QuestionService } from '@/services/domains/QuestionService';
 import { FileService } from '@/services/domains/FileService';
 import { PassageService } from '@/services/domains/PassageService';
-import { TOEICPart, Difficulty, CorrectChoice, PassageType } from '@/types';
+import { TOEICPart, Difficulty, CorrectChoice, PassageType, Question, Passage } from '@/types';
 
 export interface QuestionCreateData {
   part: TOEICPart;
@@ -47,7 +47,7 @@ export interface ValidationResult {
 export interface TOEICQuestionCreatorState {
   questionData: QuestionCreateData;
   passageData: PassageCreateData;
-  passages: any[];
+  passages: Passage[];
   selectedPassageId: string | null;
   loading: boolean;
   error: string | null;
@@ -109,7 +109,7 @@ export class TOEICQuestionCreatorController {
   }
 
   // Question Management
-  async createQuestion(data: QuestionCreateData): Promise<any> {
+  async createQuestion(data: QuestionCreateData): Promise<Question> {
     try {
       this.updateState({ loading: true, error: null });
 
@@ -133,7 +133,7 @@ export class TOEICQuestionCreatorController {
     }
   }
 
-  async updateQuestion(id: string, data: Partial<QuestionCreateData>): Promise<any> {
+  async updateQuestion(id: string, data: Partial<QuestionCreateData>): Promise<Question> {
     try {
       this.updateState({ loading: true, error: null });
 
@@ -151,7 +151,7 @@ export class TOEICQuestionCreatorController {
   }
 
   // Passage Management
-  async createPassage(data: PassageCreateData): Promise<any> {
+  async createPassage(data: PassageCreateData): Promise<Passage> {
     try {
       this.updateState({ loading: true, error: null });
 
@@ -175,7 +175,7 @@ export class TOEICQuestionCreatorController {
     }
   }
 
-  async loadPassages(part: TOEICPart): Promise<any[]> {
+  async loadPassages(part: TOEICPart): Promise<Passage[]> {
     try {
       this.updateState({ loading: true, error: null });
 

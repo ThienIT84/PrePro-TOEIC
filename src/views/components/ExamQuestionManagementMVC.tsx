@@ -91,7 +91,7 @@ const ExamQuestionManagementMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,
@@ -124,7 +124,7 @@ const ExamQuestionManagementMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,
@@ -154,7 +154,7 @@ const ExamQuestionManagementMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,
@@ -180,7 +180,7 @@ const ExamQuestionManagementMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,
@@ -212,7 +212,7 @@ const ExamQuestionManagementMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
         description: error.message,

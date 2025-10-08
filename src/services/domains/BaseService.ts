@@ -13,9 +13,9 @@ export abstract class BaseService {
   protected async fetchData<T>(
     table: string,
     select: string = '*',
-    filters?: Record<string, any>,
+    filters?: Record<string, unknown>,
     orderBy?: { column: string; ascending?: boolean }
-  ): Promise<{ data: T[] | null; error: any }> {
+  ): Promise<{ data: T[] | null; error: unknown }> {
     try {
       let query = this.supabase.from(table).select(select);
 
@@ -51,7 +51,7 @@ export abstract class BaseService {
   protected async insertData<T>(
     table: string,
     data: Partial<T>
-  ): Promise<{ data: T | null; error: any }> {
+  ): Promise<{ data: T | null; error: unknown }> {
     try {
       const { data: result, error } = await this.supabase
         .from(table)
@@ -73,7 +73,7 @@ export abstract class BaseService {
     table: string,
     id: string,
     updates: Partial<T>
-  ): Promise<{ data: T | null; error: any }> {
+  ): Promise<{ data: T | null; error: unknown }> {
     try {
       const { data, error } = await this.supabase
         .from(table)
@@ -95,7 +95,7 @@ export abstract class BaseService {
   protected async deleteData(
     table: string,
     id: string
-  ): Promise<{ error: any }> {
+  ): Promise<{ error: unknown }> {
     try {
       const { error } = await this.supabase
         .from(table)
@@ -117,7 +117,7 @@ export abstract class BaseService {
     searchTerm: string,
     searchColumns: string[],
     select: string = '*'
-  ): Promise<{ data: T[] | null; error: any }> {
+  ): Promise<{ data: T[] | null; error: unknown }> {
     try {
       const searchConditions = searchColumns
         .map(column => `${column}.ilike.%${searchTerm}%`)
@@ -140,8 +140,8 @@ export abstract class BaseService {
    */
   protected async countData(
     table: string,
-    filters?: Record<string, any>
-  ): Promise<{ count: number | null; error: any }> {
+    filters?: Record<string, unknown>
+  ): Promise<{ count: number | null; error: unknown }> {
     try {
       let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
 
@@ -169,7 +169,7 @@ export abstract class BaseService {
   /**
    * Handle errors consistently
    */
-  protected handleError(error: any, context: string): never {
+  protected handleError(error: unknown, context: string): never {
     console.error(`Error in ${context}:`, error);
     throw new Error(`Failed to ${context}: ${error.message || 'Unknown error'}`);
   }
@@ -177,7 +177,7 @@ export abstract class BaseService {
   /**
    * Validate required fields
    */
-  protected validateRequired(data: any, requiredFields: string[]): string[] {
+  protected validateRequired(data: unknown, requiredFields: string[]): string[] {
     const errors: string[] = [];
     
     requiredFields.forEach(field => {
@@ -192,7 +192,7 @@ export abstract class BaseService {
   /**
    * Log service operations
    */
-  protected log(operation: string, details?: any): void {
+  protected log(operation: string, details?: unknown): void {
     console.log(`[${this.constructor.name}] ${operation}`, details || '');
   }
 }

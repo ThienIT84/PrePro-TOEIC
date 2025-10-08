@@ -197,6 +197,10 @@ Yêu cầu:
     setProgress(0);
     setGeneratedQuestions([]);
     setSelectedQuestions(new Set());
+    
+    // Clear previous results to prevent overlap
+    setPart6Result(null);
+    setPart7Result(null);
 
     try {
       let result;
@@ -248,6 +252,12 @@ Yêu cầu:
         
         console.log('🔍 DEBUG: Part 7 passageCount:', passageCount);
         
+        console.log('🔍 DEBUG: Part 7 generation request:', {
+          content: formData.content,
+          questionCount: formData.questionCount,
+          passageCount: passageCount
+        });
+        
         const part7Result = await service.generatePart7Questions({
           content: formData.content,
           type: 'reading' as DrillType,
@@ -256,6 +266,8 @@ Yêu cầu:
           language: formData.language,
           passageCount: passageCount
         });
+
+        console.log('🔍 DEBUG: Part 7 generation result:', part7Result);
 
         if (part7Result.success && part7Result.passages && part7Result.questions) {
           setPart7Result({
@@ -342,8 +354,8 @@ Yêu cầu:
   const handleSaveQuestions = async () => {
     if (!user || generatedQuestions.length === 0) return;
 
-    // Check if Part 7 requires passage
-    if (formData.part === 7) {
+    // Check if Part 7 has generated passages
+    if (formData.part === 7 && !part7Result) {
       toast({
         title: 'Lỗi',
         description: 'Part 7 cần có passage. Vui lòng tạo passage trước hoặc chọn Part khác.',
@@ -1076,8 +1088,8 @@ Yêu cầu:
         </Alert>
       )}
 
-      {/* Part 6 Passage */}
-      {part6Result && (
+      {/* Part 6 Passage - Only show if Part 6 was generated */}
+      {part6Result && formData.part === 6 && (
         <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-700">
@@ -1102,8 +1114,8 @@ Yêu cầu:
         </Card>
       )}
 
-      {/* Part 6 Answer Choices */}
-      {part6Result && part6Result.questions.length > 0 && (
+      {/* Part 6 Answer Choices - Only show if Part 6 was generated */}
+      {part6Result && part6Result.questions.length > 0 && formData.part === 6 && (
         <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-blue-700">
@@ -1149,8 +1161,8 @@ Yêu cầu:
         </Card>
       )}
 
-      {/* Part 7 Passages */}
-      {part7Result && (
+      {/* Part 7 Passages - Only show if Part 7 was generated */}
+      {part7Result && formData.part === 7 && (
         <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-700">

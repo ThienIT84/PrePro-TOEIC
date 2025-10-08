@@ -219,7 +219,7 @@ const EnhancedExamSetCreator: React.FC = () => {
       
       console.log('Question bank loaded:', data?.length || 0, 'questions');
       setQuestionBank(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load question bank:', error);
       toast({
         title: "Error",
@@ -244,7 +244,7 @@ const EnhancedExamSetCreator: React.FC = () => {
     });
   };
 
-  const updatePartConfig = (partNumber: number, field: keyof ExamPart, value: any) => {
+  const updatePartConfig = (partNumber: number, field: keyof ExamPart, value: unknown) => {
     setExamParts(prev => prev.map(part => 
       part.part === partNumber 
         ? { ...part, [field]: value }
@@ -297,7 +297,7 @@ const EnhancedExamSetCreator: React.FC = () => {
       for (let i = 0; i < newExamParts.length; i++) {
         const cfg = newExamParts[i];
         const need = cfg.questionCount;
-        let assigned: any[] = [];
+        let assigned: unknown[] = [];
 
         console.log(`🔍 TOEIC auto-assign Part ${cfg.part} (need ${need})`);
 
@@ -308,7 +308,7 @@ const EnhancedExamSetCreator: React.FC = () => {
         } else if (cfg.part === 3 || cfg.part === 4) {
           // Group by passage_id, take 3 per passage
           const qs = await fetchByPart(cfg.part, Array.from(usedQuestionIds));
-          const byPassage: Record<string, any[]> = {};
+          const byPassage: Record<string, unknown[]> = {};
           qs.forEach(q => {
             if (!q.passage_id) return;
             if (!byPassage[q.passage_id]) byPassage[q.passage_id] = [];
@@ -325,7 +325,7 @@ const EnhancedExamSetCreator: React.FC = () => {
         } else if (cfg.part === 6) {
           // 4 blanks per passage (blank_index 1-4)
           const qs = await fetchByPart(6, Array.from(usedQuestionIds));
-          const byPassage: Record<string, any[]> = {};
+          const byPassage: Record<string, unknown[]> = {};
           qs.forEach(q => {
             if (!q.passage_id) return;
             if (!byPassage[q.passage_id]) byPassage[q.passage_id] = [];
@@ -342,7 +342,7 @@ const EnhancedExamSetCreator: React.FC = () => {
         } else if (cfg.part === 7) {
           // Accumulate by passage groups up to target (prefer full groups)
           const qs = await fetchByPart(7, Array.from(usedQuestionIds));
-          const byPassage: Record<string, any[]> = {};
+          const byPassage: Record<string, unknown[]> = {};
           qs.forEach(q => {
             if (!q.passage_id) return;
             if (!byPassage[q.passage_id]) byPassage[q.passage_id] = [];
@@ -374,7 +374,7 @@ const EnhancedExamSetCreator: React.FC = () => {
         title: "Auto-assignment complete",
         description: `Assigned ${totalAssigned} questions across all parts (TOEIC grouping)`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in auto-assignment:', error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -452,7 +452,7 @@ const EnhancedExamSetCreator: React.FC = () => {
 
       console.log('Exam set created successfully:', examSet);
 
-      // Clear any existing questions for this exam set (in case of retry)
+      // Clear unknown existing questions for this exam set (in case of retry)
       await supabase
         .from('exam_questions')
         .delete()
@@ -500,7 +500,7 @@ const EnhancedExamSetCreator: React.FC = () => {
       });
       setExamParts(prev => prev.map(part => ({ ...part, questions: [] })));
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -511,7 +511,7 @@ const EnhancedExamSetCreator: React.FC = () => {
     }
   };
 
-  const filteredQuestions = questionBank.filter((q: any) => {
+  const filteredQuestions = questionBank.filter((q: unknown) => {
     const text = (q.prompt_text || q.question || '').toLowerCase();
     const matchesSearch = text.includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || (filterType === 'listening' ? q.part <= 4 : filterType === 'reading' ? q.part > 4 : true);
@@ -680,7 +680,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                   <Label htmlFor="type">Exam Type</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, type: value }))}
+                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, type: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -710,7 +710,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                   <Label htmlFor="difficulty">Difficulty Level</Label>
                   <Select 
                     value={formData.difficulty} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, difficulty: value }))}
+                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, difficulty: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -747,7 +747,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                   <Label htmlFor="status">Status</Label>
                   <Select 
                     value={formData.status} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
+                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, status: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue />

@@ -19,7 +19,7 @@ export interface ChartData {
   week?: string;
   count?: number;
   avg_score?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SkillPerformance {
@@ -275,7 +275,7 @@ export class TeacherAnalyticsController {
   /**
    * Get classes data
    */
-  public getClassesData(): any[] {
+  public getClassesData(): unknown[] {
     const data = this.getSafeAnalyticsData();
     return data?.classes || [];
   }

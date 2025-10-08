@@ -137,7 +137,7 @@ export class ExamHistoryController {
 
       this.setExams(data || []);
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error:', err);
       this.setError('Có lỗi xảy ra khi tải dữ liệu');
       return { success: false, error: 'Có lỗi xảy ra khi tải dữ liệu' };

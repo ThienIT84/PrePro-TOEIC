@@ -157,7 +157,7 @@ export class StudentManagementController {
         success: true,
         data: students
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errorMsg = `Lỗi không mong đợi: ${error.message}`;
       this.setError(errorMsg);
       return {
@@ -189,7 +189,7 @@ export class StudentManagementController {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: `Có lỗi xảy ra khi chuyển học viên: ${error.message}`
@@ -218,7 +218,7 @@ export class StudentManagementController {
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: `Có lỗi xảy ra: ${error.message}`

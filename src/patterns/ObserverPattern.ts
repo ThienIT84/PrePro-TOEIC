@@ -1,11 +1,11 @@
 // Observer Pattern Implementation for MVC Architecture
 
-export interface Observer<T = any> {
+export interface Observer<T = unknown> {
   update(data: T): void;
   getId(): string;
 }
 
-export interface Subject<T = any> {
+export interface Subject<T = unknown> {
   subscribe(observer: Observer<T>): void;
   unsubscribe(observer: Observer<T>): void;
   notify(data: T): void;
@@ -13,14 +13,14 @@ export interface Subject<T = any> {
 }
 
 export interface EventEmitter {
-  on(event: string, callback: (...args: any[]) => void): void;
-  off(event: string, callback: (...args: any[]) => void): void;
-  emit(event: string, ...args: any[]): void;
-  once(event: string, callback: (...args: any[]) => void): void;
+  on(event: string, callback: (...args: unknown[]) => void): void;
+  off(event: string, callback: (...args: unknown[]) => void): void;
+  emit(event: string, ...args: unknown[]): void;
+  once(event: string, callback: (...args: unknown[]) => void): void;
 }
 
 // Base Observer Implementation
-export class BaseObserver<T = any> implements Observer<T> {
+export class BaseObserver<T = unknown> implements Observer<T> {
   private id: string;
   private callback: (data: T) => void;
 
@@ -43,7 +43,7 @@ export class BaseObserver<T = any> implements Observer<T> {
 }
 
 // Base Subject Implementation
-export class BaseSubject<T = any> implements Subject<T> {
+export class BaseSubject<T = unknown> implements Subject<T> {
   private observers: Observer<T>[] = [];
 
   subscribe(observer: Observer<T>): void {
@@ -77,16 +77,16 @@ export class BaseSubject<T = any> implements Subject<T> {
 
 // Event Emitter Implementation
 export class EventEmitterImpl implements EventEmitter {
-  private events: Map<string, Set<(...args: any[]) => void>> = new Map();
+  private events: Map<string, Set<(...args: unknown[]) => void>> = new Map();
 
-  on(event: string, callback: (...args: any[]) => void): void {
+  on(event: string, callback: (...args: unknown[]) => void): void {
     if (!this.events.has(event)) {
       this.events.set(event, new Set());
     }
     this.events.get(event)!.add(callback);
   }
 
-  off(event: string, callback: (...args: any[]) => void): void {
+  off(event: string, callback: (...args: unknown[]) => void): void {
     const callbacks = this.events.get(event);
     if (callbacks) {
       callbacks.delete(callback);
@@ -96,7 +96,7 @@ export class EventEmitterImpl implements EventEmitter {
     }
   }
 
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: unknown[]): void {
     const callbacks = this.events.get(event);
     if (callbacks) {
       callbacks.forEach(callback => {
@@ -109,8 +109,8 @@ export class EventEmitterImpl implements EventEmitter {
     }
   }
 
-  once(event: string, callback: (...args: any[]) => void): void {
-    const onceCallback = (...args: any[]) => {
+  once(event: string, callback: (...args: unknown[]) => void): void {
+    const onceCallback = (...args: unknown[]) => {
       callback(...args);
       this.off(event, onceCallback);
     };
@@ -135,7 +135,7 @@ export class EventEmitterImpl implements EventEmitter {
 }
 
 // State Observer for Global State
-export class StateObserver<T = any> extends BaseObserver<T> {
+export class StateObserver<T = unknown> extends BaseObserver<T> {
   private componentId: string;
   private stateKey: string;
 
@@ -155,7 +155,7 @@ export class StateObserver<T = any> extends BaseObserver<T> {
 }
 
 // State Subject for Global State
-export class StateSubject<T = any> extends BaseSubject<T> {
+export class StateSubject<T = unknown> extends BaseSubject<T> {
   private stateKey: string;
   private currentValue: T | null = null;
 
@@ -184,13 +184,13 @@ export class StateSubject<T = any> extends BaseSubject<T> {
 }
 
 // Component Observer for React Components
-export class ComponentObserver<T = any> extends BaseObserver<T> {
-  private componentRef: React.RefObject<any>;
+export class ComponentObserver<T = unknown> extends BaseObserver<T> {
+  private componentRef: React.RefObject<unknown>;
   private updateMethod: string;
 
   constructor(
     componentId: string, 
-    componentRef: React.RefObject<any>, 
+    componentRef: React.RefObject<unknown>, 
     updateMethod: string = 'forceUpdate',
     callback: (data: T) => void
   ) {
@@ -210,13 +210,13 @@ export class ComponentObserver<T = any> extends BaseObserver<T> {
 }
 
 // Controller Observer for MVC Controllers
-export class ControllerObserver<T = any> extends BaseObserver<T> {
-  private controller: any;
+export class ControllerObserver<T = unknown> extends BaseObserver<T> {
+  private controller: unknown;
   private methodName: string;
 
   constructor(
     controllerId: string,
-    controller: any,
+    controller: unknown,
     methodName: string,
     callback: (data: T) => void
   ) {
@@ -243,7 +243,7 @@ export class ControllerObserver<T = any> extends BaseObserver<T> {
 export class GlobalEventSystem {
   private static instance: GlobalEventSystem;
   private eventEmitter: EventEmitterImpl;
-  private stateSubjects: Map<string, StateSubject<any>> = new Map();
+  private stateSubjects: Map<string, StateSubject<unknown>> = new Map();
 
   private constructor() {
     this.eventEmitter = new EventEmitterImpl();
@@ -257,19 +257,19 @@ export class GlobalEventSystem {
   }
 
   // Event System Methods
-  on(event: string, callback: (...args: any[]) => void): void {
+  on(event: string, callback: (...args: unknown[]) => void): void {
     this.eventEmitter.on(event, callback);
   }
 
-  off(event: string, callback: (...args: any[]) => void): void {
+  off(event: string, callback: (...args: unknown[]) => void): void {
     this.eventEmitter.off(event, callback);
   }
 
-  emit(event: string, ...args: any[]): void {
+  emit(event: string, ...args: unknown[]): void {
     this.eventEmitter.emit(event, ...args);
   }
 
-  once(event: string, callback: (...args: any[]) => void): void {
+  once(event: string, callback: (...args: unknown[]) => void): void {
     this.eventEmitter.once(event, callback);
   }
 
@@ -345,7 +345,7 @@ export class GlobalEventSystem {
 export const useStateObserver = <T>(
   stateKey: string,
   callback: (data: T) => void,
-  deps: any[] = []
+  deps: unknown[] = []
 ) => {
   const eventSystem = GlobalEventSystem.getInstance();
   const [currentValue, setCurrentValue] = React.useState<T | null>(
@@ -369,8 +369,8 @@ export const useStateObserver = <T>(
 // React Hook for Event Listening
 export const useEvent = (
   event: string,
-  callback: (...args: any[]) => void,
-  deps: any[] = []
+  callback: (...args: unknown[]) => void,
+  deps: unknown[] = []
 ) => {
   const eventSystem = GlobalEventSystem.getInstance();
 
@@ -385,3 +385,5 @@ export const useEvent = (
 
 // Export global event system instance
 export const globalEventSystem = GlobalEventSystem.getInstance();
+
+

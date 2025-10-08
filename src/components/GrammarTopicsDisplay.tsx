@@ -51,7 +51,7 @@ const GrammarTopicsDisplay: React.FC<GrammarTopicsDisplayProps> = ({ difficulty 
       {
         topic: 'Present Perfect',
         patterns: [
-          { sentence: 'I _____ this company for 5 years.', correct: 'have worked', wrong: ['work', 'am working', 'worked'], rule: 'Khoảng thời gian dùng present perfect' },
+          { sentence: 'I _____ this compunknown for 5 years.', correct: 'have worked', wrong: ['work', 'am working', 'worked'], rule: 'Khoảng thời gian dùng present perfect' },
           { sentence: 'She _____ never _____ to Japan.', correct: 'has been', wrong: ['have been', 'is being', 'was being'], rule: 'Kinh nghiệm dùng present perfect' },
           { sentence: '_____ you _____ the report yet?', correct: 'Have finished', wrong: ['Did finish', 'Are finishing', 'Will finish'], rule: 'Câu hỏi về hành động hoàn thành' }
         ]
@@ -93,7 +93,7 @@ const GrammarTopicsDisplay: React.FC<GrammarTopicsDisplayProps> = ({ difficulty 
       {
         topic: 'Complex Tenses',
         patterns: [
-          { sentence: 'By next year, I _____ for this company for 10 years.', correct: 'will have worked', wrong: ['will work', 'work', 'am working'], rule: 'Future perfect: will have + past participle' },
+          { sentence: 'By next year, I _____ for this compunknown for 10 years.', correct: 'will have worked', wrong: ['will work', 'work', 'am working'], rule: 'Future perfect: will have + past participle' },
           { sentence: 'She _____ English for 3 years before moving to the US.', correct: 'had been studying', wrong: ['studied', 'was studying', 'has studied'], rule: 'Past perfect continuous: had been + V-ing' },
           { sentence: 'I _____ this book for 2 hours when you called.', correct: 'had been reading', wrong: ['read', 'was reading', 'have read'], rule: 'Past perfect continuous với khoảng thời gian' }
         ]

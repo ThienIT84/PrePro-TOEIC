@@ -31,11 +31,11 @@ export function useStoreManager() {
     await storeManager.loadQuestions(filters);
   }, [storeManager]);
 
-  const createQuestion = useCallback(async (questionData: any) => {
+  const createQuestion = useCallback(async (questionData: unknown) => {
     return await storeManager.createQuestion(questionData);
   }, [storeManager]);
 
-  const updateQuestion = useCallback(async (id: string, updates: any) => {
+  const updateQuestion = useCallback(async (id: string, updates: unknown) => {
     return await storeManager.updateQuestion(id, updates);
   }, [storeManager]);
 

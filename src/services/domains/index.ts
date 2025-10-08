@@ -22,7 +22,7 @@ export { MediaService } from './media/MediaService';
 
 // Service Factory
 export class ServiceFactory {
-  private static instances: Map<string, any> = new Map();
+  private static instances: Map<string, unknown> = new Map();
 
   static getQuestionService(): QuestionService {
     if (!this.instances.has('question')) {

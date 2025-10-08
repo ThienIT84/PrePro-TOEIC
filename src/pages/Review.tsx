@@ -230,7 +230,7 @@ const Review = () => {
             {currentReview.item.choices && typeof currentReview.item.choices === 'object' && (
               <div className="space-y-3">
                 {['A', 'B', 'C', 'D'].map((letter) => {
-                  const choices = currentReview.item.choices as any;
+                  const choices = currentReview.item.choices as unknown;
                   const choiceText = choices?.[letter] || '';
                   if (!choiceText) return null;
                   

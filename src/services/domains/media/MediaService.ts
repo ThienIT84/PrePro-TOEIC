@@ -17,7 +17,7 @@ export class MediaService extends BaseService {
       cacheControl?: string;
       upsert?: boolean;
     }
-  ): Promise<{ data: any; error: any }> {
+  ): Promise<{ data: unknown; error: unknown }> {
     this.log('uploadFile', { path, size: file.size, type: file.type });
 
     try {
@@ -42,7 +42,7 @@ export class MediaService extends BaseService {
   /**
    * Get public URL for file
    */
-  async getPublicUrl(path: string): Promise<{ data: string | null; error: any }> {
+  async getPublicUrl(path: string): Promise<{ data: string | null; error: unknown }> {
     this.log('getPublicUrl', { path });
 
     try {
@@ -60,7 +60,7 @@ export class MediaService extends BaseService {
   /**
    * Delete file from storage
    */
-  async deleteFile(path: string): Promise<{ error: any }> {
+  async deleteFile(path: string): Promise<{ error: unknown }> {
     this.log('deleteFile', { path });
 
     try {
@@ -82,7 +82,7 @@ export class MediaService extends BaseService {
   /**
    * List files in folder
    */
-  async listFiles(folderPath: string = ''): Promise<{ data: any[] | null; error: any }> {
+  async listFiles(folderPath: string = ''): Promise<{ data: unknown[] | null; error: unknown }> {
     this.log('listFiles', { folderPath });
 
     try {
@@ -111,7 +111,7 @@ export class MediaService extends BaseService {
       cacheControl?: string;
       upsert?: boolean;
     }
-  ): Promise<{ data: any; error: any }> {
+  ): Promise<{ data: unknown; error: unknown }> {
     this.log('uploadAudio', { questionId, size: file.size });
 
     const path = `audio/questions/${questionId}/${Date.now()}-${file.name}`;
@@ -128,7 +128,7 @@ export class MediaService extends BaseService {
       cacheControl?: string;
       upsert?: boolean;
     }
-  ): Promise<{ data: any; error: any }> {
+  ): Promise<{ data: unknown; error: unknown }> {
     this.log('uploadImage', { questionId, size: file.size });
 
     const path = `images/questions/${questionId}/${Date.now()}-${file.name}`;
@@ -146,7 +146,7 @@ export class MediaService extends BaseService {
       cacheControl?: string;
       upsert?: boolean;
     }
-  ): Promise<{ data: any; error: any }> {
+  ): Promise<{ data: unknown; error: unknown }> {
     this.log('uploadPassageAsset', { passageId, type, size: file.size });
 
     const path = `passages/${passageId}/${type}s/${Date.now()}-${file.name}`;
@@ -156,7 +156,7 @@ export class MediaService extends BaseService {
   /**
    * Get audio URL for question
    */
-  async getQuestionAudioUrl(questionId: string): Promise<{ data: string | null; error: any }> {
+  async getQuestionAudioUrl(questionId: string): Promise<{ data: string | null; error: unknown }> {
     this.log('getQuestionAudioUrl', { questionId });
 
     try {
@@ -187,7 +187,7 @@ export class MediaService extends BaseService {
   /**
    * Get image URL for question
    */
-  async getQuestionImageUrl(questionId: string): Promise<{ data: string | null; error: any }> {
+  async getQuestionImageUrl(questionId: string): Promise<{ data: string | null; error: unknown }> {
     this.log('getQuestionImageUrl', { questionId });
 
     try {
@@ -220,7 +220,7 @@ export class MediaService extends BaseService {
    */
   async getPassageAssetsUrls(passageId: string): Promise<{ 
     data: { images: string[]; charts: string[] } | null; 
-    error: any 
+    error: unknown 
   }> {
     this.log('getPassageAssetsUrls', { passageId });
 
@@ -269,7 +269,7 @@ export class MediaService extends BaseService {
   /**
    * Delete question media
    */
-  async deleteQuestionMedia(questionId: string): Promise<{ error: any }> {
+  async deleteQuestionMedia(questionId: string): Promise<{ error: unknown }> {
     this.log('deleteQuestionMedia', { questionId });
 
     try {
@@ -314,7 +314,7 @@ export class MediaService extends BaseService {
   /**
    * Delete passage assets
    */
-  async deletePassageAssets(passageId: string): Promise<{ error: any }> {
+  async deletePassageAssets(passageId: string): Promise<{ error: unknown }> {
     this.log('deletePassageAssets', { passageId });
 
     try {
@@ -359,7 +359,7 @@ export class MediaService extends BaseService {
   /**
    * Get storage usage statistics
    */
-  async getStorageStats(): Promise<{ data: any; error: any }> {
+  async getStorageStats(): Promise<{ data: unknown; error: unknown }> {
     this.log('getStorageStats');
 
     try {
@@ -382,7 +382,7 @@ export class MediaService extends BaseService {
       };
 
       // Process files to calculate statistics
-      const processFiles = async (files: any[], prefix: string = '') => {
+      const processFiles = async (files: unknown[], prefix: string = '') => {
         for (const file of files) {
           if (file.name) {
             // It's a file
@@ -439,7 +439,7 @@ export class MediaService extends BaseService {
   /**
    * Clean up orphaned files
    */
-  async cleanupOrphanedFiles(): Promise<{ data: { deleted: number; errors: any[] }; error: any }> {
+  async cleanupOrphanedFiles(): Promise<{ data: { deleted: number; errors: unknown[] }; error: unknown }> {
     this.log('cleanupOrphanedFiles');
 
     try {
@@ -450,7 +450,7 @@ export class MediaService extends BaseService {
       }
 
       const filesToDelete: string[] = [];
-      const errors: any[] = [];
+      const errors: unknown[] = [];
 
       // Get all question IDs from database
       const { data: questions } = await this.supabase
@@ -467,7 +467,7 @@ export class MediaService extends BaseService {
       const passageIds = new Set(passages?.map(p => p.id) || []);
 
       // Check each file
-      const checkFile = async (file: any, prefix: string = '') => {
+      const checkFile = async (file: unknown, prefix: string = '') => {
         if (file.name) {
           const filePath = prefix ? `${prefix}/${file.name}` : file.name;
           

@@ -221,7 +221,7 @@ export class ExamQuestionManagementController {
         success: true,
         data
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -250,7 +250,7 @@ export class ExamQuestionManagementController {
         success: true,
         data: data || []
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -275,7 +275,7 @@ export class ExamQuestionManagementController {
         success: true,
         data: data || []
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -301,7 +301,7 @@ export class ExamQuestionManagementController {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -322,7 +322,7 @@ export class ExamQuestionManagementController {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -343,7 +343,7 @@ export class ExamQuestionManagementController {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message
@@ -364,7 +364,7 @@ export class ExamQuestionManagementController {
       if (error) throw error;
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error: error.message

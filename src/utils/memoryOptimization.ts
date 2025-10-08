@@ -11,9 +11,9 @@ export interface MemoryStats {
 
 export class MemoryOptimizer {
   private static instance: MemoryOptimizer;
-  private componentRegistry = new Map<string, any>();
-  private controllerRegistry = new Map<string, any>();
-  private serviceRegistry = new Map<string, any>();
+  private componentRegistry = new Map<string, unknown>();
+  private controllerRegistry = new Map<string, unknown>();
+  private serviceRegistry = new Map<string, unknown>();
   private cleanupCallbacks = new Set<() => void>();
 
   static getInstance(): MemoryOptimizer {
@@ -24,7 +24,7 @@ export class MemoryOptimizer {
   }
 
   // Register component for tracking
-  registerComponent(id: string, component: any): void {
+  registerComponent(id: string, component: unknown): void {
     this.componentRegistry.set(id, {
       component,
       timestamp: Date.now(),
@@ -33,7 +33,7 @@ export class MemoryOptimizer {
   }
 
   // Register controller for tracking
-  registerController(id: string, controller: any): void {
+  registerController(id: string, controller: unknown): void {
     this.controllerRegistry.set(id, {
       controller,
       timestamp: Date.now(),
@@ -42,7 +42,7 @@ export class MemoryOptimizer {
   }
 
   // Register service for tracking
-  registerService(id: string, service: any): void {
+  registerService(id: string, service: unknown): void {
     this.serviceRegistry.set(id, {
       service,
       timestamp: Date.now(),
@@ -67,7 +67,7 @@ export class MemoryOptimizer {
 
   // Get memory statistics
   getMemoryStats(): MemoryStats {
-    const memory = (performance as any).memory;
+    const memory = (performance as unknown).memory;
     const used = memory ? memory.usedJSHeapSize : 0;
     const total = memory ? memory.totalJSHeapSize : 0;
     
@@ -131,8 +131,8 @@ export class MemoryOptimizer {
 
   // Force garbage collection
   forceGC(): void {
-    if ((window as any).gc) {
-      (window as any).gc();
+    if ((window as unknown).gc) {
+      (window as unknown).gc();
     }
   }
 
@@ -178,11 +178,11 @@ export class MemoryOptimizer {
 }
 
 // Memory-optimized component wrapper
-export function withMemoryOptimization<T extends React.ComponentType<any>>(
+export function withMemoryOptimization<T extends React.ComponentType<unknown>>(
   Component: T,
   id: string
 ): T {
-  const WrappedComponent = React.forwardRef<any, any>((props, ref) => {
+  const WrappedComponent = React.forwardRef<unknown, unknown>((props, ref) => {
     const optimizer = MemoryOptimizer.getInstance();
     
     React.useEffect(() => {
@@ -200,12 +200,12 @@ export function withMemoryOptimization<T extends React.ComponentType<any>>(
 }
 
 // Memory-optimized controller wrapper
-export function withControllerOptimization<T extends new (...args: any[]) => any>(
+export function withControllerOptimization<T extends new (...args: unknown[]) => unknown>(
   ControllerClass: T,
   id: string
 ): T {
   return class extends ControllerClass {
-    constructor(...args: any[]) {
+    constructor(...args: unknown[]) {
       super(...args);
       const optimizer = MemoryOptimizer.getInstance();
       optimizer.registerController(id, this);
@@ -219,12 +219,12 @@ export function withControllerOptimization<T extends new (...args: any[]) => any
 }
 
 // Memory-optimized service wrapper
-export function withServiceOptimization<T extends new (...args: any[]) => any>(
+export function withServiceOptimization<T extends new (...args: unknown[]) => unknown>(
   ServiceClass: T,
   id: string
 ): T {
   return class extends ServiceClass {
-    constructor(...args: any[]) {
+    constructor(...args: unknown[]) {
       super(...args);
       const optimizer = MemoryOptimizer.getInstance();
       optimizer.registerService(id, this);
@@ -238,26 +238,26 @@ export function withServiceOptimization<T extends new (...args: any[]) => any>(
 }
 
 // Debounced function for memory optimization
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): T {
   let timeout: NodeJS.Timeout;
   
-  return ((...args: any[]) => {
+  return ((...args: unknown[]) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   }) as T;
 }
 
 // Throttled function for memory optimization
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): T {
   let inThrottle: boolean;
   
-  return ((...args: any[]) => {
+  return ((...args: unknown[]) => {
     if (!inThrottle) {
       func(...args);
       inThrottle = true;
@@ -267,7 +267,7 @@ export function throttle<T extends (...args: any[]) => any>(
 }
 
 // WeakMap for storing component references
-export const componentRefs = new WeakMap<React.Component, any>();
+export const componentRefs = new WeakMap<React.Component, unknown>();
 
 // WeakSet for tracking component instances
 export const componentInstances = new WeakSet<React.Component>();
@@ -304,15 +304,15 @@ export class MemoryLeakDetector {
     const stats = optimizer.getMemoryStats();
     
     if (stats.components > this.leakThreshold) {
-      console.warn('Potential memory leak detected: Too many components registered');
+      console.warn('Potential memory leak detected: Too munknown components registered');
     }
     
     if (stats.controllers > this.leakThreshold) {
-      console.warn('Potential memory leak detected: Too many controllers registered');
+      console.warn('Potential memory leak detected: Too munknown controllers registered');
     }
     
     if (stats.services > this.leakThreshold) {
-      console.warn('Potential memory leak detected: Too many services registered');
+      console.warn('Potential memory leak detected: Too munknown services registered');
     }
   }
 }
@@ -334,3 +334,5 @@ export const initializeMemoryOptimization = () => {
     detector.stop();
   });
 };
+
+

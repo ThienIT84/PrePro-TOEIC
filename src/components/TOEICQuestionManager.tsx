@@ -56,7 +56,7 @@ const STATUS_COLORS = {
 
 const TOEICQuestionManager: React.FC<TOEICQuestionManagerProps> = ({ onEdit }) => {
   const { toast } = useToast();
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPart, setFilterPart] = useState<string>('all');

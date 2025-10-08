@@ -99,7 +99,7 @@ const EnhancedQuestionManagement = () => {
       setQuestions(data || []);
       setTotalPages(Math.ceil((count || 0) / itemsPerPage));
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -125,7 +125,7 @@ const EnhancedQuestionManagement = () => {
       });
 
       fetchQuestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -152,7 +152,7 @@ const EnhancedQuestionManagement = () => {
 
       setSelectedQuestions([]);
       fetchQuestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -219,7 +219,7 @@ const EnhancedQuestionManagement = () => {
       });
 
       fetchQuestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -270,7 +270,7 @@ const EnhancedQuestionManagement = () => {
         description: `Found ${sampleQuestions.length} sample questions. They have been selected for deletion.`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,

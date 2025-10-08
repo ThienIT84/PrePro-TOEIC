@@ -18,7 +18,7 @@ export class QuestionService extends BaseService {
     status?: QuestionStatus;
     created_by?: string;
     search?: string;
-  }): Promise<{ data: QuestionModel[] | null; error: any }> {
+  }): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestions', filters);
 
     try {
@@ -64,7 +64,7 @@ export class QuestionService extends BaseService {
   /**
    * Get question by ID
    */
-  async getQuestionById(id: string): Promise<{ data: QuestionModel | null; error: any }> {
+  async getQuestionById(id: string): Promise<{ data: QuestionModel | null; error: unknown }> {
     this.log('getQuestionById', { id });
 
     try {
@@ -89,7 +89,7 @@ export class QuestionService extends BaseService {
   /**
    * Create new question
    */
-  async createQuestion(questionData: Partial<Question>): Promise<{ data: QuestionModel | null; error: any }> {
+  async createQuestion(questionData: Partial<Question>): Promise<{ data: QuestionModel | null; error: unknown }> {
     this.log('createQuestion', { part: questionData.part });
 
     try {
@@ -126,7 +126,7 @@ export class QuestionService extends BaseService {
   /**
    * Update existing question
    */
-  async updateQuestion(id: string, updates: Partial<Question>): Promise<{ data: QuestionModel | null; error: any }> {
+  async updateQuestion(id: string, updates: Partial<Question>): Promise<{ data: QuestionModel | null; error: unknown }> {
     this.log('updateQuestion', { id, updates });
 
     try {
@@ -162,7 +162,7 @@ export class QuestionService extends BaseService {
   /**
    * Delete question
    */
-  async deleteQuestion(id: string): Promise<{ error: any }> {
+  async deleteQuestion(id: string): Promise<{ error: unknown }> {
     this.log('deleteQuestion', { id });
 
     try {
@@ -182,7 +182,7 @@ export class QuestionService extends BaseService {
   /**
    * Search questions
    */
-  async searchQuestions(searchTerm: string): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async searchQuestions(searchTerm: string): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('searchQuestions', { searchTerm });
 
     try {
@@ -207,7 +207,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions by part
    */
-  async getQuestionsByPart(part: TOEICPart): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getQuestionsByPart(part: TOEICPart): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestionsByPart', { part });
 
     return this.getQuestions({ part });
@@ -216,7 +216,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions by difficulty
    */
-  async getQuestionsByDifficulty(difficulty: Difficulty): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getQuestionsByDifficulty(difficulty: Difficulty): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestionsByDifficulty', { difficulty });
 
     return this.getQuestions({ difficulty });
@@ -225,7 +225,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions by status
    */
-  async getQuestionsByStatus(status: QuestionStatus): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getQuestionsByStatus(status: QuestionStatus): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestionsByStatus', { status });
 
     return this.getQuestions({ status });
@@ -234,7 +234,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions needing audio
    */
-  async getQuestionsNeedingAudio(): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getQuestionsNeedingAudio(): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestionsNeedingAudio');
 
     try {
@@ -259,7 +259,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions needing images
    */
-  async getQuestionsNeedingImages(): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getQuestionsNeedingImages(): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestionsNeedingImages');
 
     try {
@@ -284,7 +284,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions needing passages
    */
-  async getQuestionsNeedingPassages(): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getQuestionsNeedingPassages(): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getQuestionsNeedingPassages');
 
     try {
@@ -309,7 +309,7 @@ export class QuestionService extends BaseService {
   /**
    * Get valid questions for exam
    */
-  async getValidQuestionsForExam(): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async getValidQuestionsForExam(): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('getValidQuestionsForExam');
 
     try {
@@ -337,7 +337,7 @@ export class QuestionService extends BaseService {
   /**
    * Get questions statistics
    */
-  async getQuestionsStats(): Promise<{ data: any; error: any }> {
+  async getQuestionsStats(): Promise<{ data: unknown; error: unknown }> {
     this.log('getQuestionsStats');
 
     try {
@@ -391,7 +391,7 @@ export class QuestionService extends BaseService {
   /**
    * Bulk create questions
    */
-  async bulkCreateQuestions(questionsData: Partial<Question>[]): Promise<{ data: QuestionModel[] | null; error: any }> {
+  async bulkCreateQuestions(questionsData: Partial<Question>[]): Promise<{ data: QuestionModel[] | null; error: unknown }> {
     this.log('bulkCreateQuestions', { count: questionsData.length });
 
     try {
@@ -425,7 +425,7 @@ export class QuestionService extends BaseService {
   /**
    * Update question status
    */
-  async updateQuestionStatus(id: string, status: QuestionStatus): Promise<{ data: QuestionModel | null; error: any }> {
+  async updateQuestionStatus(id: string, status: QuestionStatus): Promise<{ data: QuestionModel | null; error: unknown }> {
     this.log('updateQuestionStatus', { id, status });
 
     return this.updateQuestion(id, { status });
@@ -438,7 +438,7 @@ export class QuestionService extends BaseService {
     part?: TOEICPart;
     difficulty?: Difficulty;
     status?: QuestionStatus;
-  }): Promise<{ count: number | null; error: any }> {
+  }): Promise<{ count: number | null; error: unknown }> {
     this.log('getQuestionsCount', filters);
 
     return this.countData(this.tableName, filters);

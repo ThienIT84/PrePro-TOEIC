@@ -64,7 +64,7 @@ const ExamManagementDashboardMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -91,7 +91,7 @@ const ExamManagementDashboardMVC: React.FC = () => {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -107,7 +107,7 @@ const ExamManagementDashboardMVC: React.FC = () => {
   };
 
   // Handle preview exam set
-  const handlePreviewExamSet = (examSet: any) => {
+  const handlePreviewExamSet = (examSet: unknown) => {
     // Preview exam set
     console.log('Preview exam set:', examSet);
     toast({

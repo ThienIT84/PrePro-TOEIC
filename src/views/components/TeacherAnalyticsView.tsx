@@ -76,7 +76,7 @@ export interface TeacherAnalyticsViewProps {
   getDailyActivityChartData: () => ChartData[];
   getWeeklyProgressChartData: () => ChartData[];
   getStudentsData: () => StudentProfile[];
-  getClassesData: () => any[];
+  getClassesData: () => unknown[];
   getRecentActivitiesData: () => ActivityEvent[];
   getAlertsData: () => AlertItem[];
   getStudentById: (studentId: string) => StudentProfile | null;

@@ -1,29 +1,29 @@
 // Factory Pattern Implementation for MVC Architecture
 
 export interface ComponentFactory<T> {
-  create(type: string, props?: any): T;
-  register(type: string, creator: (props?: any) => T): void;
+  create(type: string, props?: unknown): T;
+  register(type: string, creator: (props?: unknown) => T): void;
   unregister(type: string): void;
   getRegisteredTypes(): string[];
 }
 
 export interface ServiceFactory<T> {
-  create(type: string, config?: any): T;
-  register(type: string, creator: (config?: any) => T): void;
+  create(type: string, config?: unknown): T;
+  register(type: string, creator: (config?: unknown) => T): void;
   unregister(type: string): void;
   getRegisteredTypes(): string[];
 }
 
 export interface ControllerFactory<T> {
-  create(type: string, params?: any): T;
-  register(type: string, creator: (params?: any) => T): void;
+  create(type: string, params?: unknown): T;
+  register(type: string, creator: (params?: unknown) => T): void;
   unregister(type: string): void;
   getRegisteredTypes(): string[];
 }
 
 // Base Factory Implementation
 export abstract class BaseFactory<T> {
-  protected creators: Map<string, (params?: any) => T> = new Map();
+  protected creators: Map<string, (params?: unknown) => T> = new Map();
   protected instances: Map<string, T> = new Map();
   protected singleton: boolean = false;
 
@@ -31,7 +31,7 @@ export abstract class BaseFactory<T> {
     this.singleton = singleton;
   }
 
-  create(type: string, params?: any): T {
+  create(type: string, params?: unknown): T {
     if (!this.creators.has(type)) {
       throw new Error(`Type ${type} is not registered`);
     }
@@ -50,7 +50,7 @@ export abstract class BaseFactory<T> {
     return instance;
   }
 
-  register(type: string, creator: (params?: any) => T): void {
+  register(type: string, creator: (params?: unknown) => T): void {
     this.creators.set(type, creator);
   }
 
@@ -96,9 +96,9 @@ export class ControllerFactoryImpl<T> extends BaseFactory<T> implements Controll
 
 // Abstract Factory for MVC Components
 export abstract class AbstractMVCFactory {
-  protected componentFactory: ComponentFactory<any>;
-  protected serviceFactory: ServiceFactory<any>;
-  protected controllerFactory: ControllerFactory<any>;
+  protected componentFactory: ComponentFactory<unknown>;
+  protected serviceFactory: ServiceFactory<unknown>;
+  protected controllerFactory: ControllerFactory<unknown>;
 
   constructor() {
     this.componentFactory = new ComponentFactoryImpl();
@@ -106,9 +106,9 @@ export abstract class AbstractMVCFactory {
     this.controllerFactory = new ControllerFactoryImpl();
   }
 
-  abstract createComponent(type: string, props?: any): any;
-  abstract createService(type: string, config?: any): any;
-  abstract createController(type: string, params?: any): any;
+  abstract createComponent(type: string, props?: unknown): unknown;
+  abstract createService(type: string, config?: unknown): unknown;
+  abstract createController(type: string, params?: unknown): unknown;
 }
 
 // Concrete MVC Factory Implementation
@@ -188,15 +188,15 @@ export class TOEICMVCFactory extends AbstractMVCFactory {
     });
   }
 
-  createComponent(type: string, props?: any): any {
+  createComponent(type: string, props?: unknown): unknown {
     return this.componentFactory.create(type, props);
   }
 
-  createService(type: string, config?: any): any {
+  createService(type: string, config?: unknown): unknown {
     return this.serviceFactory.create(type, config);
   }
 
-  createController(type: string, params?: any): any {
+  createController(type: string, params?: unknown): unknown {
     return this.controllerFactory.create(type, params);
   }
 
@@ -214,15 +214,15 @@ export class TOEICMVCFactory extends AbstractMVCFactory {
   }
 
   // Dynamic registration
-  registerComponent(type: string, creator: (props?: any) => any): void {
+  registerComponent(type: string, creator: (props?: unknown) => unknown): void {
     this.componentFactory.register(type, creator);
   }
 
-  registerService(type: string, creator: (config?: any) => any): void {
+  registerService(type: string, creator: (config?: unknown) => unknown): void {
     this.serviceFactory.register(type, creator);
   }
 
-  registerController(type: string, creator: (params?: any) => any): void {
+  registerController(type: string, creator: (params?: unknown) => unknown): void {
     this.controllerFactory.register(type, creator);
   }
 }
@@ -259,7 +259,7 @@ export class FactoryRegistry {
     return this.getFactory('TOEIC') as TOEICMVCFactory;
   }
 
-  createComponent(factoryName: string, type: string, props?: any): any {
+  createComponent(factoryName: string, type: string, props?: unknown): unknown {
     const factory = this.getFactory(factoryName);
     if (!factory) {
       throw new Error(`Factory ${factoryName} not found`);
@@ -267,7 +267,7 @@ export class FactoryRegistry {
     return factory.createComponent(type, props);
   }
 
-  createService(factoryName: string, type: string, config?: any): any {
+  createService(factoryName: string, type: string, config?: unknown): unknown {
     const factory = this.getFactory(factoryName);
     if (!factory) {
       throw new Error(`Factory ${factoryName} not found`);
@@ -275,7 +275,7 @@ export class FactoryRegistry {
     return factory.createService(type, config);
   }
 
-  createController(factoryName: string, type: string, params?: any): any {
+  createController(factoryName: string, type: string, params?: unknown): unknown {
     const factory = this.getFactory(factoryName);
     if (!factory) {
       throw new Error(`Factory ${factoryName} not found`);
@@ -293,15 +293,15 @@ export const useFactory = (factoryName: string = 'TOEIC') => {
   const registry = FactoryRegistry.getInstance();
   const factory = registry.getFactory(factoryName);
 
-  const createComponent = React.useCallback((type: string, props?: any) => {
+  const createComponent = React.useCallback((type: string, props?: unknown) => {
     return registry.createComponent(factoryName, type, props);
   }, [factoryName]);
 
-  const createService = React.useCallback((type: string, config?: any) => {
+  const createService = React.useCallback((type: string, config?: unknown) => {
     return registry.createService(factoryName, type, config);
   }, [factoryName]);
 
-  const createController = React.useCallback((type: string, params?: any) => {
+  const createController = React.useCallback((type: string, params?: unknown) => {
     return registry.createController(factoryName, type, params);
   }, [factoryName]);
 
@@ -318,3 +318,5 @@ export const useFactory = (factoryName: string = 'TOEIC') => {
 
 // Export factory registry instance
 export const factoryRegistry = FactoryRegistry.getInstance();
+
+

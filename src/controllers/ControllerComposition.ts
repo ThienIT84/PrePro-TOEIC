@@ -1,23 +1,23 @@
 // Controller Composition and Middleware Implementation
 
 export interface ControllerMiddleware {
-  execute(context: ControllerContext, next: () => Promise<any>): Promise<any>;
+  execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown>;
   getName(): string;
 }
 
 export interface ControllerContext {
-  controller: any;
+  controller: unknown;
   method: string;
-  params: any[];
-  result?: any;
+  params: unknown[];
+  result?: unknown;
   error?: Error;
-  metadata: Map<string, any>;
+  metadata: Map<string, unknown>;
 }
 
 export interface ControllerMixin {
   name: string;
   methods: Record<string, Function>;
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
 }
 
 // Base Controller Middleware
@@ -28,7 +28,7 @@ export abstract class BaseControllerMiddleware implements ControllerMiddleware {
     this.name = name;
   }
 
-  abstract execute(context: ControllerContext, next: () => Promise<any>): Promise<any>;
+  abstract execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown>;
 
   getName(): string {
     return this.name;
@@ -41,7 +41,7 @@ export class LoggingMiddleware extends BaseControllerMiddleware {
     super('LoggingMiddleware');
   }
 
-  async execute(context: ControllerContext, next: () => Promise<any>): Promise<any> {
+  async execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown> {
     const startTime = performance.now();
     
     console.log(`[${this.name}] Starting ${context.controller.constructor.name}.${context.method}`);
@@ -69,17 +69,17 @@ export class LoggingMiddleware extends BaseControllerMiddleware {
 
 // Validation Middleware
 export class ValidationMiddleware extends BaseControllerMiddleware {
-  private validators: Map<string, (params: any[]) => boolean> = new Map();
+  private validators: Map<string, (params: unknown[]) => boolean> = new Map();
 
   constructor() {
     super('ValidationMiddleware');
   }
 
-  addValidator(method: string, validator: (params: any[]) => boolean): void {
+  addValidator(method: string, validator: (params: unknown[]) => boolean): void {
     this.validators.set(method, validator);
   }
 
-  async execute(context: ControllerContext, next: () => Promise<any>): Promise<any> {
+  async execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown> {
     const validator = this.validators.get(context.method);
     
     if (validator && !validator(context.params)) {
@@ -94,14 +94,14 @@ export class ValidationMiddleware extends BaseControllerMiddleware {
 
 // Caching Middleware
 export class CachingMiddleware extends BaseControllerMiddleware {
-  private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
+  private cache: Map<string, { data: unknown; timestamp: number; ttl: number }> = new Map();
   private defaultTTL: number = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     super('CachingMiddleware');
   }
 
-  async execute(context: ControllerContext, next: () => Promise<any>): Promise<any> {
+  async execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown> {
     const cacheKey = this.generateCacheKey(context);
     const cached = this.cache.get(cacheKey);
     
@@ -142,7 +142,7 @@ export class ErrorHandlingMiddleware extends BaseControllerMiddleware {
     super('ErrorHandlingMiddleware');
   }
 
-  async execute(context: ControllerContext, next: () => Promise<any>): Promise<any> {
+  async execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown> {
     try {
       return await next();
     } catch (error) {
@@ -172,7 +172,7 @@ export class PerformanceMonitoringMiddleware extends BaseControllerMiddleware {
     super('PerformanceMonitoringMiddleware');
   }
 
-  async execute(context: ControllerContext, next: () => Promise<any>): Promise<any> {
+  async execute(context: ControllerContext, next: () => Promise<unknown>): Promise<unknown> {
     const startTime = performance.now();
     const methodKey = `${context.controller.constructor.name}.${context.method}`;
     
@@ -237,7 +237,7 @@ export class ControllerComposition {
     this.mixins.delete(mixinName);
   }
 
-  applyMixins(target: any): void {
+  applyMixins(target: unknown): void {
     this.mixins.forEach((mixin, name) => {
       // Apply methods
       Object.entries(mixin.methods).forEach(([methodName, method]) => {
@@ -252,10 +252,10 @@ export class ControllerComposition {
   }
 
   async executeWithMiddlewares(
-    controller: any,
+    controller: unknown,
     method: string,
-    params: any[]
-  ): Promise<any> {
+    params: unknown[]
+  ): Promise<unknown> {
     const context: ControllerContext = {
       controller,
       method,
@@ -265,7 +265,7 @@ export class ControllerComposition {
 
     let index = 0;
 
-    const next = async (): Promise<any> => {
+    const next = async (): Promise<unknown> => {
       if (index >= this.middlewares.length) {
         // Execute the actual method
         return await controller[method](...params);
@@ -291,10 +291,10 @@ export class ControllerComposition {
 export const LoggingMixin: ControllerMixin = {
   name: 'LoggingMixin',
   methods: {
-    log: function(message: string, data?: any) {
+    log: function(message: string, data?: unknown) {
       console.log(`[${this.constructor.name}] ${message}`, data);
     },
-    logError: function(error: Error, context?: any) {
+    logError: function(error: Error, context?: unknown) {
       console.error(`[${this.constructor.name}] Error:`, error, context);
     }
   },
@@ -306,11 +306,11 @@ export const LoggingMixin: ControllerMixin = {
 export const ValidationMixin: ControllerMixin = {
   name: 'ValidationMixin',
   methods: {
-    validate: function(data: any, rules: any): boolean {
+    validate: function(data: unknown, rules: unknown): boolean {
       // Simple validation logic
       return data && typeof data === 'object';
     },
-    validateRequired: function(data: any, fields: string[]): boolean {
+    validateRequired: function(data: unknown, fields: string[]): boolean {
       return fields.every(field => data && data[field] !== undefined && data[field] !== null);
     }
   },
@@ -322,10 +322,10 @@ export const ValidationMixin: ControllerMixin = {
 export const CachingMixin: ControllerMixin = {
   name: 'CachingMixin',
   methods: {
-    getCached: function(key: string): any {
+    getCached: function(key: string): unknown {
       return this.cache?.get(key);
     },
-    setCached: function(key: string, value: any, ttl?: number): void {
+    setCached: function(key: string, value: unknown, ttl?: number): void {
       this.cache?.set(key, { value, timestamp: Date.now(), ttl: ttl || 300000 });
     },
     clearCache: function(): void {
@@ -362,7 +362,7 @@ export abstract class EnhancedController {
     this.composition.applyMixins(this);
   }
 
-  protected async executeMethod(method: string, ...params: any[]): Promise<any> {
+  protected async executeMethod(method: string, ...params: unknown[]): Promise<unknown> {
     return await this.composition.executeWithMiddlewares(this, method, params);
   }
 
@@ -389,3 +389,5 @@ export abstract class EnhancedController {
 
 // Export composition system
 export const controllerComposition = new ControllerComposition();
+
+

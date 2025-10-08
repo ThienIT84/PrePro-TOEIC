@@ -5,7 +5,7 @@ export interface CacheConfig {
   strategy: 'lru' | 'fifo' | 'lfu'; // Cache eviction strategy
 }
 
-export interface CacheItem<T = any> {
+export interface CacheItem<T = unknown> {
   key: string;
   value: T;
   timestamp: number;
@@ -14,7 +14,7 @@ export interface CacheItem<T = any> {
   lastAccessed: number;
 }
 
-export class CacheService<T = any> {
+export class CacheService<T = unknown> {
   private cache = new Map<string, CacheItem<T>>();
   private config: CacheConfig;
 
@@ -182,10 +182,10 @@ export const mediaCache = new CacheService({ ttl: 60 * 60 * 1000, maxSize: 100 }
 
 // Cache decorator for methods
 export function cached(cache: CacheService, ttl?: number) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+  return function (target: unknown, propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       const cacheKey = `${propertyName}_${JSON.stringify(args)}`;
       
       // Try to get from cache
@@ -249,3 +249,5 @@ export const cacheInvalidator = new CacheInvalidator([
   analyticsCache,
   mediaCache
 ]);
+
+

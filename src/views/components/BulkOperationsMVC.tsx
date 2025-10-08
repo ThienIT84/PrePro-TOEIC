@@ -86,7 +86,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
         description: error.message,
@@ -137,7 +137,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Import failed",
         description: error.message,
@@ -174,7 +174,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Export failed",
         description: error.message,
