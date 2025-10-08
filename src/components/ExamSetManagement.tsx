@@ -40,10 +40,12 @@ interface ExamSet {
   id: string;
   title: string;
   description: string;
-  total_questions: number;
+  total_questions?: number;
+  question_count?: number;
   time_limit: number; // in minutes
   difficulty: 'easy' | 'medium' | 'hard';
-  status: 'active' | 'inactive';
+  status?: 'active' | 'inactive';
+  is_active?: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -84,7 +86,7 @@ const ExamSetManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setExamSets(data || []);
+      setExamSets((data || []) as ExamSet[]);
     } catch (error) {
       console.error('Error fetching exam sets:', error);
       toast({
@@ -106,10 +108,11 @@ const ExamSetManagement = () => {
         .insert({
           title: formData.title,
           description: formData.description,
-          total_questions: 200, // Default TOEIC full test
+          question_count: 200, // Default TOEIC full test
           time_limit: formData.time_limit,
           difficulty: formData.difficulty,
-          status: formData.status,
+          is_active: formData.status === 'active',
+          type: 'toeic',
           created_by: user.id
         })
         .select()
@@ -152,7 +155,7 @@ const ExamSetManagement = () => {
           description: formData.description,
           time_limit: formData.time_limit,
           difficulty: formData.difficulty,
-          status: formData.status,
+          is_active: formData.status === 'active',
           updated_at: new Date().toISOString()
         })
         .eq('id', editingExamSet.id);
@@ -211,7 +214,7 @@ const ExamSetManagement = () => {
       description: examSet.description,
       time_limit: examSet.time_limit,
       difficulty: examSet.difficulty,
-      status: examSet.status
+      status: examSet.status || (examSet.is_active ? 'active' : 'inactive')
     });
     setIsEditDialogOpen(true);
   };
@@ -309,7 +312,7 @@ const ExamSetManagement = () => {
               
               <div>
                 <Label htmlFor="difficulty">Độ khó</Label>
-                <Select value={formData.difficulty} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, difficulty: value }))}>
+                <Select value={formData.difficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => setFormData(prev => ({ ...prev, difficulty: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -323,7 +326,7 @@ const ExamSetManagement = () => {
               
               <div>
                 <Label htmlFor="status">Trạng thái</Label>
-                <Select value={formData.status} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, status: value }))}>
+                <Select value={formData.status} onValueChange={(value: 'active' | 'inactive') => setFormData(prev => ({ ...prev, status: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -486,7 +489,7 @@ const ExamSetManagement = () => {
             
             <div>
               <Label htmlFor="edit-difficulty">Độ khó</Label>
-              <Select value={formData.difficulty} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, difficulty: value }))}>
+                <Select value={formData.difficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => setFormData(prev => ({ ...prev, difficulty: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -500,7 +503,7 @@ const ExamSetManagement = () => {
             
             <div>
               <Label htmlFor="edit-status">Trạng thái</Label>
-              <Select value={formData.status} onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, status: value }))}>
+                <Select value={formData.status} onValueChange={(value: 'active' | 'inactive') => setFormData(prev => ({ ...prev, status: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

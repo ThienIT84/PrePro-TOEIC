@@ -158,7 +158,7 @@ const ExamPartSelection = () => {
         .single();
 
       if (error) throw error;
-      setExamSet(data);
+      setExamSet(data as any);
     } catch (error) {
       console.error('Error fetching exam set:', error);
       toast({

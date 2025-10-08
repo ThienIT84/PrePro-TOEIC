@@ -224,7 +224,7 @@ export class ExamQuestionManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }
@@ -238,22 +238,27 @@ export class ExamQuestionManagementController {
         .from('exam_questions')
         .select(`
           *,
-          question:items(*)
+          question:questions(*)
         `)
         .eq('exam_set_id', examSetId)
         .order('order_index', { ascending: true });
 
       if (error) throw error;
 
-      this.setExamQuestions(data || []);
+      const examQuestions = (data || []).map((item: any) => ({
+        ...item,
+        question: item.question || null
+      }));
+
+      this.setExamQuestions(examQuestions);
       return {
         success: true,
-        data: data || []
+        data: examQuestions
       };
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }
@@ -270,15 +275,28 @@ export class ExamQuestionManagementController {
 
       if (error) throw error;
 
-      this.setAllQuestions(data || []);
+      const questions = (data || []).map((item: any) => ({
+        id: item.id,
+        question: item.prompt_text || item.question || '',
+        type: item.part ? `part${item.part}` : item.type || 'unknown',
+        difficulty: item.difficulty || 'medium',
+        choices: item.choices ? Object.values(item.choices) as string[] : [],
+        correct_answer: item.correct_choice || item.correct_answer,
+        explanation: item.explain_vi || item.explanation,
+        audio_url: item.audio_url,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }));
+
+      this.setAllQuestions(questions);
       return {
         success: true,
-        data: data || []
+        data: questions
       };
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }
@@ -304,7 +322,7 @@ export class ExamQuestionManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }
@@ -325,7 +343,7 @@ export class ExamQuestionManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }
@@ -346,7 +364,7 @@ export class ExamQuestionManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }
@@ -367,7 +385,7 @@ export class ExamQuestionManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any)?.message || 'An error occurred'
       };
     }
   }

@@ -145,7 +145,7 @@ class ClassesService {
           studentAttempts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at :
           studentExams.length > 0 ?
             studentExams.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())[0].completed_at :
-            classData.created_at;
+            new Date().toISOString();
 
         return {
           id: studentId,

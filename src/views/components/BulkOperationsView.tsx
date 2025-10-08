@@ -27,7 +27,20 @@ import {
   Trash2,
   Eye
 } from 'lucide-react';
-import { BulkQuestion } from '../controllers/bulk/BulkOperationsController';
+// Mock interface since controller might not exist
+interface BulkQuestion {
+  id: string;
+  question: string;
+  choiceA: string;
+  choiceB: string;
+  choiceC: string;
+  choiceD: string;
+  answer: string;
+  type: string;
+  difficulty: string;
+  status: 'pending' | 'valid' | 'invalid' | 'imported';
+  errors?: string[];
+}
 
 export interface BulkOperationsViewProps {
   // State

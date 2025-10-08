@@ -11,7 +11,7 @@ const QuickCleanup: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [cleaning, setCleaning] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<unknown>(null);
+  const [cleanupResult, setCleanupResult] = useState<any>(null);
 
   const performQuickCleanup = async () => {
     if (!user) {
@@ -35,7 +35,7 @@ const QuickCleanup: React.FC = () => {
 
       try {
         const { data: itemsData, error: itemsError } = await supabase
-          .from('items')
+          .from('questions' as any)
           .select('*', { count: 'exact', head: true });
 
         if (!itemsError) {
@@ -57,20 +57,20 @@ const QuickCleanup: React.FC = () => {
         console.log('Questions table might not exist or is empty');
       }
 
-      steps.push(`📊 Tìm thấy ${itemsCount} câu hỏi trong bảng items`);
-      steps.push(`📊 Tìm thấy ${questionsCount} câu hỏi trong bảng questions`);
+        steps.push(`📊 Tìm thấy ${itemsCount} câu hỏi trong bảng questions (items)`);
+        steps.push(`📊 Tìm thấy ${questionsCount} câu hỏi trong bảng questions`);
 
-      // Step 2: Delete all data from items table
-      if (itemsCount > 0) {
-        steps.push("🗑️ Đang xóa tất cả dữ liệu từ bảng items...");
-        const { error: deleteItemsError } = await supabase
-          .from('items')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+        // Step 2: Delete all data from questions table (items)
+        if (itemsCount > 0) {
+          steps.push("🗑️ Đang xóa tất cả dữ liệu từ bảng questions (items)...");
+          const { error: deleteItemsError } = await supabase
+            .from('questions' as any)
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
 
-        if (deleteItemsError) throw deleteItemsError;
-        steps.push(`✅ Đã xóa ${itemsCount} câu hỏi từ bảng items`);
-      }
+          if (deleteItemsError) throw deleteItemsError;
+          steps.push(`✅ Đã xóa ${itemsCount} câu hỏi từ bảng questions (items)`);
+        }
 
       // Step 3: Delete all data from questions table
       if (questionsCount > 0) {
@@ -84,13 +84,9 @@ const QuickCleanup: React.FC = () => {
         steps.push(`✅ Đã xóa ${questionsCount} câu hỏi từ bảng questions`);
       }
 
-      // Step 4: Drop items table
-      steps.push("🗑️ Đang xóa bảng items...");
-      const { error: dropError } = await supabase
-        .rpc('drop_table_if_exists', { target_table_name: 'items' });
-
-      if (dropError) throw dropError;
-      steps.push("✅ Đã xóa bảng items");
+      // Step 4: Drop items table (skip since we're using questions table)
+      steps.push("🗑️ Bỏ qua xóa bảng items (đã sử dụng bảng questions)");
+      steps.push("✅ Bảng items không cần xóa");
 
       // Step 5: Verify cleanup
       let finalItemsCount = 0;
@@ -98,7 +94,7 @@ const QuickCleanup: React.FC = () => {
 
       try {
         const { data: finalItemsData } = await supabase
-          .from('items')
+          .from('questions' as any)
           .select('*', { count: 'exact', head: true });
         finalItemsCount = finalItemsData?.length || 0;
       } catch (error) {
@@ -133,13 +129,13 @@ const QuickCleanup: React.FC = () => {
       console.error('Cleanup error:', error);
       setCleanupResult({
         success: false,
-        error: error.message,
+        error: (error as any)?.message || 'Unknown error',
         message: "Cleanup thất bại"
       });
 
       toast({
         title: "Cleanup thất bại",
-        description: error.message,
+        description: (error as any)?.message || 'Unknown error',
         variant: "destructive",
       });
     } finally {

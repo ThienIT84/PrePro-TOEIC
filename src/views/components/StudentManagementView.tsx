@@ -10,7 +10,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Users, GraduationCap, TrendingUp, Calendar, Mail, UserCheck, RefreshCw, AlertTriangle } from 'lucide-react';
-import { Student } from '../controllers/user/StudentManagementController';
+// Mock interface since controller might not exist
+interface Student {
+  id: string;
+  student_id: string;
+  name: string;
+  email: string;
+  class_id: string | null;
+  created_at: string;
+  last_activity: string | null;
+  assigned_at: string;
+  total_exams: number;
+  total_attempts: number;
+  avg_score: number;
+  accuracy_percentage: number;
+  status: 'active' | 'inactive';
+}
 
 export interface StudentManagementViewProps {
   // State

@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileSpreadsheet, Download, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
@@ -27,6 +28,7 @@ interface QuestionRow {
 }
 
 const ExcelUpload = ({ examSetId, onSuccess }: ExcelUploadProps) => {
+  const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -128,18 +130,25 @@ const ExcelUpload = ({ examSetId, onSuccess }: ExcelUploadProps) => {
           // Parse tags
           const tags = row.tags ? row.tags.split(',').map(tag => tag.trim()) : [];
 
-          // Create question data
+          // Create question data - map to correct schema
           const questionData = {
-            type: row.type || 'vocab',
-            difficulty: row.difficulty || 'medium',
-            question: row.question.trim(),
-            choices: choices,
-            answer: row.answer.trim(),
+            part: row.type === 'listening' ? 2 : (row.type === 'vocab' ? 1 : row.type === 'grammar' ? 5 : 7),
+            prompt_text: row.question.trim(),
+            choices: {
+              A: choices[0] || '',
+              B: choices[1] || '',
+              C: choices[2] || '',
+              D: choices[3] || ''
+            },
+            correct_choice: row.answer.trim(),
             explain_vi: row.explain_vi.trim(),
             explain_en: row.explain_en.trim(),
+            difficulty: row.difficulty || 'medium',
             audio_url: row.audio_url?.trim() || null,
             transcript: row.transcript?.trim() || null,
-            tags: tags
+            tags: tags,
+            status: 'published' as const,
+            created_by: user?.id || null
           };
 
           console.log(`Processing row ${i + 1}:`, questionData);

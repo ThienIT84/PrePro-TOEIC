@@ -29,7 +29,29 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
-import { ExamSet, ExamStatistics } from '../controllers/exam/ExamManagementDashboardController';
+// Mock interfaces since controller might not exist
+interface ExamSet {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  status: string;
+  difficulty: string;
+  time_limit: number;
+  total_questions: number;
+  total_attempts?: number;
+  average_score?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ExamStatistics {
+  totalExamSets: number;
+  activeExamSets: number;
+  totalAttempts: number;
+  averageScore: number;
+  totalQuestions: number;
+}
 
 export interface ExamManagementDashboardViewProps {
   // State

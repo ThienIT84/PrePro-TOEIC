@@ -113,7 +113,7 @@ const ExamResult = () => {
         if (!attemptsError) {
           const qids = attemptsData.map(a => a.question_id);
           // Merge served questions from session.results (so we can include unanswered)
-          const served = (sessionData as unknown)?.results?.served_question_ids as string[] | undefined;
+          const served = (sessionData as any)?.results?.served_question_ids as string[] | undefined;
           const allIds = Array.from(new Set([...(served || []), ...qids]));
            const { data: qs, error: qErr } = await supabase
              .from('questions')
@@ -123,9 +123,9 @@ const ExamResult = () => {
             console.error('Questions query error:', qErr);
           } else {
             // Merge question details
-            const map: Record<string, unknown> = {};
+            const map: Record<string, any> = {};
             (qs || []).forEach(q => { map[q.id] = q; });
-            attemptsData.forEach(a => { (a as unknown).question_detail = map[a.question_id]; });
+            attemptsData.forEach(a => { (a as any).question_detail = map[a.question_id]; });
 
             // Get passage data for questions with passage_id
             const passageIds = [...new Set((qs || []).map(q => q.passage_id).filter(Boolean))];
@@ -136,7 +136,7 @@ const ExamResult = () => {
                 .in('id', passageIds);
               
               if (!passageError && passages) {
-                passages.forEach((p: unknown) => {
+                passages.forEach((p: any) => {
                   passageMap[p.id] = {
                     audio_url: p.audio_url,
                     image_url: p.image_url,
@@ -157,7 +157,7 @@ const ExamResult = () => {
                   is_correct: false,
                   time_spent: 0,
                   question_detail: map[id]
-                } as unknown);
+                } as any);
               });
             }
           }
@@ -171,15 +171,15 @@ const ExamResult = () => {
 
         // Transform data
         const transformedResult = {
-          session_id: (sessionData as unknown).id,
-          exam_set_name: (sessionData as unknown).exam_sets?.title || 'Bài thi',
-          total_questions: (sessionData as unknown).total_questions,
-          correct_answers: (sessionData as unknown).correct_answers,
-          score: (sessionData as unknown).score,
-          time_spent: (sessionData as unknown).time_spent,
-          completed_at: (sessionData as unknown).completed_at,
+          session_id: (sessionData as any).id,
+          exam_set_name: (sessionData as any).exam_sets?.title || 'Bài thi',
+          total_questions: (sessionData as any).total_questions,
+          correct_answers: (sessionData as any).correct_answers,
+          score: (sessionData as any).score,
+          time_spent: (sessionData as any).time_spent,
+          completed_at: (sessionData as any).completed_at,
           questions: (attemptsData || []).map(attempt => {
-            const questionDetail = (attempt as unknown).question_detail;
+            const questionDetail = (attempt as any).question_detail;
             const passageId = questionDetail?.passage_id;
             const passageData = passageId ? passageMap[passageId] : null;
             
@@ -198,9 +198,9 @@ const ExamResult = () => {
               audio_url: questionDetail?.audio_url || null,
               image_url: questionDetail?.image_url || null,
               passage_id: passageId || null,
-              passage_audio_url: passageData?.audio_url || null,
-              passage_image_url: passageData?.image_url || null,
-              passage_transcript: passageData?.texts?.content || null
+              passage_audio_url: (passageData as any)?.audio_url || null,
+              passage_image_url: (passageData as any)?.image_url || null,
+              passage_transcript: (passageData as any)?.texts?.content || null
             };
           })
         };
@@ -215,7 +215,7 @@ const ExamResult = () => {
 
       if (rpcData && rpcData.length > 0) {
         console.log('RPC result:', rpcData[0]);
-        setResult(rpcData[0] as unknown as ExamResult);
+        setResult(rpcData[0] as any as ExamResult);
       } else {
         setError('Không tìm thấy kết quả thi');
       }

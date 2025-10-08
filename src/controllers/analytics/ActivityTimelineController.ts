@@ -216,7 +216,7 @@ export class ActivityTimelineController {
         allActivities.push({
           id: exam.id,
           student_id: exam.user_id,
-          student_name: exam.profiles?.name || 'Unknown',
+          student_name: (exam as any).profiles?.name || 'Unknown',
           type: 'exam',
           title: exam.exam_sets?.title || 'Exam',
           score: exam.score,
@@ -229,18 +229,18 @@ export class ActivityTimelineController {
       const drillSessions = this.groupDrillSessions(attempts || []);
       drillSessions.forEach((sessionAttempts, sessionKey) => {
         const firstAttempt = sessionAttempts[0];
-        const correctCount = sessionAttempts.filter(a => a.correct).length;
+        const correctCount = sessionAttempts.filter(a => (a as any).correct).length;
         const totalCount = sessionAttempts.length;
         const avgScore = Math.round((correctCount / totalCount) * 100);
 
         allActivities.push({
           id: sessionKey,
-          student_id: firstAttempt.user_id,
-          student_name: firstAttempt.profiles?.name || 'Unknown',
+          student_id: (firstAttempt as any).user_id,
+          student_name: (firstAttempt as any).profiles?.name || 'Unknown',
           type: 'drill',
-          title: `${firstAttempt.items?.type || 'Unknown'} Practice Session`,
+          title: `${(firstAttempt as any).items?.type || 'Unknown'} Practice Session`,
           score: avgScore,
-          timestamp: firstAttempt.created_at,
+          timestamp: (firstAttempt as any).created_at,
           details: `${correctCount}/${totalCount} correct (${avgScore}%)`
         });
       });
@@ -273,7 +273,7 @@ export class ActivityTimelineController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: (error as any).message
       };
     } finally {
       if (!params.silent) {
@@ -307,7 +307,7 @@ export class ActivityTimelineController {
     const drillSessions = new Map<string, unknown[]>();
     
     attempts.forEach(attempt => {
-      const sessionKey = `${attempt.user_id}_${attempt.created_at.split('T')[0]}`;
+      const sessionKey = `${(attempt as any).user_id}_${(attempt as any).created_at.split('T')[0]}`;
       if (!drillSessions.has(sessionKey)) {
         drillSessions.set(sessionKey, []);
       }

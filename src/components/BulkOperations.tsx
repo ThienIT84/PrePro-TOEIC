@@ -74,7 +74,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      const parsedQuestions: BulkQuestion[] = jsonData.map((row: unknown, index: number) => {
+      const parsedQuestions: BulkQuestion[] = jsonData.map((row: any, index: number) => {
         const question: BulkQuestion = {
           type: row.type || 'vocab',
           question: row.question || '',
@@ -116,7 +116,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         description: `${validCount} valid questions, ${invalidCount} invalid questions`,
       });
 
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
@@ -151,15 +151,20 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         const batch = validQuestions.slice(i, i + batchSize);
         
         const questionsToInsert = batch.map(q => ({
-          type: q.type,
+          part: q.type === 'listening' ? 1 : 5, // Default part based on type
+          difficulty: 'medium', // Default difficulty
           question: q.question.trim(),
           choices: [q.choiceA.trim(), q.choiceB.trim(), q.choiceC.trim(), q.choiceD.trim()],
-          answer: q.answer.toUpperCase(),
+          correct_choice: q.answer.toUpperCase(),
           explain_vi: q.explanation.trim(),
           explain_en: q.explanation.trim(),
           audio_url: q.audio_url || null,
           transcript: q.transcript?.trim() || null,
-          tags: q.tags ? q.tags.split(',').map(t => t.trim()) : []
+          tags: q.tags ? q.tags.split(',').map(t => t.trim()) : [],
+          prompt_text: q.question.trim(), // Use question as prompt_text
+          blank_index: 0, // Default value
+          status: 'active', // Default status
+          created_by: user?.id || null,
         }));
 
         const { error } = await supabase
@@ -187,7 +192,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
 
       onQuestionsImported?.(importedCount);
 
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast({
         title: "Import failed",
         description: error.message,
@@ -209,14 +214,14 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
 
       if (error) throw error;
 
-      const exportData = data.map(item => ({
-        type: item.type,
+      const exportData = data.map((item: any) => ({
+        type: item.part <= 4 ? 'listening' : 'reading',
         question: item.question,
-        'Choice A': item.choices[0] || '',
-        'Choice B': item.choices[1] || '',
-        'Choice C': item.choices[2] || '',
-        'Choice D': item.choices[3] || '',
-        correct_answer: item.answer,
+        'Choice A': Array.isArray(item.choices) ? item.choices[0] || '' : '',
+        'Choice B': Array.isArray(item.choices) ? item.choices[1] || '' : '',
+        'Choice C': Array.isArray(item.choices) ? item.choices[2] || '' : '',
+        'Choice D': Array.isArray(item.choices) ? item.choices[3] || '' : '',
+        correct_answer: item.correct_choice,
         explain_vi: item.explain_vi,
         explain_en: item.explain_en,
         audio_url: item.audio_url || '',
@@ -235,7 +240,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         description: `${data.length} questions exported to Excel file`,
       });
 
-    } catch (error: unknown) {
+    } catch (error: any) {
       toast({
         title: "Export failed",
         description: error.message,

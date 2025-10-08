@@ -38,7 +38,26 @@ import {
   Users,
   Calendar
 } from 'lucide-react';
-import { ExamSet, ExamSetFormData } from '../controllers/exam/ExamSetManagementController';
+// Define types locally since controller might not exist
+export interface ExamSet {
+  id: string;
+  title: string;
+  description: string;
+  time_limit: number;
+  difficulty: string;
+  status: string;
+  total_questions: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExamSetFormData {
+  title: string;
+  description: string;
+  time_limit: number;
+  difficulty: string;
+  status: string;
+}
 
 export interface ExamSetManagementViewProps {
   // State
@@ -168,7 +187,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
               
               <div>
                 <Label htmlFor="difficulty">Độ khó</Label>
-                <Select value={formData.difficulty} onValueChange={(value: unknown) => onSetFormData({ difficulty: value })}>
+                <Select value={formData.difficulty} onValueChange={(value: any) => onSetFormData({ difficulty: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -182,7 +201,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
               
               <div>
                 <Label htmlFor="status">Trạng thái</Label>
-                <Select value={formData.status} onValueChange={(value: unknown) => onSetFormData({ status: value })}>
+                <Select value={formData.status} onValueChange={(value: any) => onSetFormData({ status: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -344,7 +363,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
             
             <div>
               <Label htmlFor="edit-difficulty">Độ khó</Label>
-              <Select value={formData.difficulty} onValueChange={(value: unknown) => onSetFormData({ difficulty: value })}>
+              <Select value={formData.difficulty} onValueChange={(value: any) => onSetFormData({ difficulty: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -358,7 +377,7 @@ const ExamSetManagementView: React.FC<ExamSetManagementViewProps> = ({
             
             <div>
               <Label htmlFor="edit-status">Trạng thái</Label>
-              <Select value={formData.status} onValueChange={(value: unknown) => onSetFormData({ status: value })}>
+              <Select value={formData.status} onValueChange={(value: any) => onSetFormData({ status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

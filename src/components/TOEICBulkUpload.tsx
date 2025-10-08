@@ -284,32 +284,33 @@ const TOEICBulkUpload: React.FC<TOEICBulkUploadProps> = ({
       console.log('📝 DEBUG: First row keys:', Object.keys(jsonData[0] || {}));
 
       const parsedQuestions: TOEICQuestion[] = jsonData.map((row: unknown, index: number) => {
+        const r = row as any;
         // Debug log để xem dữ liệu thô
         if (index === 0) {
-          console.log('🔍 Debug - Raw row data:', row);
-          console.log('🔍 Debug - Row keys:', Object.keys(row));
+          console.log('🔍 Debug - Raw row data:', r);
+          console.log('🔍 Debug - Row keys:', Object.keys(r));
         }
 
         const question: TOEICQuestion = {
-          part: parseInt(row.part) || 1,
-          prompt_text: row.prompt_text || row.question_text || '',
-          choiceA: row.choiceA || '',
-          choiceB: row.choiceB || '',
-          choiceC: row.choiceC || '',
-          choiceD: row.choiceD || '',
-          correct_choice: row.correct_choice || row.answer || 'A',
-          explain_vi: row.explain_vi || '',
-          explain_en: row.explain_en || '',
-          tags: row.tags ? row.tags.split(',').map((t: string) => t.trim()) : [],
-          difficulty: row.difficulty || 'medium',
-          status: row.status || 'draft',
-          passage_id: row.passage_id || undefined,
-          passage_title: row.passage_title || undefined,
-          passage_content: row.passage_content || undefined,
-          blank_index: row.blank_index ? parseInt(row.blank_index) : undefined,
-          audio_url: row.audio_url || '',
-          transcript: row.transcript || '',
-          image_url: row.image_url || '',
+          part: parseInt(r.part) || 1,
+          prompt_text: r.prompt_text || r.question_text || '',
+          choiceA: r.choiceA || '',
+          choiceB: r.choiceB || '',
+          choiceC: r.choiceC || '',
+          choiceD: r.choiceD || '',
+          correct_choice: r.correct_choice || r.answer || 'A',
+          explain_vi: r.explain_vi || '',
+          explain_en: r.explain_en || '',
+          tags: r.tags ? r.tags.split(',').map((t: string) => t.trim()) : [],
+          difficulty: r.difficulty || 'medium',
+          status: r.status || 'draft',
+          passage_id: r.passage_id || undefined,
+          passage_title: r.passage_title || undefined,
+          passage_content: r.passage_content || undefined,
+          blank_index: r.blank_index ? parseInt(r.blank_index) : undefined,
+          audio_url: r.audio_url || '',
+          transcript: r.transcript || '',
+          image_url: r.image_url || '',
           validation_status: 'pending',
           errors: []
         };
@@ -576,7 +577,7 @@ const TOEICBulkUpload: React.FC<TOEICBulkUploadProps> = ({
     } catch (error: unknown) {
       toast({
         title: "Import failed",
-        description: error.message,
+        description: (error as any).message,
         variant: "destructive",
       });
     } finally {

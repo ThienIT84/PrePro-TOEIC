@@ -60,7 +60,7 @@ const ExamQuestionManagement = () => {
         .single();
 
       if (error) throw error;
-      setExamSet(data);
+      setExamSet(data as any);
     } catch (error) {
       console.error('Error fetching exam set:', error);
       toast({
@@ -86,7 +86,7 @@ const ExamQuestionManagement = () => {
       if (error) throw error;
       
       console.log('Fetched exam questions:', data);
-      setExamQuestions(data || []);
+      setExamQuestions((data || []) as any);
     } catch (error) {
       console.error('Error fetching exam questions:', error);
       toast({
@@ -107,7 +107,7 @@ const ExamQuestionManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAllQuestions(data || []);
+      setAllQuestions((data || []) as any);
     } catch (error) {
       console.error('Error fetching all questions:', error);
     }
@@ -206,8 +206,9 @@ const ExamQuestionManagement = () => {
   };
 
   const filteredQuestions = allQuestions.filter(question => {
-    const matchesSearch = question.question.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'all' || question.type === selectedType;
+    const matchesSearch = (question as any).prompt_text?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         (question as any).question?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = selectedType === 'all' || (question as any).part === selectedType;
     const notInExam = !examQuestions.some(eq => eq.question_id === question.id);
     
     return matchesSearch && matchesType && notInExam;
@@ -384,16 +385,16 @@ const ExamQuestionManagement = () => {
                         </div>
                         <div className="flex-1">
                           <p className="font-medium">
-                            {examQuestion.question?.question || 'Câu hỏi không có nội dung'}
+                            {(examQuestion.question as any)?.prompt_text || (examQuestion.question as any)?.question || 'Câu hỏi không có nội dung'}
                           </p>
                           <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="secondary" className="text-xs">
-                              {getTypeLabel(examQuestion.question?.type || '')}
+                              Part {(examQuestion.question as any)?.part || ''}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
-                              {getDifficultyLabel(examQuestion.question?.difficulty || '')}
+                              {getDifficultyLabel((examQuestion.question as any)?.difficulty || '')}
                             </Badge>
-                            {examQuestion.question?.audio_url && (
+                            {(examQuestion.question as any)?.audio_url && (
                               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
                                 <Volume2 className="h-3 w-3 mr-1" />
                                 Audio
@@ -401,10 +402,10 @@ const ExamQuestionManagement = () => {
                             )}
                           </div>
                           {/* Show first choice as preview */}
-                          {examQuestion.question?.choices && examQuestion.question.choices.length > 0 && (
+                          {(examQuestion.question as any)?.choices && (
                             <p className="text-sm text-muted-foreground mt-2">
-                              A. {examQuestion.question.choices[0]}
-                              {examQuestion.question.choices.length > 1 && ` ... (+${examQuestion.question.choices.length - 1} lựa chọn khác)`}
+                              A. {(examQuestion.question as any).choices.A || ''}
+                              {(examQuestion.question as any).choices.B && ` ... (+3 lựa chọn khác)`}
                             </p>
                           )}
                         </div>
@@ -471,13 +472,13 @@ const ExamQuestionManagement = () => {
                 {filteredQuestions.map((question) => (
                   <div key={question.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{question.question}</p>
+                      <p className="font-medium text-sm">{(question as any).prompt_text || (question as any).question}</p>
                       <div className="flex items-center space-x-2 mt-1">
                         <Badge variant="secondary" className="text-xs">
-                          {getTypeLabel(question.type)}
+                          Part {(question as any).part}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          {getDifficultyLabel(question.difficulty)}
+                          {getDifficultyLabel((question as any).difficulty)}
                         </Badge>
                       </div>
                     </div>

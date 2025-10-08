@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_rules: {
+        Row: {
+          condition: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_enabled: boolean | null
+          name: string
+          notification_type: string | null
+          teacher_id: string | null
+          threshold: number | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          condition: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name: string
+          notification_type?: string | null
+          teacher_id?: string | null
+          threshold?: number | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          condition?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name?: string
+          notification_type?: string | null
+          teacher_id?: string | null
+          threshold?: number | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      alerts: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          student_id: string | null
+          teacher_id: string | null
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          student_id?: string | null
+          teacher_id?: string | null
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          student_id?: string | null
+          teacher_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       attempts: {
         Row: {
           correct: boolean
@@ -65,6 +143,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      class_students: {
+        Row: {
+          class_id: string | null
+          id: string
+          joined_at: string | null
+          status: string | null
+          student_id: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          id?: string
+          joined_at?: string | null
+          status?: string | null
+          student_id?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          id?: string
+          joined_at?: string | null
+          status?: string | null
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          teacher_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       exam_attempts: {
         Row: {
@@ -159,6 +303,7 @@ export type Database = {
           created_at: string | null
           exam_set_id: string | null
           id: string
+          results: Json | null
           score: number
           started_at: string | null
           status: string
@@ -173,6 +318,7 @@ export type Database = {
           created_at?: string | null
           exam_set_id?: string | null
           id?: string
+          results?: Json | null
           score?: number
           started_at?: string | null
           status?: string
@@ -187,6 +333,7 @@ export type Database = {
           created_at?: string | null
           exam_set_id?: string | null
           id?: string
+          results?: Json | null
           score?: number
           started_at?: string | null
           status?: string
@@ -207,12 +354,14 @@ export type Database = {
       }
       exam_sets: {
         Row: {
+          allow_multiple_attempts: boolean | null
           created_at: string | null
           created_by: string | null
           description: string | null
           difficulty: string
           id: string
           is_active: boolean | null
+          max_attempts: number | null
           question_count: number | null
           time_limit: number | null
           title: string
@@ -220,12 +369,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allow_multiple_attempts?: boolean | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           difficulty: string
           id?: string
           is_active?: boolean | null
+          max_attempts?: number | null
           question_count?: number | null
           time_limit?: number | null
           title: string
@@ -233,12 +384,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allow_multiple_attempts?: boolean | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           difficulty?: string
           id?: string
           is_active?: boolean | null
+          max_attempts?: number | null
           question_count?: number | null
           time_limit?: number | null
           title?: string
@@ -298,6 +451,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          image_url: string | null
           meta: Json | null
           part: number
           passage_type: string
@@ -310,6 +464,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          image_url?: string | null
           meta?: Json | null
           part: number
           passage_type: string
@@ -322,6 +477,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          image_url?: string | null
           meta?: Json | null
           part?: number
           passage_type?: string

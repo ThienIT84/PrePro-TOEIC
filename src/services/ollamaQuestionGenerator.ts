@@ -159,7 +159,7 @@ Return ONLY the JSON object.`;
         throw new Error('Invalid response format');
       }
 
-      return parsed.questions.map((q: unknown, index: number) => ({
+      return parsed.questions.map((q: any, index: number) => ({
         question: q.question || `Question ${index + 1}`,
         choices: Array.isArray(q.choices) ? q.choices : ['Option A', 'Option B', 'Option C', 'Option D'],
         answer: q.answer || 'A',
@@ -193,7 +193,7 @@ Return ONLY the JSON object.`;
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`);
       const data = await response.json();
-      return data.models?.map((m: unknown) => m.name) || [];
+      return data.models?.map((m: any) => m.name) || [];
     } catch {
       return [];
     }

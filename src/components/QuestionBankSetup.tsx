@@ -117,7 +117,7 @@ const QuestionBankSetup: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('questions')
-        .select('type, difficulty, tags');
+        .select('part, difficulty, tags');
 
       if (error) throw error;
 
@@ -128,21 +128,17 @@ const QuestionBankSetup: React.FC = () => {
         byPart: {}
       };
 
-      data.forEach(item => {
-        // Count by type
-        stats.byType[item.type] = (stats.byType[item.type] || 0) + 1;
+      data.forEach((item: any) => {
+        // Count by type (map part to type)
+        const type = item.part <= 4 ? 'listening' : 'reading';
+        stats.byType[type] = (stats.byType[type] || 0) + 1;
         
         // Count by difficulty
         stats.byDifficulty[item.difficulty] = (stats.byDifficulty[item.difficulty] || 0) + 1;
         
-        // Count by part (from tags)
-        if (item.tags) {
-          item.tags.forEach(tag => {
-            if (tag.startsWith('part')) {
-              stats.byPart[tag] = (stats.byPart[tag] || 0) + 1;
-            }
-          });
-        }
+        // Count by part
+        const partKey = `part${item.part}`;
+        stats.byPart[partKey] = (stats.byPart[partKey] || 0) + 1;
       });
 
       setStats(stats);
@@ -164,9 +160,27 @@ const QuestionBankSetup: React.FC = () => {
       let added = 0;
 
       for (const question of allQuestions) {
+        const questionToInsert = {
+          part: question.type === 'listening' ? (question.question.includes('Part 1') ? 1 : 2) : (question.question.includes('Part 5') ? 5 : 7),
+          prompt_text: question.question,
+          choices: {
+            A: question.choices[0],
+            B: question.choices[1],
+            C: question.choices[2],
+            D: question.choices[3]
+          },
+          correct_choice: question.answer,
+          explain_vi: question.explain_vi,
+          explain_en: question.explain_en,
+          difficulty: question.difficulty,
+          tags: question.tags,
+          status: 'published' as const,
+          created_by: user.id
+        };
+
         const { error } = await supabase
           .from('questions')
-          .insert([question]);
+          .insert([questionToInsert]);
 
         if (error) {
           console.error('Error adding question:', error);
@@ -208,9 +222,27 @@ const QuestionBankSetup: React.FC = () => {
       for (const part of parts) {
         const questions = generateQuestionsForPart(part, questionsPerPart);
         
+        const questionsToInsert = questions.map(q => ({
+          part: part,
+          prompt_text: q.question,
+          choices: {
+            A: q.choices[0],
+            B: q.choices[1],
+            C: q.choices[2],
+            D: q.choices[3]
+          },
+          correct_choice: q.answer,
+          explain_vi: q.explain_vi,
+          explain_en: q.explain_en,
+          difficulty: q.difficulty,
+          tags: q.tags,
+          status: 'published' as const,
+          created_by: user?.id
+        }));
+        
         const { error } = await supabase
           .from('questions')
-          .insert(questions);
+          .insert(questionsToInsert);
 
         if (error) {
           console.error(`Error adding Part ${part} questions:`, error);
@@ -269,16 +301,16 @@ const QuestionBankSetup: React.FC = () => {
       if (error) throw error;
 
       const csvContent = [
-        'Type,Difficulty,Question,Choice A,Choice B,Choice C,Choice D,Answer,Explanation VI,Explanation EN,Tags',
-        ...data.map(q => [
-          q.type,
+        'Part,Difficulty,Question,Choice A,Choice B,Choice C,Choice D,Answer,Explanation VI,Explanation EN,Tags',
+        ...data.map((q: any) => [
+          q.part,
           q.difficulty,
-          q.question,
-          q.choices[0] || '',
-          q.choices[1] || '',
-          q.choices[2] || '',
-          q.choices[3] || '',
-          q.answer,
+          q.prompt_text,
+          q.choices?.A || '',
+          q.choices?.B || '',
+          q.choices?.C || '',
+          q.choices?.D || '',
+          q.correct_choice,
           q.explain_vi,
           q.explain_en,
           q.tags?.join(';') || ''

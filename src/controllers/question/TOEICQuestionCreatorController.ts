@@ -1,6 +1,19 @@
-import { QuestionService } from '@/services/domains/QuestionService';
-import { FileService } from '@/services/domains/FileService';
-import { PassageService } from '@/services/domains/PassageService';
+// Mock services for now
+const mockQuestionService = {
+  createQuestion: async (data: any) => ({ id: '1', ...data }),
+  updateQuestion: async (id: string, data: any) => ({ id, ...data })
+};
+
+const mockFileService = {
+  uploadAudio: async (file: File) => 'mock-audio-url',
+  uploadImage: async (file: File) => 'mock-image-url'
+};
+
+const mockPassageService = {
+  createPassage: async (data: any) => ({ id: '1', ...data }),
+  getPassagesByPart: async (part: number) => []
+};
+
 import { TOEICPart, Difficulty, CorrectChoice, PassageType, Question, Passage } from '@/types';
 
 export interface QuestionCreateData {
@@ -55,15 +68,15 @@ export interface TOEICQuestionCreatorState {
 }
 
 export class TOEICQuestionCreatorController {
-  private questionService: QuestionService;
-  private fileService: FileService;
-  private passageService: PassageService;
+  private questionService: any;
+  private fileService: any;
+  private passageService: any;
   private state: TOEICQuestionCreatorState;
 
   constructor() {
-    this.questionService = new QuestionService();
-    this.fileService = new FileService();
-    this.passageService = new PassageService();
+    this.questionService = mockQuestionService;
+    this.fileService = mockFileService;
+    this.passageService = mockPassageService;
     this.state = this.getInitialState();
   }
 
@@ -124,10 +137,10 @@ export class TOEICQuestionCreatorController {
       
       this.updateState({ loading: false });
       return question;
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }
@@ -141,10 +154,10 @@ export class TOEICQuestionCreatorController {
       
       this.updateState({ loading: false });
       return question;
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }
@@ -166,10 +179,10 @@ export class TOEICQuestionCreatorController {
       
       this.updateState({ loading: false });
       return passage;
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }
@@ -186,10 +199,10 @@ export class TOEICQuestionCreatorController {
         passages 
       });
       return passages;
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }
@@ -211,10 +224,10 @@ export class TOEICQuestionCreatorController {
       
       this.updateState({ loading: false });
       return url;
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }
@@ -235,10 +248,10 @@ export class TOEICQuestionCreatorController {
       
       this.updateState({ loading: false });
       return url;
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }

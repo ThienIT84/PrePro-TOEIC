@@ -1,6 +1,7 @@
 import { QuestionController } from '@/controllers/question/QuestionController';
 import { QuestionModel, ExamSetModel, UserModel } from '@/models/entities';
 import { GlobalState, GlobalAction } from './GlobalStateContext';
+import { TOEICPart, Difficulty } from '@/types';
 
 /**
  * Store Manager - Tích hợp Controllers với Global State
@@ -64,8 +65,8 @@ export class StoreManager {
    * Load questions với filters
    */
   async loadQuestions(filters?: {
-    part?: number;
-    difficulty?: string;
+    part?: TOEICPart;
+    difficulty?: Difficulty;
     status?: string;
     search?: string;
   }): Promise<void> {
@@ -127,7 +128,7 @@ export class StoreManager {
   /**
    * Get questions by part
    */
-  getQuestionsByPart(part: number): QuestionModel[] {
+  getQuestionsByPart(part: TOEICPart): QuestionModel[] {
     if (this.questionController) {
       return this.questionController.getQuestionsByPart(part);
     }
@@ -137,9 +138,9 @@ export class StoreManager {
   /**
    * Get questions by difficulty
    */
-  getQuestionsByDifficulty(difficulty: string): QuestionModel[] {
+  getQuestionsByDifficulty(difficulty: Difficulty): QuestionModel[] {
     if (this.questionController) {
-      return this.questionController.getQuestionsByDifficulty(difficulty as unknown);
+      return this.questionController.getQuestionsByDifficulty(difficulty);
     }
     return [];
   }

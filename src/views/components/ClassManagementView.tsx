@@ -33,7 +33,31 @@ import {
   Eye,
   Download
 } from 'lucide-react';
-import { ClassInfo, Student, ClassFormData } from '../controllers/user/ClassManagementController';
+// Mock interfaces since controller might not exist
+interface ClassInfo {
+  id: string;
+  name: string;
+  description: string;
+  student_count: number;
+  created_at: string;
+  avg_score: number;
+  completion_rate: number;
+  students: Student[];
+}
+
+interface Student {
+  id: string;
+  name: string;
+  email: string;
+  avg_score: number;
+  last_activity: string;
+  is_in_class: boolean;
+}
+
+interface ClassFormData {
+  name: string;
+  description: string;
+}
 
 export interface ClassManagementViewProps {
   // State

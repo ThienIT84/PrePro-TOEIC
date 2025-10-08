@@ -60,7 +60,7 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
   });
 
   const [newTag, setNewTag] = useState('');
-  const [passages, setPassages] = useState<unknown[]>([]);
+  const [passages, setPassages] = useState<any[]>([]);
   const [selectedPassageId, setSelectedPassageId] = useState<string | null>(null);
 
   // Load passages when part changes
@@ -85,7 +85,7 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
     }
   };
 
-  const handleQuestionChange = (field: string, value: unknown) => {
+  const handleQuestionChange = (field: string, value: any) => {
     setQuestionData(prev => {
       const newData = {
         ...prev,
@@ -112,7 +112,7 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
     }));
   };
 
-  const handlePassageChange = (field: string, value: unknown) => {
+  const handlePassageChange = (field: string, value: any) => {
     setPassageData(prev => ({
       ...prev,
       [field]: value
@@ -559,16 +559,19 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
                       <SelectValue placeholder="Chọn đoạn văn" />
                     </SelectTrigger>
                     <SelectContent>
-                      {passages.map((passage) => (
-                        <SelectItem key={passage.id} value={passage.id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{passage.texts.title || `Đoạn văn ${passage.id.slice(0, 8)}`}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {passage.passage_type} • {passage.texts.content.slice(0, 50)}...
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {passages.map((passage) => {
+                        const p = passage as any;
+                        return (
+                          <SelectItem key={p.id} value={p.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{p.texts?.title || `Đoạn văn ${p.id?.slice(0, 8)}`}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {p.passage_type} • {p.texts?.content?.slice(0, 50)}...
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   {passages.length === 0 && (

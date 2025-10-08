@@ -36,7 +36,38 @@ import {
   Search,
   X
 } from 'lucide-react';
-import { ExamPart, ExamTemplate, Question } from '@/controllers/exam/ExamSetCreatorController';
+// Define types locally since controller might not exist
+export interface Question {
+  id: string;
+  part: number;
+  difficulty: string;
+  prompt_text: string;
+  choices: { A: string; B: string; C: string; D: string; };
+  correct_choice: string;
+  explain_vi: string;
+  explain_en: string;
+  tags: string[];
+  audio_url?: string;
+  transcript?: string;
+}
+
+export interface ExamPart {
+  part: number;
+  name: string;
+  description: string;
+  questionCount: number;
+  timeLimit: number;
+  required: boolean;
+  questions: Question[];
+}
+
+export interface ExamTemplate {
+  id: string;
+  name: string;
+  description: string;
+  totalQuestions: number;
+  totalTime: number;
+}
 
 export interface ExamSetCreatorViewProps {
   // State
@@ -64,7 +95,7 @@ export interface ExamSetCreatorViewProps {
   // Handlers
   onActiveTabChange: (tab: string) => void;
   onFormDataChange: (updates: Partial<ExamSetCreatorViewProps['formData']>) => void;
-  onPartConfigUpdate: (partNumber: number, field: string, value: unknown) => void;
+  onPartConfigUpdate: (partNumber: number, field: string, value: any) => void;
   onAddQuestionsToPart: (partNumber: number, questionIds: string[]) => void;
   onRemoveQuestionFromPart: (partNumber: number, questionId: string) => void;
   onAutoAssignQuestions: () => void;
@@ -240,7 +271,7 @@ export const ExamSetCreatorView: React.FC<ExamSetCreatorViewProps> = ({
                   <Label htmlFor="type">Exam Type</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value: unknown) => onFormDataChange({ type: value })}
+                    onValueChange={(value: any) => onFormDataChange({ type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -270,7 +301,7 @@ export const ExamSetCreatorView: React.FC<ExamSetCreatorViewProps> = ({
                   <Label htmlFor="difficulty">Difficulty Level</Label>
                   <Select 
                     value={formData.difficulty} 
-                    onValueChange={(value: unknown) => onFormDataChange({ difficulty: value })}
+                    onValueChange={(value: any) => onFormDataChange({ difficulty: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -307,7 +338,7 @@ export const ExamSetCreatorView: React.FC<ExamSetCreatorViewProps> = ({
                   <Label htmlFor="status">Status</Label>
                   <Select 
                     value={formData.status} 
-                    onValueChange={(value: unknown) => onFormDataChange({ status: value })}
+                    onValueChange={(value: any) => onFormDataChange({ status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />

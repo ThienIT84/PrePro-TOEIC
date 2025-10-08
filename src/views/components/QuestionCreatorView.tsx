@@ -111,16 +111,16 @@ export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <span className="text-2xl">{currentPartInfo.icon}</span>
-            Tạo câu hỏi TOEIC - {currentPartInfo.name}
+            <span className="text-2xl">{(currentPartInfo as any)?.icon || '📝'}</span>
+            Tạo câu hỏi TOEIC - {(currentPartInfo as any)?.name || 'Unknown Part'}
           </CardTitle>
-          <p className="text-muted-foreground">{currentPartInfo.description}</p>
+          <p className="text-muted-foreground">{(currentPartInfo as any)?.description || ''}</p>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={onSetActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="question">Câu hỏi</TabsTrigger>
-              {currentPartInfo.needsPassage && (
+              {(currentPartInfo as any)?.needsPassage && (
                 <TabsTrigger value="passage">Đoạn văn</TabsTrigger>
               )}
             </TabsList>
@@ -137,8 +137,8 @@ export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
                     {Object.entries(toeicPartInfo).map(([part, info]: [string, unknown]) => (
                       <SelectItem key={part} value={part}>
                         <div className="flex items-center gap-2">
-                          <span>{info.icon}</span>
-                          <span>{info.name}</span>
+                          <span>{(info as any)?.icon || '📝'}</span>
+                          <span>{(info as any)?.name || 'Unknown Part'}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -279,7 +279,7 @@ export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
               )}
 
               {/* Passage Selection for Parts 3, 4, 6, 7 */}
-              {currentPartInfo.needsPassage && (
+              {(currentPartInfo as any)?.needsPassage && (
                 <div className="space-y-2">
                   <Label>Chọn đoạn văn</Label>
                   <Select value={selectedPassageId || ''} onValueChange={onSetSelectedPassageId}>
@@ -288,11 +288,11 @@ export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
                     </SelectTrigger>
                     <SelectContent>
                       {passages.map((passage) => (
-                        <SelectItem key={passage.id} value={passage.id}>
+                        <SelectItem key={(passage as any)?.id} value={(passage as any)?.id}>
                           <div className="flex flex-col">
-                            <span className="font-medium">{passage.texts.title || `Đoạn văn ${passage.id.slice(0, 8)}`}</span>
+                            <span className="font-medium">{(passage as any)?.texts?.title || `Đoạn văn ${(passage as any)?.id?.slice(0, 8) || 'Unknown'}`}</span>
                             <span className="text-sm text-muted-foreground">
-                              {passage.passage_type} • {passage.texts.content.slice(0, 50)}...
+                              {(passage as any)?.passage_type || 'Unknown'} • {(passage as any)?.texts?.content?.slice(0, 50) || 'No content'}...
                             </span>
                           </div>
                         </SelectItem>
@@ -491,7 +491,7 @@ export const QuestionCreatorView: React.FC<QuestionCreatorViewProps> = ({
               </Button>
             </TabsContent>
 
-            {currentPartInfo.needsPassage && (
+            {(currentPartInfo as any)?.needsPassage && (
               <TabsContent value="passage" className="space-y-6">
                 <div className="space-y-2">
                   <Label>Loại đoạn văn</Label>

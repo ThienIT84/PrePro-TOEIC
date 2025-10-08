@@ -210,7 +210,6 @@ export function useTeacherAnalyticsController() {
     isLoading,
     hasAnalyticsData,
     getActiveTab,
-    isStudentModalOpen,
     getSelectedStudent,
     resetAnalyticsState,
   };

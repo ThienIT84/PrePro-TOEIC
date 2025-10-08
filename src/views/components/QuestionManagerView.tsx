@@ -155,7 +155,7 @@ export const QuestionManagerView: React.FC<QuestionManagerViewProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  {Object.entries(toeicPartInfo).map(([part, info]: [string, unknown]) => (
+                  {Object.entries(toeicPartInfo).map(([part, info]: [string, any]) => (
                     <SelectItem key={part} value={part}>
                       {info.icon} {info.name}
                     </SelectItem>
@@ -298,8 +298,8 @@ export const QuestionManagerView: React.FC<QuestionManagerViewProps> = ({
                           <div className="flex-1 space-y-3">
                             {/* Header */}
                             <div className="flex items-center gap-3">
-                              <Badge className={`${partInfo.color} font-medium`}>
-                                {partInfo.icon} {partInfo.name}
+                              <Badge className={`${(partInfo as any).color} font-medium`}>
+                                {(partInfo as any).icon} {(partInfo as any).name}
                               </Badge>
                               <Badge className={difficultyColors[question.difficulty]}>
                                 {question.difficulty}

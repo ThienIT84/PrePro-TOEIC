@@ -164,7 +164,8 @@ export class QuestionManagerController {
     try {
       this.setState({ loading: true, errors: [] });
 
-      const questions = await this.questionService.getAllQuestions();
+      const result = await this.questionService.getQuestions();
+      const questions = result.data || [];
       this.setState({ questions });
 
       return { success: true };

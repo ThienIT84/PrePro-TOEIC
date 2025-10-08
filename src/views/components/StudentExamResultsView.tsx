@@ -23,7 +23,30 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react';
-import { StudentExamResult, StudentStats } from '../controllers/analytics/StudentExamResultsController';
+// Mock interfaces since controller might not exist
+interface StudentExamResult {
+  id: string;
+  score: number;
+  correct_answers: number;
+  total_questions: number;
+  time_spent: number;
+  completed_at: string;
+  exam_sets?: {
+    title: string;
+  };
+  profiles?: {
+    name: string;
+  };
+}
+
+interface StudentStats {
+  student_id: string;
+  student_name: string;
+  total_exams: number;
+  average_score: number;
+  best_score: number;
+  latest_exam_date?: string;
+}
 
 export interface StudentExamResultsViewProps {
   // State

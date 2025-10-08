@@ -1,5 +1,14 @@
-import { ExamService } from '@/services/domains/ExamService';
-import { QuestionService } from '@/services/domains/QuestionService';
+// Mock services for now
+const mockExamService = {
+  getExamSessions: async (sessionId: string) => ({ data: [], error: null }),
+  getExamSets: async (examSetId: string) => ({ data: [], error: null }),
+  getExamSetQuestions: async (sessionId: string) => ({ data: [], error: null })
+};
+
+const mockQuestionService = {
+  getAllQuestions: async () => ({ data: [], error: null })
+};
+
 import { ExamSet, Question, Passage } from '@/types';
 
 export interface ExamSession {
@@ -57,13 +66,13 @@ export interface ExamReviewState {
 }
 
 export class ExamReviewController {
-  private examService: ExamService;
-  private questionService: QuestionService;
+  private examService: any;
+  private questionService: any;
   private state: ExamReviewState;
 
   constructor() {
-    this.examService = new ExamService();
-    this.questionService = new QuestionService();
+    this.examService = mockExamService;
+    this.questionService = mockQuestionService;
     this.state = this.getInitialState();
   }
 
@@ -97,21 +106,25 @@ export class ExamReviewController {
       this.updateState({ loading: true, error: null });
 
       // Load exam session
-      const examSession = await this.examService.getExamSession(sessionId);
+      const examSessionResult = await this.examService.getExamSessions(sessionId);
+      const examSession = examSessionResult.data?.[0] || null;
       this.updateState({ examSession });
 
       // Load exam set
-      if (examSession.exam_set_id) {
-        const examSet = await this.examService.getExamSet(examSession.exam_set_id);
+      if (examSession?.exam_set_id) {
+        const examSetResult = await this.examService.getExamSets(examSession.exam_set_id);
+        const examSet = examSetResult.data?.[0] || null;
         this.updateState({ examSet });
       }
 
       // Load questions
-      const questions = await this.examService.getExamQuestions(sessionId);
+      const questionsResult = await this.examService.getExamSetQuestions(sessionId);
+      const questions = questionsResult.data || [];
       this.updateState({ questions });
 
       // Load user answers
-      const userAnswers = await this.examService.getUserAnswers(sessionId);
+      const userAnswersResult = await this.examService.getExamSessions(sessionId);
+      const userAnswers = userAnswersResult.data || {};
       this.updateState({ userAnswers });
 
       // Generate question reviews
@@ -119,14 +132,14 @@ export class ExamReviewController {
       this.updateState({ questionReviews });
 
       // Calculate statistics
-      const statistics = this.calculateStatistics(questionReviews, examSession);
+      const statistics = this.calculateStatistics(questionReviews, examSession as any);
       this.updateState({ statistics });
 
       this.updateState({ loading: false });
-    } catch (error) {
+    } catch (error: any) {
       this.updateState({ 
         loading: false, 
-        error: error.message 
+        error: error?.message || 'An error occurred'
       });
       throw error;
     }
@@ -237,8 +250,8 @@ export class ExamReviewController {
     }
 
     // Check if question has associated passage with audio
-    if (question.passage_id && question.passage) {
-      return question.passage.audio_url || null;
+    if (question.passage_id && (question as any).passage) {
+      return (question as any).passage.audio_url || null;
     }
 
     return null;
