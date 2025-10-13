@@ -93,7 +93,7 @@ const ExamSelection = () => {
         .single();
 
       if (error) throw error;
-      setCurrentExamSet(data);
+      setCurrentExamSet(data as ExamSet);
     } catch (error) {
       console.error('Error fetching exam set:', error);
       toast({
@@ -116,7 +116,7 @@ const ExamSelection = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setExamSets(data || []);
+      setExamSets((data || []) as ExamSet[]);
     } catch (error) {
       console.error('Error fetching exam sets:', error);
       toast({

@@ -245,8 +245,8 @@ export function useExamQuestionManagementController() {
 
     // State getters
     isLoading,
-    isAddDialogOpen,
-    isExcelDialogOpen,
+    isAddDialogOpenGetter: isAddDialogOpen,
+    isExcelDialogOpenGetter: isExcelDialogOpen,
     getExamSet,
     getExamQuestions,
     getAllQuestions,

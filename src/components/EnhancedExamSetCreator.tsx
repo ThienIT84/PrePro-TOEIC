@@ -81,9 +81,9 @@ const EnhancedExamSetCreator: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: 'full' as const,
-    difficulty: 'medium' as const,
-    status: 'draft' as const,
+    type: 'full' as 'full' | 'mini' | 'custom',
+    difficulty: 'medium' as 'easy' | 'medium' | 'hard' | 'mixed',
+    status: 'draft' as 'draft' | 'active' | 'inactive',
     allow_multiple_attempts: true,
     max_attempts: '' as number | ''
   });
@@ -218,12 +218,12 @@ const EnhancedExamSetCreator: React.FC = () => {
       }
       
       console.log('Question bank loaded:', data?.length || 0, 'questions');
-      setQuestionBank(data || []);
+      setQuestionBank((data || []) as Question[]);
     } catch (error: unknown) {
       console.error('Failed to load question bank:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     }
@@ -232,7 +232,7 @@ const EnhancedExamSetCreator: React.FC = () => {
   const loadTemplate = (template: ExamTemplate) => {
     setFormData(prev => ({
       ...prev,
-      type: template.type,
+      type: template.type as 'full' | 'mini' | 'custom',
       title: template.name,
       description: template.description
     }));
@@ -280,7 +280,7 @@ const EnhancedExamSetCreator: React.FC = () => {
         .eq('part', partNumber)
         .order('created_at', { ascending: true });
       if (formData.difficulty !== 'mixed') {
-        query = query.eq('difficulty', formData.difficulty);
+        query = query.eq('difficulty', formData.difficulty as 'easy' | 'medium' | 'hard');
       }
       if (excludeIds.length > 0) {
         query = query.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -314,7 +314,7 @@ const EnhancedExamSetCreator: React.FC = () => {
             if (!byPassage[q.passage_id]) byPassage[q.passage_id] = [];
             byPassage[q.passage_id].push(q);
           });
-          const groups = Object.values(byPassage).map(arr => arr.sort((a, b) => (a.created_at > b.created_at ? 1 : -1)));
+          const groups = Object.values(byPassage).map(arr => arr.sort((a, b) => ((a as any).created_at > (b as any).created_at ? 1 : -1)));
           for (const g of groups) {
             const take = g.slice(0, 3);
             if (assigned.length + take.length <= need) {
@@ -331,7 +331,7 @@ const EnhancedExamSetCreator: React.FC = () => {
             if (!byPassage[q.passage_id]) byPassage[q.passage_id] = [];
             byPassage[q.passage_id].push(q);
           });
-          const groups = Object.values(byPassage).map(arr => arr.sort((a, b) => (a.blank_index || 0) - (b.blank_index || 0)));
+          const groups = Object.values(byPassage).map(arr => arr.sort((a, b) => ((a as any).blank_index || 0) - ((b as any).blank_index || 0)));
           for (const g of groups) {
             const take = g.slice(0, 4);
             if (assigned.length + take.length <= need) {
@@ -348,7 +348,7 @@ const EnhancedExamSetCreator: React.FC = () => {
             if (!byPassage[q.passage_id]) byPassage[q.passage_id] = [];
             byPassage[q.passage_id].push(q);
           });
-          const groups = Object.values(byPassage).map(arr => arr.sort((a, b) => (a.created_at > b.created_at ? 1 : -1)));
+          const groups = Object.values(byPassage).map(arr => arr.sort((a, b) => ((a as any).created_at > (b as any).created_at ? 1 : -1)));
           for (const g of groups) {
             if (assigned.length === need) break;
             if (assigned.length + g.length <= need) {
@@ -361,8 +361,8 @@ const EnhancedExamSetCreator: React.FC = () => {
           }
         }
 
-        newExamParts[i].questions = assigned;
-        assigned.forEach(q => usedQuestionIds.add(q.id));
+        newExamParts[i].questions = assigned as Question[];
+        assigned.forEach(q => usedQuestionIds.add((q as any).id));
 
         console.log(`📚 Assigned ${assigned.length}/${need} for Part ${cfg.part}`);
       }
@@ -376,7 +376,7 @@ const EnhancedExamSetCreator: React.FC = () => {
       });
     } catch (error: unknown) {
       console.error('Error in auto-assignment:', error);
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Unknown error occurred', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -496,14 +496,16 @@ const EnhancedExamSetCreator: React.FC = () => {
         description: '',
         type: 'full',
         difficulty: 'medium',
-        status: 'draft'
+        status: 'draft',
+        allow_multiple_attempts: true,
+        max_attempts: ''
       });
       setExamParts(prev => prev.map(part => ({ ...part, questions: [] })));
 
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     } finally {
@@ -511,8 +513,8 @@ const EnhancedExamSetCreator: React.FC = () => {
     }
   };
 
-  const filteredQuestions = questionBank.filter((q: unknown) => {
-    const text = (q.prompt_text || q.question || '').toLowerCase();
+  const filteredQuestions = questionBank.filter((q: Question) => {
+    const text = (q.prompt_text || '').toLowerCase();
     const matchesSearch = text.includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || (filterType === 'listening' ? q.part <= 4 : filterType === 'reading' ? q.part > 4 : true);
     const matchesDifficulty = filterDifficulty === 'all' || q.difficulty === filterDifficulty;
@@ -575,10 +577,10 @@ const EnhancedExamSetCreator: React.FC = () => {
               <div>
                 <strong>Question Bank:</strong> {questionBank.length} questions
                 <div className="text-xs mt-1">
-                  Listening: {questionBank.filter(q => q.type === 'listening').length} | 
-                  Reading: {questionBank.filter(q => q.type === 'reading').length} | 
-                  Vocab: {questionBank.filter(q => q.type === 'vocab').length} | 
-                  Grammar: {questionBank.filter(q => q.type === 'grammar').length}
+                  Listening: {questionBank.filter(q => q.part <= 4).length} | 
+                  Reading: {questionBank.filter(q => q.part > 4).length} | 
+                  Vocab: {questionBank.filter(q => q.part === 1).length} | 
+                  Grammar: {questionBank.filter(q => q.part === 5).length}
                 </div>
                 <div className="text-xs mt-1">
                   Easy: {questionBank.filter(q => q.difficulty === 'easy').length} | 
@@ -680,7 +682,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                   <Label htmlFor="type">Exam Type</Label>
                   <Select 
                     value={formData.type} 
-                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, type: value }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as 'full' | 'mini' | 'custom' }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -710,7 +712,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                   <Label htmlFor="difficulty">Difficulty Level</Label>
                   <Select 
                     value={formData.difficulty} 
-                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, difficulty: value }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty: value as 'easy' | 'medium' | 'hard' | 'mixed' }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -747,7 +749,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                   <Label htmlFor="status">Status</Label>
                   <Select 
                     value={formData.status} 
-                    onValueChange={(value: unknown) => setFormData(prev => ({ ...prev, status: value }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'draft' | 'active' | 'inactive' }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -869,7 +871,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                           <div className="max-h-32 overflow-y-auto space-y-1">
                             {part.questions.map((question) => (
                               <div key={question.id} className="flex items-center justify-between p-2 bg-muted rounded text-xs">
-                                <span className="truncate flex-1">{question.question}</span>
+                                <span className="truncate flex-1">{question.prompt_text}</span>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -967,7 +969,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-xs">
-                          {question.type}
+                          Part {question.part}
                         </Badge>
                         <Badge className="text-xs">
                           {question.difficulty}
@@ -979,7 +981,7 @@ const EnhancedExamSetCreator: React.FC = () => {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm truncate">{question.question}</p>
+                      <p className="text-sm truncate">{question.prompt_text}</p>
                     </div>
 
                     <div className="flex gap-2">

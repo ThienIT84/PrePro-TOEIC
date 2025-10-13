@@ -95,19 +95,21 @@ const ExamManagementDashboard = () => {
 
       if (error) throw error;
 
-      const examSetsWithStats = data?.map(examSet => ({
+      const examSetsWithStats = (data?.map(examSet => ({
         ...examSet,
+        total_questions: examSet.question_count || 0,
+        status: examSet.is_active ? 'active' : 'inactive',
         total_attempts: examSet.exam_statistics?.[0]?.total_attempts || 0,
         average_score: examSet.exam_statistics?.[0]?.average_score || 0,
         completion_rate: examSet.exam_statistics?.[0]?.completion_rate || 0,
         average_time_spent: examSet.exam_statistics?.[0]?.average_time_spent || 0
-      })) || [];
+      })) || []) as ExamSet[];
 
       setExamSets(examSetsWithStats);
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     } finally {
@@ -120,7 +122,7 @@ const ExamManagementDashboard = () => {
       // Get exam sets statistics
       const { data: examData, error: examError } = await supabase
         .from('exam_sets')
-        .select('id, status, total_questions');
+        .select('id, is_active, question_count');
 
       if (examError) throw examError;
 
@@ -132,13 +134,13 @@ const ExamManagementDashboard = () => {
       if (sessionError) throw sessionError;
 
       const totalExamSets = examData?.length || 0;
-      const activeExamSets = examData?.filter(e => e.status === 'active').length || 0;
+      const activeExamSets = examData?.filter(e => e.is_active).length || 0;
       const totalAttempts = sessionData?.length || 0;
       const completedSessions = sessionData?.filter(s => s.status === 'completed') || [];
       const averageScore = completedSessions.length > 0 
         ? completedSessions.reduce((sum, s) => sum + s.score, 0) / completedSessions.length 
         : 0;
-      const totalQuestions = examData?.reduce((sum, e) => sum + e.total_questions, 0) || 0;
+      const totalQuestions = examData?.reduce((sum, e) => sum + e.question_count, 0) || 0;
 
       setStatistics({
         totalExamSets,
@@ -171,7 +173,7 @@ const ExamManagementDashboard = () => {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     }
@@ -179,25 +181,25 @@ const ExamManagementDashboard = () => {
 
   const toggleExamStatus = async (id: string, currentStatus: string) => {
     try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const newStatus = currentStatus === 'active' ? false : true;
       
       const { error } = await supabase
         .from('exam_sets')
-        .update({ status: newStatus })
+        .update({ is_active: newStatus })
         .eq('id', id);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: `Exam set ${newStatus === 'active' ? 'activated' : 'deactivated'}`,
+        description: `Exam set ${newStatus ? 'activated' : 'deactivated'}`,
       });
 
       fetchExamSets();
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     }

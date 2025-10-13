@@ -60,7 +60,7 @@ const QuestionManagement = () => {
       console.log('Fetched questions:', data?.length || 0, 'items');
       console.log('Questions data:', data);
       
-      setQuestions(data || []);
+      setQuestions((data || []) as Question[]);
       
       if (!data || data.length === 0) {
         console.log('No questions found - this might be due to RLS policies');
@@ -110,7 +110,7 @@ const QuestionManagement = () => {
       console.error('Error deleting question:', error);
       toast({
         title: 'Lỗi',
-        description: error.message || 'Không thể xóa câu hỏi',
+        description: error instanceof Error ? error.message : 'Không thể xóa câu hỏi',
         variant: 'destructive',
       });
     }
@@ -185,8 +185,8 @@ const QuestionManagement = () => {
 
       const { data: sampleQuestions, error: fetchError } = await supabase
         .from('questions')
-        .select('id, question')
-        .or(sampleKeywords.map(keyword => `question.ilike.%${keyword}%`).join(','));
+        .select('id, prompt_text')
+        .or(sampleKeywords.map(keyword => `prompt_text.ilike.%${keyword}%`).join(','));
 
       if (fetchError) throw fetchError;
 
@@ -214,7 +214,7 @@ const QuestionManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Lỗi",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Có lỗi xảy ra',
         variant: "destructive",
       });
     }
@@ -237,8 +237,8 @@ const QuestionManagement = () => {
 
       const { data: sampleQuestions, error } = await supabase
         .from('questions')
-        .select('id, question, type, difficulty')
-        .or(sampleKeywords.map(keyword => `question.ilike.%${keyword}%`).join(','));
+        .select('id, prompt_text, part, difficulty')
+        .or(sampleKeywords.map(keyword => `prompt_text.ilike.%${keyword}%`).join(','));
 
       if (error) throw error;
 
@@ -260,7 +260,7 @@ const QuestionManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Lỗi",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Có lỗi xảy ra',
         variant: "destructive",
       });
     }
@@ -270,10 +270,10 @@ const QuestionManagement = () => {
   const getFilteredQuestions = () => {
     return questions.filter(question => {
       const matchesSearch = filters.search === '' || 
-        question.question?.toLowerCase().includes(filters.search.toLowerCase()) ||
-        question.explanation?.toLowerCase().includes(filters.search.toLowerCase());
+        question.prompt_text?.toLowerCase().includes(filters.search.toLowerCase()) ||
+        question.explain_vi?.toLowerCase().includes(filters.search.toLowerCase());
       
-      const matchesType = filters.type === 'all' || question.type === filters.type;
+      const matchesType = filters.type === 'all' || question.part.toString() === filters.type;
       const matchesDifficulty = filters.difficulty === 'all' || question.difficulty === filters.difficulty;
       
       const matchesAudio = filters.hasAudio === 'all' || 
@@ -281,9 +281,9 @@ const QuestionManagement = () => {
         (filters.hasAudio === 'no' && !question.audio_url);
       
       const isNotSample = !filters.excludeSample || 
-        !question.question?.toLowerCase().includes('sample') &&
-        !question.question?.toLowerCase().includes('test') &&
-        !question.question?.toLowerCase().includes('example');
+        !question.prompt_text?.toLowerCase().includes('sample') &&
+        !question.prompt_text?.toLowerCase().includes('test') &&
+        !question.prompt_text?.toLowerCase().includes('example');
 
       return matchesSearch && matchesType && matchesDifficulty && matchesAudio && isNotSample;
     });
@@ -358,7 +358,7 @@ const QuestionManagement = () => {
       ];
       
       const isSampleQuestion = sampleKeywords.some(keyword => 
-        question.question.toLowerCase().includes(keyword.toLowerCase())
+        question.prompt_text?.toLowerCase().includes(keyword.toLowerCase())
       );
       
       if (isSampleQuestion) {
@@ -388,62 +388,62 @@ const QuestionManagement = () => {
 
       const sampleQuestions = [
         {
-          type: 'vocab' as const,
-          difficulty: 'easy' as const,
-          question: 'What does "abundant" mean?',
+          part: 5,
+          difficulty: 'easy',
+          prompt_text: 'What does "abundant" mean?',
           choices: ['Very little', 'Plentiful', 'Empty', 'Difficult'],
-          answer: 'B',
+          correct_choice: 'B',
           explain_vi: '"Abundant" có nghĩa là dồi dào, phong phú, có nhiều.',
           explain_en: '"Abundant" means existing in large quantities; plentiful.',
           tags: ['vocabulary', 'basic'],
         },
         {
-          type: 'grammar' as const,
-          difficulty: 'medium' as const,
-          question: 'Choose the correct sentence:',
+          part: 5,
+          difficulty: 'medium',
+          prompt_text: 'Choose the correct sentence:',
           choices: [
             'She have been working here for 5 years.',
             'She has been working here for 5 years.',
             'She is been working here for 5 years.',
             'She was been working here for 5 years.'
           ],
-          answer: 'B',
+          correct_choice: 'B',
           explain_vi: 'Câu B đúng vì sử dụng thì hiện tại hoàn thành tiếp diễn với chủ ngữ số ít "she" cần động từ "has".',
           explain_en: 'Option B is correct because it uses the present perfect continuous tense correctly with the singular subject "she" requiring "has".',
           tags: ['grammar', 'present-perfect'],
         },
         {
-          type: 'listening' as const,
-          difficulty: 'medium' as const,
-          question: 'Listen to the conversation and answer: What time is the meeting?',
+          part: 2,
+          difficulty: 'medium',
+          prompt_text: 'Listen to the conversation and answer: What time is the meeting?',
           choices: ['9:00 AM', '10:30 AM', '2:00 PM', '3:15 PM'],
-          answer: 'B',
+          correct_choice: 'B',
           explain_vi: 'Trong đoạn hội thoại, người nói đề cập đến cuộc họp lúc 10:30 sáng.',
           explain_en: 'In the conversation, the speaker mentions the meeting is at 10:30 AM.',
           transcript: 'A: What time is the board meeting tomorrow? B: It\'s scheduled for 10:30 AM in the conference room.',
           tags: ['listening', 'time'],
         },
         {
-          type: 'reading' as const,
-          difficulty: 'hard' as const,
-          question: 'According to the passage, what is the main cause of climate change?',
+          part: 7,
+          difficulty: 'hard',
+          prompt_text: 'According to the passage, what is the main cause of climate change?',
           choices: [
             'Natural weather patterns',
             'Human activities and greenhouse gases',
             'Solar radiation changes',
             'Ocean currents'
           ],
-          answer: 'B',
+          correct_choice: 'B',
           explain_vi: 'Theo đoạn văn, nguyên nhân chính của biến đổi khí hậu là các hoạt động của con người và khí nhà kính.',
           explain_en: 'According to the passage, the main cause of climate change is human activities and greenhouse gas emissions.',
           tags: ['reading', 'environment', 'science'],
         },
         {
-          type: 'vocab' as const,
-          difficulty: 'hard' as const,
-          question: 'What is the meaning of "ubiquitous"?',
+          part: 5,
+          difficulty: 'hard',
+          prompt_text: 'What is the meaning of "ubiquitous"?',
           choices: ['Rare', 'Present everywhere', 'Expensive', 'Temporary'],
-          answer: 'B',
+          correct_choice: 'B',
           explain_vi: '"Ubiquitous" có nghĩa là có mặt ở khắp nơi, phổ biến.',
           explain_en: '"Ubiquitous" means present, appearing, or found everywhere.',
           tags: ['vocabulary', 'advanced'],

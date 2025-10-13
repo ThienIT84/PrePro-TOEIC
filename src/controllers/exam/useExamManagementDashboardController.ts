@@ -70,7 +70,7 @@ export function useExamManagementDashboardController() {
     return controller.deleteExamSet(id);
   }, [controller]);
 
-  const toggleExamStatus = useCallback(async (id: string, currentStatus: string) => {
+  const toggleExamStatus = useCallback(async (id: string, currentStatus: boolean) => {
     return controller.toggleExamStatus(id, currentStatus);
   }, [controller]);
 
@@ -79,8 +79,8 @@ export function useExamManagementDashboardController() {
     return controller.getFilteredExamSets();
   }, [controller]);
 
-  const getStatusColor = useCallback((status: string) => {
-    return controller.getStatusColor(status);
+  const getStatusColor = useCallback((isActive: boolean) => {
+    return controller.getStatusColor(isActive);
   }, [controller]);
 
   const getTypeIconName = useCallback((type: string) => {
@@ -99,8 +99,8 @@ export function useExamManagementDashboardController() {
     return controller.getExamSetById(id);
   }, [controller]);
 
-  const getExamSetsByStatus = useCallback((status: string) => {
-    return controller.getExamSetsByStatus(status);
+  const getExamSetsByStatus = useCallback((isActive: boolean) => {
+    return controller.getExamSetsByStatus(isActive);
   }, [controller]);
 
   const getExamSetsByType = useCallback((type: string) => {

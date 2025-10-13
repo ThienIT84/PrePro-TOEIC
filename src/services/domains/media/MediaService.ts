@@ -1,4 +1,51 @@
 import { BaseService } from '../BaseService';
+import type { FileObject } from '@supabase/storage-js';
+
+/**
+ * Supabase Storage File Interface (simplified for our use)
+ */
+interface StorageFile {
+  name: string;
+  id: string;
+  updated_at: string;
+  created_at: string;
+  last_accessed_at: string;
+  metadata: Record<string, any>;
+}
+
+/**
+ * Supabase Storage Folder Interface
+ */
+interface StorageFolder {
+  name: string;
+  id: string;
+  updated_at: string;
+  created_at: string;
+  last_accessed_at: string;
+  metadata: Record<string, any>;
+}
+
+/**
+ * Type guard to check if object is a file
+ */
+function isStorageFile(obj: FileObject): boolean {
+  return (
+    obj.metadata &&
+    typeof obj.metadata === 'object' &&
+    'size' in obj.metadata
+  );
+}
+
+/**
+ * Type guard to check if object is a folder
+ */
+function isStorageFolder(obj: FileObject): boolean {
+  return (
+    obj.metadata &&
+    typeof obj.metadata === 'object' &&
+    !('size' in obj.metadata)
+  );
+}
 
 /**
  * Media Service - Xử lý tất cả operations liên quan đến Media
@@ -82,7 +129,7 @@ export class MediaService extends BaseService {
   /**
    * List files in folder
    */
-  async listFiles(folderPath: string = ''): Promise<{ data: unknown[] | null; error: unknown }> {
+  async listFiles(folderPath: string = ''): Promise<{ data: FileObject[] | null; error: unknown }> {
     this.log('listFiles', { folderPath });
 
     try {
@@ -171,8 +218,13 @@ export class MediaService extends BaseService {
         return { data: null, error: null };
       }
 
-      // Get the most recent audio file
-      const latestFile = files.sort((a, b) => 
+      // Filter only files (not folders) and get the most recent audio file
+      const audioFiles = files.filter(isStorageFile);
+      if (audioFiles.length === 0) {
+        return { data: null, error: null };
+      }
+
+      const latestFile = audioFiles.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0];
 
@@ -202,8 +254,13 @@ export class MediaService extends BaseService {
         return { data: null, error: null };
       }
 
-      // Get the most recent image file
-      const latestFile = files.sort((a, b) => 
+      // Filter only files (not folders) and get the most recent image file
+      const imageFiles = files.filter(isStorageFile);
+      if (imageFiles.length === 0) {
+        return { data: null, error: null };
+      }
+
+      const latestFile = imageFiles.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0];
 
@@ -238,12 +295,12 @@ export class MediaService extends BaseService {
         this.handleError(chartsResult.error, 'getPassageAssetsUrls');
       }
 
-      const images = (imagesResult.data || []).map(file => 
-        `passages/${passageId}/images/${file.name}`
-      );
-      const charts = (chartsResult.data || []).map(file => 
-        `passages/${passageId}/charts/${file.name}`
-      );
+      const images = (imagesResult.data || [])
+        .filter(isStorageFile)
+        .map(file => `passages/${passageId}/images/${file.name}`);
+      const charts = (chartsResult.data || [])
+        .filter(isStorageFile)
+        .map(file => `passages/${passageId}/charts/${file.name}`);
 
       // Get public URLs
       const imageUrls = await Promise.all(
@@ -282,16 +339,20 @@ export class MediaService extends BaseService {
 
       // Add audio files to delete list
       if (audioFiles.data) {
-        audioFiles.data.forEach(file => {
-          filesToDelete.push(`audio/questions/${questionId}/${file.name}`);
-        });
+        audioFiles.data
+          .filter(isStorageFile)
+          .forEach(file => {
+            filesToDelete.push(`audio/questions/${questionId}/${file.name}`);
+          });
       }
 
       // Add image files to delete list
       if (imageFiles.data) {
-        imageFiles.data.forEach(file => {
-          filesToDelete.push(`images/questions/${questionId}/${file.name}`);
-        });
+        imageFiles.data
+          .filter(isStorageFile)
+          .forEach(file => {
+            filesToDelete.push(`images/questions/${questionId}/${file.name}`);
+          });
       }
 
       if (filesToDelete.length > 0) {
@@ -327,16 +388,20 @@ export class MediaService extends BaseService {
 
       // Add image files to delete list
       if (imageFiles.data) {
-        imageFiles.data.forEach(file => {
-          filesToDelete.push(`passages/${passageId}/images/${file.name}`);
-        });
+        imageFiles.data
+          .filter(isStorageFile)
+          .forEach(file => {
+            filesToDelete.push(`passages/${passageId}/images/${file.name}`);
+          });
       }
 
       // Add chart files to delete list
       if (chartFiles.data) {
-        chartFiles.data.forEach(file => {
-          filesToDelete.push(`passages/${passageId}/charts/${file.name}`);
-        });
+        chartFiles.data
+          .filter(isStorageFile)
+          .forEach(file => {
+            filesToDelete.push(`passages/${passageId}/charts/${file.name}`);
+          });
       }
 
       if (filesToDelete.length > 0) {
@@ -382,17 +447,17 @@ export class MediaService extends BaseService {
       };
 
       // Process files to calculate statistics
-      const processFiles = async (files: unknown[], prefix: string = '') => {
-        for (const file of files) {
-          if (file.name) {
+      const processFiles = async (files: FileObject[], prefix: string = '') => {
+        for (const item of files) {
+          if (isStorageFile(item)) {
             // It's a file
-            const filePath = prefix ? `${prefix}/${file.name}` : file.name;
-            const fileSize = file.metadata?.size || 0;
+            const filePath = prefix ? `${prefix}/${item.name}` : item.name;
+            const fileSize = item.metadata?.size || 0;
             
             stats.totalSize += fileSize;
 
             // Categorize by file type
-            const extension = file.name.split('.').pop()?.toLowerCase();
+            const extension = item.name.split('.').pop()?.toLowerCase();
             if (['mp3', 'wav', 'ogg', 'm4a'].includes(extension || '')) {
               stats.byType.audio.count++;
               stats.byType.audio.size += fileSize;
@@ -414,9 +479,9 @@ export class MediaService extends BaseService {
             }
             stats.byFolder[folder].count++;
             stats.byFolder[folder].size += fileSize;
-          } else {
+          } else if (isStorageFolder(item)) {
             // It's a folder, recurse
-            const folderPath = prefix ? `${prefix}/${file.name}` : file.name;
+            const folderPath = prefix ? `${prefix}/${item.name}` : item.name;
             const { data: subFiles } = await this.listFiles(folderPath);
             if (subFiles) {
               await processFiles(subFiles, folderPath);
@@ -467,9 +532,9 @@ export class MediaService extends BaseService {
       const passageIds = new Set(passages?.map(p => p.id) || []);
 
       // Check each file
-      const checkFile = async (file: unknown, prefix: string = '') => {
-        if (file.name) {
-          const filePath = prefix ? `${prefix}/${file.name}` : file.name;
+      const checkFile = async (item: FileObject, prefix: string = '') => {
+        if (isStorageFile(item)) {
+          const filePath = prefix ? `${prefix}/${item.name}` : item.name;
           
           // Check if it's a question media file
           if (filePath.startsWith('audio/questions/') || filePath.startsWith('images/questions/')) {
@@ -486,9 +551,9 @@ export class MediaService extends BaseService {
               filesToDelete.push(filePath);
             }
           }
-        } else {
+        } else if (isStorageFolder(item)) {
           // It's a folder, recurse
-          const folderPath = prefix ? `${prefix}/${file.name}` : file.name;
+          const folderPath = prefix ? `${prefix}/${item.name}` : item.name;
           const { data: subFiles } = await this.listFiles(folderPath);
           if (subFiles) {
             for (const subFile of subFiles) {

@@ -210,7 +210,7 @@ export function useExamSessionController() {
     handleAnswerChange,
 
     // Dialog management
-    showSubmitDialog,
+    showSubmitDialogAction: showSubmitDialog,
     hideSubmitDialog,
     handleSubmitExam,
 
@@ -229,7 +229,6 @@ export function useExamSessionController() {
     isExamStarted,
     isExamPaused,
     isLoading,
-    hasCompleted,
     getExamStatistics,
     resetExamSession,
   };

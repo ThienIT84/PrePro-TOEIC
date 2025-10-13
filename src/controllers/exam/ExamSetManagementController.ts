@@ -19,10 +19,10 @@ export interface ExamSet {
   id: string;
   title: string;
   description: string;
-  total_questions: number;
+  question_count: number;
   time_limit: number; // in minutes
   difficulty: 'easy' | 'medium' | 'hard';
-  status: 'active' | 'inactive';
+  is_active: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -33,7 +33,7 @@ export interface ExamSetFormData {
   description: string;
   time_limit: number;
   difficulty: 'easy' | 'medium' | 'hard';
-  status: 'active' | 'inactive';
+  is_active: boolean;
 }
 
 export interface CreateExamSetParams {
@@ -41,7 +41,7 @@ export interface CreateExamSetParams {
   description: string;
   time_limit: number;
   difficulty: 'easy' | 'medium' | 'hard';
-  status: 'active' | 'inactive';
+  is_active: boolean;
   created_by: string;
 }
 
@@ -51,7 +51,7 @@ export interface UpdateExamSetParams {
   description: string;
   time_limit: number;
   difficulty: 'easy' | 'medium' | 'hard';
-  status: 'active' | 'inactive';
+  is_active: boolean;
 }
 
 export class ExamSetManagementController {
@@ -77,7 +77,7 @@ export class ExamSetManagementController {
         description: '',
         time_limit: 120,
         difficulty: 'medium',
-        status: 'active'
+        is_active: true
       }
     };
   }
@@ -171,7 +171,7 @@ export class ExamSetManagementController {
         description: '',
         time_limit: 120,
         difficulty: 'medium',
-        status: 'active'
+        is_active: true
       }
     });
   }
@@ -190,7 +190,10 @@ export class ExamSetManagementController {
 
       if (error) throw error;
 
-      const examSets = data || [];
+      const examSets = data?.map(examSet => ({
+        ...examSet,
+        difficulty: examSet.difficulty as 'easy' | 'medium' | 'hard'
+      })) || [];
       this.setExamSets(examSets);
 
       return {
@@ -200,7 +203,7 @@ export class ExamSetManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     } finally {
       this.setLoading(false);
@@ -217,10 +220,11 @@ export class ExamSetManagementController {
         .insert({
           title: params.title,
           description: params.description,
-          total_questions: 200, // Default TOEIC full test
+          type: 'mix', // Default type
+          question_count: 200, // Default TOEIC full test
           time_limit: params.time_limit,
           difficulty: params.difficulty,
-          status: params.status,
+          is_active: params.is_active,
           created_by: params.created_by
         })
         .select()
@@ -230,12 +234,15 @@ export class ExamSetManagementController {
 
       return {
         success: true,
-        data
+        data: {
+          ...data,
+          difficulty: data.difficulty as 'easy' | 'medium' | 'hard'
+        }
       };
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -252,7 +259,7 @@ export class ExamSetManagementController {
           description: params.description,
           time_limit: params.time_limit,
           difficulty: params.difficulty,
-          status: params.status,
+          is_active: params.is_active,
           updated_at: new Date().toISOString()
         })
         .eq('id', params.id);
@@ -263,7 +270,7 @@ export class ExamSetManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -284,7 +291,7 @@ export class ExamSetManagementController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -315,7 +322,7 @@ export class ExamSetManagementController {
       description: examSet.description,
       time_limit: examSet.time_limit,
       difficulty: examSet.difficulty,
-      status: examSet.status
+      is_active: examSet.is_active
     });
     this.setEditDialogOpen(true);
   }
@@ -344,12 +351,10 @@ export class ExamSetManagementController {
   /**
    * Get status color class
    */
-  public getStatusColor(status: string): string {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  public getStatusColor(isActive: boolean): string {
+    return isActive 
+      ? 'bg-green-100 text-green-800'
+      : 'bg-gray-100 text-gray-800';
   }
 
   /**
@@ -367,12 +372,8 @@ export class ExamSetManagementController {
   /**
    * Get status display text
    */
-  public getStatusDisplayText(status: string): string {
-    switch (status) {
-      case 'active': return 'Hoạt động';
-      case 'inactive': return 'Tạm dừng';
-      default: return 'Không xác định';
-    }
+  public getStatusDisplayText(isActive: boolean): string {
+    return isActive ? 'Hoạt động' : 'Tạm dừng';
   }
 
   /**
@@ -409,8 +410,8 @@ export class ExamSetManagementController {
   /**
    * Get exam sets by status
    */
-  public getExamSetsByStatus(status: string): ExamSet[] {
-    return this.state.examSets.filter(examSet => examSet.status === status);
+  public getExamSetsByStatus(isActive: boolean): ExamSet[] {
+    return this.state.examSets.filter(examSet => examSet.is_active === isActive);
   }
 
   /**
@@ -433,9 +434,9 @@ export class ExamSetManagementController {
   } {
     const examSets = this.state.examSets;
     const totalExamSets = examSets.length;
-    const activeExamSets = examSets.filter(e => e.status === 'active').length;
-    const inactiveExamSets = examSets.filter(e => e.status === 'inactive').length;
-    const totalQuestions = examSets.reduce((sum, e) => sum + e.total_questions, 0);
+    const activeExamSets = examSets.filter(e => e.is_active).length;
+    const inactiveExamSets = examSets.filter(e => !e.is_active).length;
+    const totalQuestions = examSets.reduce((sum, e) => sum + e.question_count, 0);
     const averageTimeLimit = totalExamSets > 0 
       ? examSets.reduce((sum, e) => sum + e.time_limit, 0) / totalExamSets 
       : 0;

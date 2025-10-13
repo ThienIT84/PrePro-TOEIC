@@ -7,7 +7,6 @@ import { Profile, AppRole } from '@/types';
  * Sử dụng BaseService và không thay đổi Supabase
  */
 export class UserService extends BaseService {
-  private profilesTable = 'profiles';
 
   /**
    * Get all profiles với filters
@@ -20,7 +19,7 @@ export class UserService extends BaseService {
 
     try {
       let query = this.supabase
-        .from(this.profilesTable)
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -41,7 +40,7 @@ export class UserService extends BaseService {
       }
 
       // Convert to UserModel instances
-      const userModels = (data || []).map(p => new UserModel(p));
+      const userModels = (data || []).map(p => new UserModel(p as Profile));
       return { data: userModels, error: null };
 
     } catch (error) {
@@ -57,7 +56,7 @@ export class UserService extends BaseService {
 
     try {
       const { data, error } = await this.supabase
-        .from(this.profilesTable)
+        .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
@@ -66,7 +65,7 @@ export class UserService extends BaseService {
         this.handleError(error, 'getProfileByUserId');
       }
 
-      const userModel = data ? new UserModel(data) : null;
+      const userModel = data ? new UserModel(data as Profile) : null;
       return { data: userModel, error: null };
 
     } catch (error) {
@@ -82,7 +81,7 @@ export class UserService extends BaseService {
 
     try {
       const { data, error } = await this.supabase
-        .from(this.profilesTable)
+        .from('profiles')
         .select('*')
         .eq('id', id)
         .single();
@@ -91,7 +90,7 @@ export class UserService extends BaseService {
         this.handleError(error, 'getProfileById');
       }
 
-      const userModel = data ? new UserModel(data) : null;
+      const userModel = data ? new UserModel(data as Profile) : null;
       return { data: userModel, error: null };
 
     } catch (error) {
@@ -122,7 +121,7 @@ export class UserService extends BaseService {
         throw new Error(`Model validation failed: ${modelValidationErrors.join(', ')}`);
       }
 
-      const { data, error } = await this.insertData(this.profilesTable, profileData);
+      const { data, error } = await this.insertData('profiles', profileData);
 
       if (error) {
         this.handleError(error, 'createProfile');
@@ -158,7 +157,7 @@ export class UserService extends BaseService {
         throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
       }
 
-      const { data, error } = await this.updateData(this.profilesTable, id, updates);
+      const { data, error } = await this.updateData('profiles', id, updates);
 
       if (error) {
         this.handleError(error, 'updateProfile');
@@ -180,7 +179,7 @@ export class UserService extends BaseService {
 
     try {
       const { data, error } = await this.supabase
-        .from(this.profilesTable)
+        .from('profiles')
         .update(updates)
         .eq('user_id', userId)
         .select()
@@ -190,7 +189,7 @@ export class UserService extends BaseService {
         this.handleError(error, 'updateProfileByUserId');
       }
 
-      const updatedUserModel = data ? new UserModel(data) : null;
+      const updatedUserModel = data ? new UserModel(data as Profile) : null;
       return { data: updatedUserModel, error: null };
 
     } catch (error) {
@@ -205,7 +204,7 @@ export class UserService extends BaseService {
     this.log('deleteProfile', { id });
 
     try {
-      const { error } = await this.deleteData(this.profilesTable, id);
+      const { error } = await this.deleteData('profiles', id);
 
       if (error) {
         this.handleError(error, 'deleteProfile');
@@ -226,7 +225,7 @@ export class UserService extends BaseService {
 
     try {
       const { data, error } = await this.searchData(
-        this.profilesTable,
+        'profiles',
         searchTerm,
         ['name']
       );
@@ -235,7 +234,7 @@ export class UserService extends BaseService {
         this.handleError(error, 'searchProfiles');
       }
 
-      const userModels = (data || []).map(p => new UserModel(p));
+      const userModels = (data || []).map(p => new UserModel(p as Profile));
       return { data: userModels, error: null };
 
     } catch (error) {
@@ -283,7 +282,7 @@ export class UserService extends BaseService {
         this.handleError(error, 'getUserStats');
       }
 
-      const userModels = (profiles || []).map(p => new UserModel(p));
+      const userModels = (profiles || []).map(p => new UserModel(p as Profile));
       
       const stats = {
         totalUsers: userModels.length,
@@ -337,7 +336,7 @@ export class UserService extends BaseService {
   }): Promise<{ count: number | null; error: unknown }> {
     this.log('getProfilesCount', filters);
 
-    return this.countData(this.profilesTable, filters);
+    return this.countData('profiles', filters);
   }
 
   /**
@@ -348,7 +347,7 @@ export class UserService extends BaseService {
 
     try {
       const { data, error } = await this.supabase
-        .from(this.profilesTable)
+        .from('profiles')
         .select('id')
         .eq('user_id', userId)
         .single();
@@ -398,18 +397,44 @@ export class UserService extends BaseService {
     this.log('getUserPerformanceStats', { userId });
 
     try {
-      // Get exam attempts
+      // First get user's exam sessions
+      const { data: sessions, error: sessionsError } = await this.supabase
+        .from('exam_sessions')
+        .select('id')
+        .eq('user_id', userId);
+
+      if (sessionsError) {
+        this.handleError(sessionsError, 'getUserPerformanceStats');
+      }
+
+      const sessionIds = sessions?.map(s => s.id) || [];
+
+      if (sessionIds.length === 0) {
+        return {
+          data: {
+            totalAttempts: 0,
+            correctAnswers: 0,
+            accuracy: 0,
+            averageTime: 0,
+            byPart: {},
+            byDifficulty: {
+              easy: { attempts: 0, correct: 0 },
+              medium: { attempts: 0, correct: 0 },
+              hard: { attempts: 0, correct: 0 }
+            }
+          },
+          error: null
+        };
+      }
+
+      // Get exam attempts for these sessions
       const { data: attempts, error: attemptsError } = await this.supabase
         .from('exam_attempts')
         .select(`
           *,
           questions (*)
         `)
-        .eq('session_id', (await this.supabase
-          .from('exam_sessions')
-          .select('id')
-          .eq('user_id', userId)
-        ).data?.map(s => s.id) || []);
+        .in('session_id', sessionIds);
 
       if (attemptsError) {
         this.handleError(attemptsError, 'getUserPerformanceStats');
@@ -417,10 +442,10 @@ export class UserService extends BaseService {
 
       const stats = {
         totalAttempts: attempts?.length || 0,
-        correctAnswers: attempts?.filter(a => a.correct).length || 0,
+        correctAnswers: attempts?.filter(a => a.is_correct).length || 0,
         accuracy: 0,
         averageTime: 0,
-        byPart: {} as Record<number, unknown>,
+        byPart: {} as Record<number, { attempts: number; correct: number }>,
         byDifficulty: {
           easy: { attempts: 0, correct: 0 },
           medium: { attempts: 0, correct: 0 },
@@ -434,21 +459,24 @@ export class UserService extends BaseService {
 
         // Group by part and difficulty
         attempts.forEach(attempt => {
-          const question = attempt.questions;
+          const question = attempt.questions as any;
           if (question) {
             // By part
             if (!stats.byPart[question.part]) {
               stats.byPart[question.part] = { attempts: 0, correct: 0 };
             }
             stats.byPart[question.part].attempts++;
-            if (attempt.correct) {
+            if (attempt.is_correct) {
               stats.byPart[question.part].correct++;
             }
 
             // By difficulty
-            stats.byDifficulty[question.difficulty].attempts++;
-            if (attempt.correct) {
-              stats.byDifficulty[question.difficulty].correct++;
+            const difficulty = question.difficulty as 'easy' | 'medium' | 'hard';
+            if (difficulty && stats.byDifficulty[difficulty]) {
+              stats.byDifficulty[difficulty].attempts++;
+              if (attempt.is_correct) {
+                stats.byDifficulty[difficulty].correct++;
+              }
             }
           }
         });

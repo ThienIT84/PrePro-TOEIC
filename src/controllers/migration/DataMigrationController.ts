@@ -182,11 +182,17 @@ export class DataMigrationController {
    */
   public async fetchItemsData(): Promise<{ success: boolean; data?: ItemData[]; error?: string }> {
     try {
+      // Since 'items' table doesn't exist in current schema, return appropriate response
       const { data: itemsData, error: itemsError } = await supabase
-        .from('items')
+        .from('items' as any)
         .select('*');
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        return {
+          success: false,
+          error: 'Items table không tồn tại hoặc không thể truy cập'
+        };
+      }
 
       if (!itemsData || itemsData.length === 0) {
         return {
@@ -197,12 +203,12 @@ export class DataMigrationController {
 
       return {
         success: true,
-        data: itemsData
+        data: itemsData as unknown as ItemData[]
       };
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -226,7 +232,7 @@ export class DataMigrationController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -275,7 +281,7 @@ export class DataMigrationController {
     } catch (error: unknown) {
       const result: MigrationResult = {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
         message: "Migration thất bại"
       };
 
@@ -291,21 +297,33 @@ export class DataMigrationController {
    */
   public async checkDataStatistics(): Promise<{ success: boolean; statistics?: DataStatistics; error?: string }> {
     try {
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('items')
-        .select('COUNT(*) as count');
+      // Check items table count
+      let itemsCount = 0;
+      try {
+        const { count, error: itemsError } = await supabase
+          .from('items' as any)
+          .select('*', { count: 'exact', head: true });
+        
+        if (!itemsError) {
+          itemsCount = count || 0;
+        }
+      } catch {
+        // Items table doesn't exist, which is expected
+        itemsCount = 0;
+      }
 
-      const { data: questionsData, error: questionsError } = await supabase
+      // Check questions table count
+      const { count: questionsCount, error: questionsError } = await supabase
         .from('questions')
-        .select('COUNT(*) as count');
+        .select('*', { count: 'exact', head: true });
 
-      if (itemsError || questionsError) {
-        throw new Error('Lỗi khi kiểm tra dữ liệu');
+      if (questionsError) {
+        throw new Error('Lỗi khi kiểm tra bảng questions');
       }
 
       const statistics: DataStatistics = {
-        itemsCount: itemsData?.[0]?.count || 0,
-        questionsCount: questionsData?.[0]?.count || 0
+        itemsCount: itemsCount,
+        questionsCount: questionsCount || 0
       };
 
       return {
@@ -315,7 +333,7 @@ export class DataMigrationController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -348,7 +366,7 @@ export class DataMigrationController {
         errors
       };
     } catch (error: unknown) {
-      errors.push(`Validation error: ${error.message}`);
+      errors.push(`Validation error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
       return {
         valid: false,
         errors

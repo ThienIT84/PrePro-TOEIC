@@ -98,16 +98,16 @@ export function useExamSetManagementController() {
     return controller.getDifficultyColor(difficulty);
   }, [controller]);
 
-  const getStatusColor = useCallback((status: string) => {
-    return controller.getStatusColor(status);
+  const getStatusColor = useCallback((isActive: boolean) => {
+    return controller.getStatusColor(isActive);
   }, [controller]);
 
   const getDifficultyDisplayText = useCallback((difficulty: string) => {
     return controller.getDifficultyDisplayText(difficulty);
   }, [controller]);
 
-  const getStatusDisplayText = useCallback((status: string) => {
-    return controller.getStatusDisplayText(status);
+  const getStatusDisplayText = useCallback((isActive: boolean) => {
+    return controller.getStatusDisplayText(isActive);
   }, [controller]);
 
   const validateFormData = useCallback(() => {
@@ -118,8 +118,8 @@ export function useExamSetManagementController() {
     return controller.getExamSetById(id);
   }, [controller]);
 
-  const getExamSetsByStatus = useCallback((status: string) => {
-    return controller.getExamSetsByStatus(status);
+  const getExamSetsByStatus = useCallback((isActive: boolean) => {
+    return controller.getExamSetsByStatus(isActive);
   }, [controller]);
 
   const getExamSetsByDifficulty = useCallback((difficulty: string) => {

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Save, X, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Question } from '@/types';
+import { Question, TOEICPart, Difficulty, QuestionStatus, CorrectChoice } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface EditQuestionProps {
@@ -100,7 +100,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
         description: "Đã cập nhật câu hỏi",
       });
 
-      onSave(data);
+      onSave(data as Question);
       onClose();
     } catch (error) {
       console.error('Error updating question:', error);
@@ -177,7 +177,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
               <Label htmlFor="part">TOEIC Part</Label>
               <Select
                 value={formData.part.toString()}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, part: parseInt(value) as unknown }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, part: parseInt(value) as 1 | 2 | 3 | 4 | 5 | 6 | 7 }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -198,7 +198,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
               <Label htmlFor="difficulty">Độ khó</Label>
               <Select
                 value={formData.difficulty}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty: value as unknown }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty: value as 'easy' | 'medium' | 'hard' }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -217,7 +217,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
               <Label htmlFor="status">Trạng thái</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as unknown }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'draft' | 'published' | 'archived' }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -268,7 +268,7 @@ const EditQuestion = ({ question, isOpen, onClose, onSave }: EditQuestionProps) 
             <Label htmlFor="correct_choice">Đáp án đúng</Label>
             <Select
               value={formData.correct_choice}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, correct_choice: value as unknown }))}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, correct_choice: value as 'A' | 'B' | 'C' | 'D' }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Chọn đáp án đúng" />

@@ -22,38 +22,25 @@ export class QuestionService extends BaseService {
     this.log('getQuestions', filters);
 
     try {
-      let query = this.supabase
-        .from(this.tableName)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Apply filters
-      if (filters) {
-        if (filters.part) {
-          query = query.eq('part', filters.part);
-        }
-        if (filters.difficulty) {
-          query = query.eq('difficulty', filters.difficulty);
-        }
-        if (filters.status) {
-          query = query.eq('status', filters.status);
-        }
-        if (filters.created_by) {
-          query = query.eq('created_by', filters.created_by);
-        }
-        if (filters.search) {
-          query = query.or(`prompt_text.ilike.%${filters.search}%,explain_vi.ilike.%${filters.search}%,explain_en.ilike.%${filters.search}%`);
-        }
+      // Handle search separately as it requires special logic
+      if (filters?.search) {
+        return this.searchQuestions(filters.search);
       }
 
-      const { data, error } = await query;
+      // Use BaseService fetchData method
+      const { data, error } = await this.fetchData(
+        this.tableName,
+        '*',
+        filters,
+        { column: 'created_at', ascending: false }
+      );
 
       if (error) {
         this.handleError(error, 'getQuestions');
       }
 
       // Convert to QuestionModel instances
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
       return { data: questionModels, error: null };
 
     } catch (error) {
@@ -68,17 +55,17 @@ export class QuestionService extends BaseService {
     this.log('getQuestionById', { id });
 
     try {
-      const { data, error } = await this.supabase
-        .from(this.tableName)
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data, error } = await this.fetchData(
+        this.tableName,
+        '*',
+        { id }
+      );
 
       if (error) {
         this.handleError(error, 'getQuestionById');
       }
 
-      const questionModel = data ? new QuestionModel(data) : null;
+      const questionModel = data && data.length > 0 ? new QuestionModel(data[0] as Question) : null;
       return { data: questionModel, error: null };
 
     } catch (error) {
@@ -196,7 +183,7 @@ export class QuestionService extends BaseService {
         this.handleError(error, 'searchQuestions');
       }
 
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
       return { data: questionModels, error: null };
 
     } catch (error) {
@@ -238,7 +225,7 @@ export class QuestionService extends BaseService {
     this.log('getQuestionsNeedingAudio');
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.tableName)
         .select('*')
         .in('part', [1, 2, 3, 4])
@@ -248,7 +235,7 @@ export class QuestionService extends BaseService {
         this.handleError(error, 'getQuestionsNeedingAudio');
       }
 
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
       return { data: questionModels, error: null };
 
     } catch (error) {
@@ -263,7 +250,7 @@ export class QuestionService extends BaseService {
     this.log('getQuestionsNeedingImages');
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.tableName)
         .select('*')
         .eq('part', 1)
@@ -273,7 +260,7 @@ export class QuestionService extends BaseService {
         this.handleError(error, 'getQuestionsNeedingImages');
       }
 
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
       return { data: questionModels, error: null };
 
     } catch (error) {
@@ -288,7 +275,7 @@ export class QuestionService extends BaseService {
     this.log('getQuestionsNeedingPassages');
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.tableName)
         .select('*')
         .in('part', [3, 4, 6, 7])
@@ -298,7 +285,7 @@ export class QuestionService extends BaseService {
         this.handleError(error, 'getQuestionsNeedingPassages');
       }
 
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
       return { data: questionModels, error: null };
 
     } catch (error) {
@@ -313,7 +300,7 @@ export class QuestionService extends BaseService {
     this.log('getValidQuestionsForExam');
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.tableName)
         .select('*')
         .eq('status', 'published');
@@ -324,7 +311,7 @@ export class QuestionService extends BaseService {
 
       // Filter valid questions using model validation
       const questionModels = (data || [])
-        .map(q => new QuestionModel(q))
+        .map(q => new QuestionModel(q as Question))
         .filter(q => q.isValidForExam());
 
       return { data: questionModels, error: null };
@@ -347,7 +334,7 @@ export class QuestionService extends BaseService {
         this.handleError(error, 'getQuestionsStats');
       }
 
-      const questionModels = (questions || []).map(q => new QuestionModel(q));
+      const questionModels = (questions || []).map(q => new QuestionModel(q as Question));
       
       const stats = {
         total: questionModels.length,
@@ -405,7 +392,7 @@ export class QuestionService extends BaseService {
         return qData;
       });
 
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.tableName)
         .insert(validatedQuestions)
         .select();
@@ -414,7 +401,7 @@ export class QuestionService extends BaseService {
         this.handleError(error, 'bulkCreateQuestions');
       }
 
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
       return { data: questionModels, error: null };
 
     } catch (error) {
@@ -442,5 +429,149 @@ export class QuestionService extends BaseService {
     this.log('getQuestionsCount', filters);
 
     return this.countData(this.tableName, filters);
+  }
+
+  /**
+   * Get paginated questions
+   */
+  async getPaginatedQuestions(
+    page: number = 1,
+    limit: number = 10,
+    filters?: {
+      part?: TOEICPart;
+      difficulty?: Difficulty;
+      status?: QuestionStatus;
+      created_by?: string;
+    }
+  ): Promise<{ data: QuestionModel[] | null; total: number | null; error: unknown }> {
+    this.log('getPaginatedQuestions', { page, limit, filters });
+
+    try {
+      const { data, total, error } = await this.getPaginatedData(
+        this.tableName,
+        page,
+        limit,
+        '*',
+        filters,
+        { column: 'created_at', ascending: false }
+      );
+
+      if (error) {
+        this.handleError(error, 'getPaginatedQuestions');
+      }
+
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
+      return { data: questionModels, total, error: null };
+
+    } catch (error) {
+      return { data: null, total: null, error };
+    }
+  }
+
+  /**
+   * Check if question exists
+   */
+  async questionExists(id: string): Promise<{ exists: boolean; error: unknown }> {
+    this.log('questionExists', { id });
+
+    return this.recordExists(this.tableName, id);
+  }
+
+  /**
+   * Get questions by IDs
+   */
+  async getQuestionsByIds(ids: string[]): Promise<{ data: QuestionModel[] | null; error: unknown }> {
+    this.log('getQuestionsByIds', { count: ids.length });
+
+    try {
+      const { data, error } = await this.fetchData(
+        this.tableName,
+        '*',
+        { id: ids }
+      );
+
+      if (error) {
+        this.handleError(error, 'getQuestionsByIds');
+      }
+
+      const questionModels = (data || []).map(q => new QuestionModel(q as Question));
+      return { data: questionModels, error: null };
+
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Get random questions for practice
+   */
+  async getRandomQuestions(
+    count: number = 10,
+    filters?: {
+      part?: TOEICPart;
+      difficulty?: Difficulty;
+      status?: QuestionStatus;
+    }
+  ): Promise<{ data: QuestionModel[] | null; error: unknown }> {
+    this.log('getRandomQuestions', { count, filters });
+
+    try {
+      const { data, error } = await (this.supabase as any)
+        .from(this.tableName)
+        .select('*')
+        .eq('status', 'published')
+        .limit(count);
+
+      // Apply additional filters if provided
+      let query = (this.supabase as any).from(this.tableName).select('*').eq('status', 'published');
+      
+      if (filters) {
+        if (filters.part) {
+          query = query.eq('part', filters.part);
+        }
+        if (filters.difficulty) {
+          query = query.eq('difficulty', filters.difficulty);
+        }
+      }
+
+      const { data: filteredData, error: filteredError } = await query.limit(count);
+
+      if (filteredError) {
+        this.handleError(filteredError, 'getRandomQuestions');
+      }
+
+      // Shuffle the results
+      const shuffledData = (filteredData || []).sort(() => Math.random() - 0.5);
+      const questionModels = shuffledData.map(q => new QuestionModel(q as Question));
+      
+      return { data: questionModels, error: null };
+
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Bulk update question status
+   */
+  async bulkUpdateQuestionStatus(
+    ids: string[],
+    status: QuestionStatus
+  ): Promise<{ data: QuestionModel[] | null; error: unknown }> {
+    this.log('bulkUpdateQuestionStatus', { count: ids.length, status });
+
+    try {
+      const operations = ids.map(id => () => this.updateQuestionStatus(id, status));
+      const { data, error } = await this.executeBatch(operations);
+
+      if (error) {
+        this.handleError(error, 'bulkUpdateQuestionStatus');
+      }
+
+      return { data: data as QuestionModel[], error: null };
+
+    } catch (error) {
+      return { data: null, error };
+    }
   }
 }

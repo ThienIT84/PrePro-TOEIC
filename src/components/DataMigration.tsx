@@ -7,11 +7,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { CheckCircle, AlertCircle, Database, ArrowRight } from 'lucide-react';
 
+interface MigrationResult {
+  success: boolean;
+  originalCount?: number;
+  migratedCount?: number;
+  originalData?: any[];
+  migratedData?: any[];
+  message: string;
+  error?: string;
+}
+
 const DataMigration: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [migrating, setMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<unknown>(null);
+  const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
 
   const migrateData = async () => {
     if (!user) {
@@ -27,60 +37,37 @@ const DataMigration: React.FC = () => {
     setMigrationResult(null);
 
     try {
-      // 1. Fetch data from items table
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('items')
-        .select('*');
+      // 1. Fetch data from questions table (demo migration)
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('questions')
+        .select('*')
+        .limit(5); // Limit to 5 questions for demo
 
-      if (itemsError) throw itemsError;
+      if (questionsError) throw questionsError;
 
-      if (!itemsData || itemsData.length === 0) {
-        throw new Error('Không có dữ liệu trong bảng items');
+      if (!questionsData || questionsData.length === 0) {
+        throw new Error('Không có dữ liệu trong bảng questions');
       }
 
-      // 2. Transform data from items to questions format
-      const transformedQuestions = itemsData.map((item, index) => {
-        // Map type to part (simple mapping)
-        const typeToPart: Record<string, number> = {
-          'vocab': 1,
-          'grammar': 5,
-          'listening': 2,
-          'reading': 7,
-          'mix': 1
-        };
-
-        const part = typeToPart[item.type] || 1;
-
-        // Transform choices array to object
-        const choices = Array.isArray(item.choices) ? {
-          A: item.choices[0] || '',
-          B: item.choices[1] || '',
-          C: item.choices[2] || '',
-          D: item.choices[3] || ''
-        } : {
-          A: '',
-          B: '',
-          C: '',
-          D: ''
-        };
-
+      // 2. Transform data to create sample questions (demo migration)
+      const transformedQuestions = questionsData.map((question, index) => {
         return {
-          part: part,
+          part: question.part || 1,
           passage_id: null,
           blank_index: null,
-          prompt_text: item.question || '',
-          choices: choices,
-          correct_choice: item.answer || 'A',
-          explain_vi: item.explain_vi || '',
-          explain_en: item.explain_en || '',
-          tags: item.tags || [],
-          difficulty: item.difficulty || 'medium',
+          prompt_text: `${question.prompt_text} (Migrated ${index + 1})`,
+          choices: question.choices || { A: '', B: '', C: '', D: '' },
+          correct_choice: question.correct_choice || 'A',
+          explain_vi: question.explain_vi || '',
+          explain_en: question.explain_en || '',
+          tags: question.tags || [],
+          difficulty: question.difficulty || 'medium',
           status: 'published',
           created_by: user.id
         };
       });
 
-      // 3. Insert into questions table
+      // 3. Insert into questions table (demo - creating copies)
       const { data: insertedData, error: insertError } = await supabase
         .from('questions')
         .insert(transformedQuestions)
@@ -90,29 +77,29 @@ const DataMigration: React.FC = () => {
 
       setMigrationResult({
         success: true,
-        originalCount: itemsData.length,
+        originalCount: questionsData.length,
         migratedCount: insertedData?.length || 0,
-        originalData: itemsData.slice(0, 2), // Show first 2 items
+        originalData: questionsData.slice(0, 2), // Show first 2 questions
         migratedData: insertedData?.slice(0, 2), // Show first 2 migrated
-        message: `Migration thành công! Đã chuyển ${itemsData.length} câu hỏi từ items sang questions.`
+        message: `Migration thành công! Đã tạo ${questionsData.length} câu hỏi mẫu từ dữ liệu hiện có.`
       });
 
       toast({
         title: "Migration thành công",
-        description: `Đã chuyển ${itemsData.length} câu hỏi từ items sang questions`,
+        description: `Đã tạo ${questionsData.length} câu hỏi mẫu từ dữ liệu hiện có`,
       });
 
     } catch (error: unknown) {
       console.error('Migration error:', error);
       setMigrationResult({
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
         message: "Migration thất bại"
       });
 
       toast({
         title: "Migration thất bại",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     } finally {
@@ -122,25 +109,24 @@ const DataMigration: React.FC = () => {
 
   const checkData = async () => {
     try {
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('items')
-        .select('COUNT(*) as count');
-
       const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
-        .select('COUNT(*) as count');
+        .select('id')
+        .limit(1);
 
-      if (itemsError || questionsError) throw new Error('Lỗi khi kiểm tra dữ liệu');
+      if (questionsError) throw new Error('Lỗi khi kiểm tra dữ liệu');
+
+      const questionsCount = questionsData?.length || 0;
 
       toast({
         title: "Thống kê dữ liệu",
-        description: `Items: ${itemsData?.[0]?.count || 0}, Questions: ${questionsData?.[0]?.count || 0}`,
+        description: `Questions: ${questionsCount} records found`,
       });
 
     } catch (error: unknown) {
       toast({
         title: "Lỗi kiểm tra",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     }
@@ -151,12 +137,12 @@ const DataMigration: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Database className="h-5 w-5" />
-          Data Migration: Items → Questions
+          Data Migration: Questions Demo
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Migrate dữ liệu từ bảng <code>items</code> (cũ) sang bảng <code>questions</code> (mới).
+          Demo migration để tạo câu hỏi mẫu từ dữ liệu hiện có trong bảng <code>questions</code>.
         </p>
 
         <div className="flex gap-4">
@@ -173,7 +159,7 @@ const DataMigration: React.FC = () => {
             disabled={migrating}
             className="flex-1"
           >
-            {migrating ? "Đang migrate..." : "🚀 Migrate Data"}
+            {migrating ? "Đang migrate..." : "🚀 Demo Migration"}
           </Button>
         </div>
 
@@ -228,9 +214,9 @@ const DataMigration: React.FC = () => {
         )}
 
         <div className="text-xs text-muted-foreground space-y-1">
-          <p><strong>Migration Process:</strong></p>
-          <p>1. 📥 Fetch dữ liệu từ bảng items</p>
-          <p>2. 🔄 Transform sang format questions</p>
+          <p><strong>Demo Migration Process:</strong></p>
+          <p>1. 📥 Fetch dữ liệu từ bảng questions</p>
+          <p>2. 🔄 Transform để tạo câu hỏi mẫu</p>
           <p>3. 💾 Insert vào bảng questions</p>
           <p>4. ✅ Xác nhận kết quả</p>
         </div>

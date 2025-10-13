@@ -48,21 +48,20 @@ const ExamSession = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
-  const timeMode: TimeMode = (location.state as unknown)?.timeMode || 'standard';
+  const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const type = urlParams.get('type') || 'mini';
-    const state = location.state as unknown;
+    const state = location.state as any;
     
     // If we have examSetId, use exam set configuration
     if (examSetId && state?.examSet) {
       const examSet = state.examSet;
       const config: ExamConfig = {
-        type: type as unknown,
+        type: type as any,
         parts: state?.parts?.map((p: number) => p) || [],
         questionCount: examSet.total_questions,
-        difficulty: examSet.difficulty,
         timeLimit: examSet.time_limit,
         failedQuestionIds: state?.failedQuestionIds || [],
         examSetId: examSetId
@@ -73,10 +72,9 @@ const ExamSession = () => {
     } else {
       // Original logic for mini/custom tests
       const config: ExamConfig = {
-        type: type as unknown,
+        type: type as any,
         parts: state?.parts?.map((p: string) => parseInt(p)) || [],
         questionCount: state?.testConfig?.questionCount || 50,
-        difficulty: state?.testConfig?.difficulty || 'medium',
         timeLimit: state?.testConfig?.timeLimit || 45,
         failedQuestionIds: state?.failedQuestionIds || []
       };

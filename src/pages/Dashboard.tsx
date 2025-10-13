@@ -85,7 +85,7 @@ const Dashboard = () => {
         const types: DrillType[] = ['vocab', 'grammar', 'listening', 'reading', 'mix'];
         
         types.forEach(type => {
-          const typeAttempts = attempts.filter(a => a.items?.type === type);
+          const typeAttempts = attempts.filter(a => (a as any).questions?.type === type);
           const typeCorrect = typeAttempts.filter(a => a.correct).length;
           byType[type] = {
             attempts: typeAttempts.length,
@@ -112,7 +112,7 @@ const Dashboard = () => {
       }
 
       setReviewCount(reviews?.length || 0);
-      setExamSets(examSetsData || []);
+      setExamSets((examSetsData || []) as ExamSet[]);
 
       // Nếu là teacher, lấy kết quả thi gần đây của học sinh
       if (isTeacher()) {
@@ -490,7 +490,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {recentStudentExams.slice(0, 3).map((exam) => (
+                  {recentStudentExams.slice(0, 3).map((exam: any) => (
                     <div key={exam.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                       <div>
                         <p className="font-medium">{exam.profiles?.name || 'Học viên'}</p>

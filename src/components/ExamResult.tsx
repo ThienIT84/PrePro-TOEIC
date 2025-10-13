@@ -112,9 +112,10 @@ const ExamResult = () => {
 
         if (!attemptsError) {
           const qids = attemptsData.map(a => a.question_id);
-          // Merge served questions from session.results (so we can include unanswered)
+          // Use served questions from session.results but only include those that were actually attempted
+          // This ensures we show unanswered questions from selected parts only
           const served = (sessionData as any)?.results?.served_question_ids as string[] | undefined;
-          const allIds = Array.from(new Set([...(served || []), ...qids]));
+          const allIds = served ? Array.from(new Set([...served, ...qids])) : qids;
            const { data: qs, error: qErr } = await supabase
              .from('questions')
              .select('id, prompt_text, choices, correct_choice, explain_vi, explain_en, tags, transcript, audio_url, image_url, passage_id')
@@ -146,7 +147,7 @@ const ExamResult = () => {
               }
             }
 
-            // Add unanswered ones if served list exists
+            // Add unanswered questions from served list (only from selected parts)
             if (served && served.length > 0) {
               const answeredSet = new Set(qids);
               const missing = served.filter(id => !answeredSet.has(id));

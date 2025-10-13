@@ -25,38 +25,25 @@ export class ExamService extends BaseService {
     this.log('getExamSets', filters);
 
     try {
-      let query = this.supabase
-        .from(this.examSetsTable)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Apply filters
-      if (filters) {
-        if (filters.type) {
-          query = query.eq('type', filters.type);
-        }
-        if (filters.difficulty) {
-          query = query.eq('difficulty', filters.difficulty);
-        }
-        if (filters.is_active !== undefined) {
-          query = query.eq('is_active', filters.is_active);
-        }
-        if (filters.created_by) {
-          query = query.eq('created_by', filters.created_by);
-        }
-        if (filters.search) {
-          query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-        }
+      // Handle search separately as it requires special logic
+      if (filters?.search) {
+        return this.searchExamSets(filters.search);
       }
 
-      const { data, error } = await query;
+      // Use BaseService fetchData method
+      const { data, error } = await this.fetchData(
+        this.examSetsTable,
+        '*',
+        filters,
+        { column: 'created_at', ascending: false }
+      );
 
       if (error) {
         this.handleError(error, 'getExamSets');
       }
 
       // Convert to ExamSetModel instances
-      const examSetModels = (data || []).map(es => new ExamSetModel(es));
+      const examSetModels = (data || []).map(es => new ExamSetModel(es as ExamSet));
       return { data: examSetModels, error: null };
 
     } catch (error) {
@@ -71,7 +58,7 @@ export class ExamService extends BaseService {
     this.log('getExamSetById', { id });
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examSetsTable)
         .select('*')
         .eq('id', id)
@@ -81,7 +68,7 @@ export class ExamService extends BaseService {
         this.handleError(error, 'getExamSetById');
       }
 
-      const examSetModel = data ? new ExamSetModel(data) : null;
+      const examSetModel = data ? new ExamSetModel(data as ExamSet) : null;
       return { data: examSetModel, error: null };
 
     } catch (error) {
@@ -189,7 +176,7 @@ export class ExamService extends BaseService {
     this.log('getExamSetQuestions', { examSetId });
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examQuestionsTable)
         .select(`
           *,
@@ -216,7 +203,7 @@ export class ExamService extends BaseService {
     this.log('addQuestionToExamSet', { examSetId, questionId, orderIndex });
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examQuestionsTable)
         .insert([{
           exam_set_id: examSetId,
@@ -244,7 +231,7 @@ export class ExamService extends BaseService {
     this.log('removeQuestionFromExamSet', { examSetId, questionId });
 
     try {
-      const { error } = await this.supabase
+      const { error } = await (this.supabase as any)
         .from(this.examQuestionsTable)
         .delete()
         .eq('exam_set_id', examSetId)
@@ -268,7 +255,7 @@ export class ExamService extends BaseService {
     this.log('updateQuestionOrder', { examSetId, questionId, newOrderIndex });
 
     try {
-      const { error } = await this.supabase
+      const { error } = await (this.supabase as any)
         .from(this.examQuestionsTable)
         .update({ order_index: newOrderIndex })
         .eq('exam_set_id', examSetId)
@@ -296,7 +283,7 @@ export class ExamService extends BaseService {
     this.log('getExamSessions', filters);
 
     try {
-      let query = this.supabase
+      let query = (this.supabase as any)
         .from(this.examSessionsTable)
         .select(`
           *,
@@ -342,7 +329,7 @@ export class ExamService extends BaseService {
     this.log('createExamSession', sessionData);
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examSessionsTable)
         .insert([{
           ...sessionData,
@@ -370,7 +357,7 @@ export class ExamService extends BaseService {
     this.log('updateExamSession', { sessionId, updates });
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examSessionsTable)
         .update(updates)
         .eq('id', sessionId)
@@ -395,7 +382,7 @@ export class ExamService extends BaseService {
     this.log('getExamAttempts', { sessionId });
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examAttemptsTable)
         .select(`
           *,
@@ -426,7 +413,7 @@ export class ExamService extends BaseService {
     this.log('submitExamAttempt', attemptData);
 
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await (this.supabase as any)
         .from(this.examAttemptsTable)
         .insert([attemptData])
         .select()
@@ -450,7 +437,7 @@ export class ExamService extends BaseService {
     this.log('getExamStats', { examSetId });
 
     try {
-      let examSetsQuery = this.supabase
+      let examSetsQuery = (this.supabase as any)
         .from(this.examSetsTable)
         .select('*');
 
@@ -464,7 +451,7 @@ export class ExamService extends BaseService {
         this.handleError(examSetsError, 'getExamStats');
       }
 
-      const examSetModels = (examSets || []).map(es => new ExamSetModel(es));
+      const examSetModels = (examSets || []).map(es => new ExamSetModel(es as ExamSet));
 
       const stats = {
         totalExamSets: examSetModels.length,
@@ -511,7 +498,7 @@ export class ExamService extends BaseService {
         this.handleError(error, 'searchExamSets');
       }
 
-      const examSetModels = (data || []).map(es => new ExamSetModel(es));
+      const examSetModels = (data || []).map(es => new ExamSetModel(es as ExamSet));
       return { data: examSetModels, error: null };
 
     } catch (error) {
@@ -530,5 +517,131 @@ export class ExamService extends BaseService {
     this.log('getExamSetsCount', filters);
 
     return this.countData(this.examSetsTable, filters);
+  }
+
+  /**
+   * Get paginated exam sets
+   */
+  async getPaginatedExamSets(
+    page: number = 1,
+    limit: number = 10,
+    filters?: {
+      type?: DrillType;
+      difficulty?: Difficulty;
+      is_active?: boolean;
+      created_by?: string;
+    }
+  ): Promise<{ data: ExamSetModel[] | null; total: number | null; error: unknown }> {
+    this.log('getPaginatedExamSets', { page, limit, filters });
+
+    try {
+      const { data, total, error } = await this.getPaginatedData(
+        this.examSetsTable,
+        page,
+        limit,
+        '*',
+        filters,
+        { column: 'created_at', ascending: false }
+      );
+
+      if (error) {
+        this.handleError(error, 'getPaginatedExamSets');
+      }
+
+      const examSetModels = (data || []).map(es => new ExamSetModel(es as ExamSet));
+      return { data: examSetModels, total, error: null };
+
+    } catch (error) {
+      return { data: null, total: null, error };
+    }
+  }
+
+  /**
+   * Check if exam set exists
+   */
+  async examSetExists(id: string): Promise<{ exists: boolean; error: unknown }> {
+    this.log('examSetExists', { id });
+
+    return this.recordExists(this.examSetsTable, id);
+  }
+
+  /**
+   * Get exam sets by IDs
+   */
+  async getExamSetsByIds(ids: string[]): Promise<{ data: ExamSetModel[] | null; error: unknown }> {
+    this.log('getExamSetsByIds', { count: ids.length });
+
+    try {
+      const { data, error } = await this.fetchData(
+        this.examSetsTable,
+        '*',
+        { id: ids }
+      );
+
+      if (error) {
+        this.handleError(error, 'getExamSetsByIds');
+      }
+
+      const examSetModels = (data || []).map(es => new ExamSetModel(es as ExamSet));
+      return { data: examSetModels, error: null };
+
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Bulk update exam set status
+   */
+  async bulkUpdateExamSetStatus(
+    ids: string[],
+    isActive: boolean
+  ): Promise<{ data: ExamSetModel[] | null; error: unknown }> {
+    this.log('bulkUpdateExamSetStatus', { count: ids.length, isActive });
+
+    try {
+      const operations = ids.map(id => () => this.updateExamSet(id, { is_active: isActive }));
+      const { data, error } = await this.executeBatch(operations);
+
+      if (error) {
+        this.handleError(error, 'bulkUpdateExamSetStatus');
+      }
+
+      return { data: data as ExamSetModel[], error: null };
+
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Get exam set with questions count
+   */
+  async getExamSetWithQuestionCount(id: string): Promise<{ data: ExamSetModel | null; questionCount: number; error: unknown }> {
+    this.log('getExamSetWithQuestionCount', { id });
+
+    try {
+      const [examSetResult, questionCountResult] = await Promise.all([
+        this.getExamSetById(id),
+        this.countData(this.examQuestionsTable, { exam_set_id: id })
+      ]);
+
+      if (examSetResult.error) {
+        return { data: null, questionCount: 0, error: examSetResult.error };
+      }
+
+      if (questionCountResult.error) {
+        return { data: null, questionCount: 0, error: questionCountResult.error };
+      }
+
+      return { 
+        data: examSetResult.data, 
+        questionCount: questionCountResult.count || 0, 
+        error: null 
+      };
+
+    } catch (error) {
+      return { data: null, questionCount: 0, error };
+    }
   }
 }
