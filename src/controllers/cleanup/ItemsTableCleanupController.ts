@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface ItemsTableCleanupState {
   cleaning: boolean;
-  cleanupResult: CleanupResult | null;
+  cleanupResult: CleanupResult | null; 
 }
 
 export interface CleanupResult {

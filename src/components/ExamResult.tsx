@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { PassageDisplay } from '@/components/PassageDisplay';
 import { 
   CheckCircle, 
   XCircle, 
@@ -51,6 +52,16 @@ interface QuestionResult {
   passage_audio_url?: string | null;
   passage_image_url?: string | null;
   passage_transcript?: string | null;
+  passage_translation_vi?: {
+    title?: string;
+    content: string;
+    additional?: string;
+  } | null;
+  passage_translation_en?: {
+    title?: string;
+    content: string;
+    additional?: string;
+  } | null;
 }
 
 const ExamResult = () => {
@@ -133,7 +144,7 @@ const ExamResult = () => {
             if (passageIds.length > 0) {
               const { data: passages, error: passageError } = await supabase
                 .from('passages')
-                .select('id, audio_url, image_url, texts')
+                .select('id, audio_url, image_url, texts, translation_vi, translation_en')
                 .in('id', passageIds);
               
               if (!passageError && passages) {
@@ -141,7 +152,9 @@ const ExamResult = () => {
                   passageMap[p.id] = {
                     audio_url: p.audio_url,
                     image_url: p.image_url,
-                    texts: p.texts
+                    texts: p.texts,
+                    translation_vi: p.translation_vi,
+                    translation_en: p.translation_en
                   };
                 });
               }
@@ -201,7 +214,9 @@ const ExamResult = () => {
               passage_id: passageId || null,
               passage_audio_url: (passageData as any)?.audio_url || null,
               passage_image_url: (passageData as any)?.image_url || null,
-              passage_transcript: (passageData as any)?.texts?.content || null
+              passage_transcript: (passageData as any)?.texts?.content || null,
+              passage_translation_vi: (passageData as any)?.translation_vi || null,
+              passage_translation_en: (passageData as any)?.translation_en || null
             };
           })
         };
@@ -546,31 +561,46 @@ const ExamResult = () => {
                       <div key={passageId} className="space-y-4">
                         {/* Passage Header */}
                         {isPassage && (
-                          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
-                            <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                              📖 Passage (Câu {questions[0].originalIndex + 1}-{questions[questions.length - 1].originalIndex + 1})
-                            </h3>
-                            
-                            {/* Passage Image */}
-                            {questions[0].passage_image_url && (
-                              <div className="mb-4">
-                                <img 
-                                  src={questions[0].passage_image_url} 
-                                  alt="Passage Image" 
-                                  className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
-                                  style={{ maxHeight: '400px' }}
-                                />
-                              </div>
-                            )}
-                            
-                            {/* Passage Audio */}
-                            {questions[0].passage_audio_url && (
-                              <div>
-                                <SimpleAudioPlayer 
-                                  audioUrl={questions[0].passage_audio_url} 
-                                  transcript={questions[0].passage_transcript || ''} 
-                                />
-                              </div>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
+                              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                                📖 Passage (Câu {questions[0].originalIndex + 1}-{questions[questions.length - 1].originalIndex + 1})
+                              </h3>
+                              
+                              {/* Passage Image */}
+                              {questions[0].passage_image_url && (
+                                <div className="mb-4">
+                                  <img 
+                                    src={questions[0].passage_image_url} 
+                                    alt="Passage Image" 
+                                    className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                                    style={{ maxHeight: '400px' }}
+                                  />
+                                </div>
+                              )}
+                              
+                              {/* Passage Audio */}
+                              {questions[0].passage_audio_url && (
+                                <div>
+                                  <SimpleAudioPlayer 
+                                    audioUrl={questions[0].passage_audio_url} 
+                                    transcript={questions[0].passage_transcript || ''} 
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Passage Text with Translation */}
+                            {questions[0].passage_transcript && (
+                              <PassageDisplay
+                                passage={{
+                                  content: questions[0].passage_transcript || '',
+                                  title: `Passage ${questions[0].originalIndex + 1}-${questions[questions.length - 1].originalIndex + 1}`
+                                }}
+                                translationVi={questions[0].passage_translation_vi}
+                                translationEn={questions[0].passage_translation_en}
+                                showTranslation={true}
+                              />
                             )}
                           </div>
                         )}

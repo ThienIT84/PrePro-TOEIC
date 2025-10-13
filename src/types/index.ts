@@ -84,6 +84,16 @@ export interface Passage {
     content: string;
     additional?: string; // For double/triple passages
   };
+  translation_vi?: {
+    title?: string;
+    content: string;
+    additional?: string;
+  };
+  translation_en?: {
+    title?: string;
+    content: string;
+    additional?: string;
+  };
   audio_url: string | null;
   assets: {
     images?: string[];
