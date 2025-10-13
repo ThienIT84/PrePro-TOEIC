@@ -318,7 +318,7 @@ const AdvancedAlertsSystem = () => {
               <Filter className="h-4 w-4" />
               <Select
                 value={filter.type}
-                onValueChange={(value) => setFilter(prev => ({ ...prev, type: value as unknown }))}
+                onValueChange={(value) => setFilter(prev => ({ ...prev, type: value as 'all' | 'warning' | 'success' | 'info' | 'danger' }))}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -336,7 +336,7 @@ const AdvancedAlertsSystem = () => {
             <div className="flex items-center gap-2">
               <Select
                 value={filter.status}
-                onValueChange={(value) => setFilter(prev => ({ ...prev, status: value as unknown }))}
+                onValueChange={(value) => setFilter(prev => ({ ...prev, status: value as 'all' | 'read' | 'unread' }))}
               >
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -528,7 +528,7 @@ const AdvancedAlertsSystem = () => {
                 <Select
                   value={settings.alertFrequency}
                   onValueChange={(value) => 
-                    setSettings(prev => ({ ...prev, alertFrequency: value as unknown }))
+                    setSettings(prev => ({ ...prev, alertFrequency: value as 'immediate' | 'hourly' | 'daily' }))
                   }
                 >
                   <SelectTrigger>

@@ -20,11 +20,11 @@ export interface ExamSet {
   id: string;
   title: string;
   description: string;
-  type: 'full' | 'mini' | 'custom';
-  total_questions: number;
+  type: 'vocab' | 'grammar' | 'listening' | 'reading' | 'mix';
+  question_count: number;
   time_limit: number;
-  difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
-  status: 'draft' | 'active' | 'inactive';
+  difficulty: 'easy' | 'medium' | 'hard';
+  is_active: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -185,9 +185,11 @@ export class ExamManagementDashboardController {
 
       const examSetsWithStats = data?.map(examSet => ({
         ...examSet,
+        type: examSet.type as 'vocab' | 'grammar' | 'listening' | 'reading' | 'mix',
+        difficulty: examSet.difficulty as 'easy' | 'medium' | 'hard',
         total_attempts: examSet.exam_statistics?.[0]?.total_attempts || 0,
-        average_score: examSet.exam_statistics?.[0]?.average_score || 0,
-        completion_rate: examSet.exam_statistics?.[0]?.completion_rate || 0,
+        average_score: Number(examSet.exam_statistics?.[0]?.average_score) || 0,
+        completion_rate: Number(examSet.exam_statistics?.[0]?.completion_rate) || 0,
         average_time_spent: examSet.exam_statistics?.[0]?.average_time_spent || 0
       })) || [];
 
@@ -199,7 +201,7 @@ export class ExamManagementDashboardController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     } finally {
       this.setLoading(false);
@@ -214,7 +216,7 @@ export class ExamManagementDashboardController {
       // Get exam sets statistics
       const { data: examData, error: examError } = await supabase
         .from('exam_sets')
-        .select('id, status, total_questions');
+        .select('id, is_active, question_count');
 
       if (examError) throw examError;
 
@@ -226,13 +228,17 @@ export class ExamManagementDashboardController {
       if (sessionError) throw sessionError;
 
       const totalExamSets = examData?.length || 0;
-      const activeExamSets = examData?.filter(e => e.status === 'active').length || 0;
+      const activeExamSets = examData?.filter(e => e.is_active).length || 0;
       const totalAttempts = sessionData?.length || 0;
       const completedSessions = sessionData?.filter(s => s.status === 'completed') || [];
-      const averageScore = completedSessions.length > 0 
-        ? completedSessions.reduce((sum, s) => sum + s.score, 0) / completedSessions.length 
-        : 0;
-      const totalQuestions = examData?.reduce((sum, e) => sum + e.total_questions, 0) || 0;
+      
+      let averageScore = 0;
+      if (completedSessions.length > 0) {
+        const totalScore = completedSessions.reduce((sum, s) => sum + (Number(s.score) || 0), 0);
+        averageScore = totalScore / completedSessions.length;
+      }
+      
+      const totalQuestions = examData?.reduce((sum, e) => sum + (Number(e.question_count) || 0), 0) || 0;
 
       const statistics: ExamStatistics = {
         totalExamSets,
@@ -250,7 +256,7 @@ export class ExamManagementDashboardController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -273,7 +279,7 @@ export class ExamManagementDashboardController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -281,13 +287,13 @@ export class ExamManagementDashboardController {
   /**
    * Toggle exam status
    */
-  public async toggleExamStatus(id: string, currentStatus: string): Promise<{ success: boolean; error?: string }> {
+  public async toggleExamStatus(id: string, currentStatus: boolean): Promise<{ success: boolean; error?: string }> {
     try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const newStatus = !currentStatus;
       
       const { error } = await supabase
         .from('exam_sets')
-        .update({ status: newStatus })
+        .update({ is_active: newStatus })
         .eq('id', id);
 
       if (error) throw error;
@@ -298,7 +304,7 @@ export class ExamManagementDashboardController {
     } catch (error: unknown) {
       return {
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
   }
@@ -310,7 +316,9 @@ export class ExamManagementDashboardController {
     return this.state.examSets.filter(examSet => {
       const matchesSearch = examSet.title.toLowerCase().includes(this.state.searchTerm.toLowerCase()) ||
                            examSet.description.toLowerCase().includes(this.state.searchTerm.toLowerCase());
-      const matchesStatus = this.state.filterStatus === 'all' || examSet.status === this.state.filterStatus;
+      const matchesStatus = this.state.filterStatus === 'all' || 
+                           (this.state.filterStatus === 'active' && examSet.is_active) ||
+                           (this.state.filterStatus === 'inactive' && !examSet.is_active);
       const matchesType = this.state.filterType === 'all' || examSet.type === this.state.filterType;
       
       return matchesSearch && matchesStatus && matchesType;
@@ -320,17 +328,10 @@ export class ExamManagementDashboardController {
   /**
    * Get status color class
    */
-  public getStatusColor(status: string): string {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  public getStatusColor(isActive: boolean): string {
+    return isActive 
+      ? 'bg-green-100 text-green-800'
+      : 'bg-gray-100 text-gray-800';
   }
 
   /**
@@ -377,8 +378,8 @@ export class ExamManagementDashboardController {
   /**
    * Get exam sets by status
    */
-  public getExamSetsByStatus(status: string): ExamSet[] {
-    return this.state.examSets.filter(examSet => examSet.status === status);
+  public getExamSetsByStatus(isActive: boolean): ExamSet[] {
+    return this.state.examSets.filter(examSet => examSet.is_active === isActive);
   }
 
   /**
@@ -394,23 +395,20 @@ export class ExamManagementDashboardController {
   public getExamSetStatisticsSummary(): {
     totalExamSets: number;
     activeExamSets: number;
-    draftExamSets: number;
     inactiveExamSets: number;
     totalQuestions: number;
     averageQuestions: number;
   } {
     const examSets = this.state.examSets;
     const totalExamSets = examSets.length;
-    const activeExamSets = examSets.filter(e => e.status === 'active').length;
-    const draftExamSets = examSets.filter(e => e.status === 'draft').length;
-    const inactiveExamSets = examSets.filter(e => e.status === 'inactive').length;
-    const totalQuestions = examSets.reduce((sum, e) => sum + e.total_questions, 0);
+    const activeExamSets = examSets.filter(e => e.is_active).length;
+    const inactiveExamSets = examSets.filter(e => !e.is_active).length;
+    const totalQuestions = examSets.reduce((sum, e) => sum + (Number(e.question_count) || 0), 0);
     const averageQuestions = totalExamSets > 0 ? totalQuestions / totalExamSets : 0;
 
     return {
       totalExamSets,
       activeExamSets,
-      draftExamSets,
       inactiveExamSets,
       totalQuestions,
       averageQuestions
@@ -427,15 +425,15 @@ export class ExamManagementDashboardController {
     topPerformingExam: ExamSet | null;
   } {
     const examSets = this.state.examSets;
-    const totalAttempts = examSets.reduce((sum, e) => sum + (e.total_attempts || 0), 0);
+    const totalAttempts = examSets.reduce((sum, e) => sum + (Number(e.total_attempts) || 0), 0);
     const averageScore = examSets.length > 0 
-      ? examSets.reduce((sum, e) => sum + (e.average_score || 0), 0) / examSets.length 
+      ? examSets.reduce((sum, e) => sum + (Number(e.average_score) || 0), 0) / examSets.length 
       : 0;
     const completionRate = examSets.length > 0 
-      ? examSets.reduce((sum, e) => sum + (e.completion_rate || 0), 0) / examSets.length 
+      ? examSets.reduce((sum, e) => sum + (Number(e.completion_rate) || 0), 0) / examSets.length 
       : 0;
     const topPerformingExam = examSets.reduce((top, current) => 
-      (current.average_score || 0) > (top?.average_score || 0) ? current : top, 
+      (Number(current.average_score) || 0) > (Number(top?.average_score) || 0) ? current : top, 
       examSets[0] || null
     );
 

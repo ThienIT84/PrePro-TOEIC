@@ -59,7 +59,7 @@ const DomainServicesDemo = () => {
       });
 
     } catch (err: unknown) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ const DomainServicesDemo = () => {
     try {
       // Get exam sets
       const { data: examSets, error: examSetsError } = await examService.getExamSets({
-        type: 'practice',
+        type: 'mix',
         difficulty: 'medium'
       });
 
@@ -88,7 +88,7 @@ const DomainServicesDemo = () => {
       });
 
     } catch (err: unknown) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ const DomainServicesDemo = () => {
       });
 
     } catch (err: unknown) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -148,7 +148,7 @@ const DomainServicesDemo = () => {
       });
 
     } catch (err: unknown) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -173,7 +173,7 @@ const DomainServicesDemo = () => {
       });
 
     } catch (err: unknown) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -248,6 +248,16 @@ const DomainServicesDemo = () => {
               variant="outline"
             >
               Clear Results
+            </Button>
+            <Button 
+              onClick={() => {
+                ServiceFactory.clearInstances();
+                setResults(null);
+                setError(null);
+              }}
+              variant="outline"
+            >
+              Clear Service Instances
             </Button>
           </div>
         </CardContent>
@@ -331,6 +341,18 @@ const { data, error } = await questionService.getQuestions({
   difficulty: 'easy'
 });`}
             </pre>
+          </div>
+
+          <div className="mt-4 p-4 bg-green-50 rounded-lg">
+            <h3 className="font-semibold mb-2">Service Factory Status:</h3>
+            <div className="text-sm space-y-1">
+              <p>• Instance Count: {ServiceFactory.getInstanceCount()}</p>
+              <p>• Question Service: {ServiceFactory.hasService('question') ? '✓ Available' : '✗ Not Available'}</p>
+              <p>• Exam Service: {ServiceFactory.hasService('exam') ? '✓ Available' : '✗ Not Available'}</p>
+              <p>• User Service: {ServiceFactory.hasService('user') ? '✓ Available' : '✗ Not Available'}</p>
+              <p>• Analytics Service: {ServiceFactory.hasService('analytics') ? '✓ Available' : '✗ Not Available'}</p>
+              <p>• Media Service: {ServiceFactory.hasService('media') ? '✓ Available' : '✗ Not Available'}</p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -43,12 +43,12 @@ export class AnalyticsService extends BaseService {
       };
 
       // Get additional stats
-      const { data: publishedQuestions } = await this.supabase
+      const { data: publishedQuestions } = await (this.supabase as any)
         .from(this.questionsTable)
         .select('id', { count: 'exact', head: true })
         .eq('status', 'published');
 
-      const { data: activeExamSets } = await this.supabase
+      const { data: activeExamSets } = await (this.supabase as any)
         .from(this.examSetsTable)
         .select('id', { count: 'exact', head: true })
         .eq('is_active', true);
@@ -70,7 +70,7 @@ export class AnalyticsService extends BaseService {
     this.log('getQuestionAnalytics');
 
     try {
-      const { data: questions, error } = await this.supabase
+      const { data: questions, error } = await (this.supabase as any)
         .from(this.questionsTable)
         .select('*');
 
@@ -78,7 +78,7 @@ export class AnalyticsService extends BaseService {
         this.handleError(error, 'getQuestionAnalytics');
       }
 
-      const questionModels = (questions || []).map(q => new QuestionModel(q));
+      const questionModels = (questions || []).map(q => new QuestionModel(q as any));
 
       const analytics = {
         total: questionModels.length,
@@ -148,7 +148,7 @@ export class AnalyticsService extends BaseService {
     this.log('getExamAnalytics');
 
     try {
-      const { data: examSets, error: examSetsError } = await this.supabase
+      const { data: examSets, error: examSetsError } = await (this.supabase as any)
         .from(this.examSetsTable)
         .select('*');
 
@@ -156,7 +156,7 @@ export class AnalyticsService extends BaseService {
         this.handleError(examSetsError, 'getExamAnalytics');
       }
 
-      const examSetModels = (examSets || []).map(es => new ExamSetModel(es));
+      const examSetModels = (examSets || []).map(es => new ExamSetModel(es as any));
 
       const analytics = {
         total: examSetModels.length,
@@ -235,7 +235,7 @@ export class AnalyticsService extends BaseService {
     this.log('getUserAnalytics');
 
     try {
-      const { data: profiles, error } = await this.supabase
+      const { data: profiles, error } = await (this.supabase as any)
         .from(this.profilesTable)
         .select('*');
 
@@ -243,7 +243,7 @@ export class AnalyticsService extends BaseService {
         this.handleError(error, 'getUserAnalytics');
       }
 
-      const userModels = (profiles || []).map(p => new UserModel(p));
+      const userModels = (profiles || []).map(p => new UserModel(p as any));
 
       const analytics = {
         total: userModels.length,
@@ -303,7 +303,7 @@ export class AnalyticsService extends BaseService {
     this.log('getSessionAnalytics');
 
     try {
-      const { data: sessions, error } = await this.supabase
+      const { data: sessions, error } = await (this.supabase as any)
         .from(this.examSessionsTable)
         .select(`
           *,
@@ -317,9 +317,9 @@ export class AnalyticsService extends BaseService {
 
       const analytics = {
         total: sessions?.length || 0,
-        completed: sessions?.filter(s => s.status === 'completed').length || 0,
-        inProgress: sessions?.filter(s => s.status === 'in_progress').length || 0,
-        abandoned: sessions?.filter(s => s.status === 'abandoned').length || 0,
+        completed: sessions?.filter((s: any) => s.status === 'completed').length || 0,
+        inProgress: sessions?.filter((s: any) => s.status === 'in_progress').length || 0,
+        abandoned: sessions?.filter((s: any) => s.status === 'abandoned').length || 0,
         averageScore: 0,
         averageTime: 0,
         byExamSet: {} as Record<string, number>,
@@ -332,13 +332,13 @@ export class AnalyticsService extends BaseService {
         analytics.completionRate = (analytics.completed / analytics.total) * 100;
 
         // Group by exam set
-        sessions.forEach(session => {
+        sessions.forEach((session: any) => {
           const examSetId = session.exam_set_id;
           analytics.byExamSet[examSetId] = (analytics.byExamSet[examSetId] || 0) + 1;
         });
 
         // Group by user
-        sessions.forEach(session => {
+        sessions.forEach((session: any) => {
           const userId = session.user_id;
           analytics.byUser[userId] = (analytics.byUser[userId] || 0) + 1;
         });
@@ -358,7 +358,7 @@ export class AnalyticsService extends BaseService {
     this.log('getPerformanceAnalytics');
 
     try {
-      const { data: attempts, error } = await this.supabase
+      const { data: attempts, error } = await (this.supabase as any)
         .from(this.examAttemptsTable)
         .select(`
           *,
@@ -371,16 +371,16 @@ export class AnalyticsService extends BaseService {
 
       const analytics = {
         totalAttempts: attempts?.length || 0,
-        correctAnswers: attempts?.filter(a => a.correct).length || 0,
+        correctAnswers: attempts?.filter((a: any) => a.is_correct).length || 0,
         overallAccuracy: 0,
         averageTimePerQuestion: 0,
-        byPart: {} as Record<number, unknown>,
+        byPart: {} as Record<number, any>,
         byDifficulty: {
           easy: { attempts: 0, correct: 0, accuracy: 0 },
           medium: { attempts: 0, correct: 0, accuracy: 0 },
           hard: { attempts: 0, correct: 0, accuracy: 0 }
         },
-        byQuestion: {} as Record<string, unknown>
+        byQuestion: {} as Record<string, any>
       };
 
       if (attempts && attempts.length > 0) {
@@ -388,11 +388,11 @@ export class AnalyticsService extends BaseService {
         analytics.overallAccuracy = (analytics.correctAnswers / analytics.totalAttempts) * 100;
 
         // Calculate average time per question
-        const totalTime = attempts.reduce((sum, a) => sum + (a.time_spent || 0), 0);
+        const totalTime = attempts.reduce((sum: number, a: any) => sum + (a.time_spent || 0), 0);
         analytics.averageTimePerQuestion = totalTime / analytics.totalAttempts;
 
         // Group by part and difficulty
-        attempts.forEach(attempt => {
+        attempts.forEach((attempt: any) => {
           const question = attempt.questions;
           if (question) {
             // By part
@@ -400,13 +400,13 @@ export class AnalyticsService extends BaseService {
               analytics.byPart[question.part] = { attempts: 0, correct: 0, accuracy: 0 };
             }
             analytics.byPart[question.part].attempts++;
-            if (attempt.correct) {
+            if (attempt.is_correct) {
               analytics.byPart[question.part].correct++;
             }
 
             // By difficulty
             analytics.byDifficulty[question.difficulty].attempts++;
-            if (attempt.correct) {
+            if (attempt.is_correct) {
               analytics.byDifficulty[question.difficulty].correct++;
             }
 
@@ -415,7 +415,7 @@ export class AnalyticsService extends BaseService {
               analytics.byQuestion[question.id] = { attempts: 0, correct: 0, accuracy: 0 };
             }
             analytics.byQuestion[question.id].attempts++;
-            if (attempt.correct) {
+            if (attempt.is_correct) {
               analytics.byQuestion[question.id].correct++;
             }
           }
@@ -500,35 +500,35 @@ export class AnalyticsService extends BaseService {
       };
 
       // Get questions created over time
-      const { data: questions } = await this.supabase
+      const { data: questions } = await (this.supabase as any)
         .from(this.questionsTable)
         .select('created_at')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
 
       // Get exam sets created over time
-      const { data: examSets } = await this.supabase
+      const { data: examSets } = await (this.supabase as any)
         .from(this.examSetsTable)
         .select('created_at')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
 
       // Get sessions started over time
-      const { data: sessions } = await this.supabase
+      const { data: sessions } = await (this.supabase as any)
         .from(this.examSessionsTable)
         .select('created_at')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
 
       // Get users registered over time
-      const { data: users } = await this.supabase
+      const { data: users } = await (this.supabase as any)
         .from(this.profilesTable)
         .select('created_at')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
 
       // Process data into daily counts
-      const processData = (data: unknown[], key: string) => {
+      const processData = (data: any[], key: string) => {
         const dailyCounts: Record<string, number> = {};
         
         data?.forEach(item => {

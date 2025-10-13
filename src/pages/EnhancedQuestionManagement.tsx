@@ -70,10 +70,10 @@ const EnhancedQuestionManagement = () => {
 
       // Apply filters
       if (filters.search) {
-        query = query.or(`question.ilike.%${filters.search}%,explain_vi.ilike.%${filters.search}%`);
+        query = query.or(`prompt_text.ilike.%${filters.search}%,explain_vi.ilike.%${filters.search}%`);
       }
       if (filters.type !== 'all') {
-        query = query.eq('type', filters.type);
+        query = (query as any).eq('part', parseInt(filters.type));
       }
       if (filters.difficulty !== 'all') {
         query = query.eq('difficulty', filters.difficulty);
@@ -96,13 +96,13 @@ const EnhancedQuestionManagement = () => {
 
       if (error) throw error;
 
-      setQuestions(data || []);
+      setQuestions((data || []) as Question[]);
       setTotalPages(Math.ceil((count || 0) / itemsPerPage));
 
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: "destructive",
       });
     } finally {
@@ -128,7 +128,7 @@ const EnhancedQuestionManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: "destructive",
       });
     }
@@ -155,7 +155,7 @@ const EnhancedQuestionManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: "destructive",
       });
     }
@@ -192,8 +192,8 @@ const EnhancedQuestionManagement = () => {
       // Find questions containing these keywords
       const { data: sampleQuestions, error: fetchError } = await supabase
         .from('questions')
-        .select('id, question')
-        .or(sampleKeywords.map(keyword => `question.ilike.%${keyword}%`).join(','));
+        .select('id, prompt_text')
+        .or(sampleKeywords.map(keyword => `prompt_text.ilike.%${keyword}%`).join(','));
 
       if (fetchError) throw fetchError;
 
@@ -222,7 +222,7 @@ const EnhancedQuestionManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: "destructive",
       });
     }
@@ -249,8 +249,8 @@ const EnhancedQuestionManagement = () => {
 
       const { data: sampleQuestions, error } = await supabase
         .from('questions')
-        .select('id, question, type, difficulty')
-        .or(sampleKeywords.map(keyword => `question.ilike.%${keyword}%`).join(','));
+        .select('id, prompt_text, part, difficulty')
+        .or(sampleKeywords.map(keyword => `prompt_text.ilike.%${keyword}%`).join(','));
 
       if (error) throw error;
 
@@ -273,17 +273,17 @@ const EnhancedQuestionManagement = () => {
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: "destructive",
       });
     }
   };
 
   const filteredQuestions = questions.filter(question => {
-    if (filters.search && !question.question.toLowerCase().includes(filters.search.toLowerCase())) {
+    if (filters.search && !question.prompt_text?.toLowerCase().includes(filters.search.toLowerCase())) {
       return false;
     }
-    if (filters.type !== 'all' && question.type !== filters.type) {
+    if (filters.type !== 'all' && question.part.toString() !== filters.type) {
       return false;
     }
     if (filters.difficulty !== 'all' && question.difficulty !== filters.difficulty) {
@@ -312,7 +312,7 @@ const EnhancedQuestionManagement = () => {
       ];
       
       const isSampleQuestion = sampleKeywords.some(keyword => 
-        question.question.toLowerCase().includes(keyword.toLowerCase())
+        question.prompt_text?.toLowerCase().includes(keyword.toLowerCase())
       );
       
       if (isSampleQuestion) {
@@ -410,7 +410,7 @@ const EnhancedQuestionManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {questions.filter(q => q.type === 'listening').length}
+              {questions.filter(q => q.part <= 4).length}
             </div>
           </CardContent>
         </Card>
@@ -422,7 +422,7 @@ const EnhancedQuestionManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {questions.filter(q => q.type === 'reading').length}
+              {questions.filter(q => q.part >= 5).length}
             </div>
           </CardContent>
         </Card>
@@ -620,9 +620,9 @@ const EnhancedQuestionManagement = () => {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          {getTypeIcon(question.type)}
+                          {getTypeIcon(question.part <= 4 ? 'listening' : 'reading')}
                           <Badge variant="outline" className="text-xs">
-                            {question.type}
+                            Part {question.part}
                           </Badge>
                           <Badge className={`text-xs ${getDifficultyColor(question.difficulty)}`}>
                             {question.difficulty}
@@ -635,10 +635,10 @@ const EnhancedQuestionManagement = () => {
                           )}
                         </div>
                         <p className="text-sm font-medium truncate">
-                          {question.question}
+                          {question.prompt_text}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Answer: {question.answer} • Created: {new Date(question.created_at).toLocaleDateString()}
+                          Answer: {question.correct_choice} • Created: {new Date(question.created_at).toLocaleDateString()}
                         </p>
                       </div>
 

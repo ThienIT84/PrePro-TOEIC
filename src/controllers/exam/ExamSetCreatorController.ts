@@ -260,8 +260,14 @@ export class ExamSetCreatorController {
     try {
       this.setState({ loading: true, errors: [] });
 
-      const questions = await this.questionService.getAllQuestions();
-      this.setState({ questionBank: questions });
+      const { data: questions, error } = await this.questionService.getQuestions();
+      if (error) {
+        throw new Error(error instanceof Error ? error.message : 'Failed to load questions');
+      }
+
+      // Convert QuestionModel[] to Question[]
+      const questionData = questions?.map(q => q.toJSON()) || [];
+      this.setState({ questionBank: questionData });
 
       return { success: true };
     } catch (error: unknown) {
@@ -269,7 +275,7 @@ export class ExamSetCreatorController {
       this.setState({ errors: ['Failed to load question bank'] });
       return {
         success: false,
-        error: 'Failed to load question bank'
+        error: error instanceof Error ? error.message : 'Failed to load question bank'
       };
     } finally {
       this.setState({ loading: false });
@@ -358,16 +364,22 @@ export class ExamSetCreatorController {
 
         if (cfg.part === 1 || cfg.part === 2 || cfg.part === 5) {
           // Standalone questions
-          const questions = await this.questionService.getQuestionsByPart(cfg.part);
-          const filteredQuestions = questions.filter(q => 
+          const { data: questions, error } = await this.questionService.getQuestionsByPart(cfg.part);
+          if (error) continue;
+          
+          const questionData = questions?.map(q => q.toJSON()) || [];
+          const filteredQuestions = questionData.filter(q => 
             !usedQuestionIds.has(q.id) && 
             (this.state.formData.difficulty === 'mixed' || q.difficulty === this.state.formData.difficulty)
           );
           assigned = filteredQuestions.slice(0, need);
         } else if (cfg.part === 3 || cfg.part === 4) {
           // Group by passage_id, take 3 per passage
-          const questions = await this.questionService.getQuestionsByPart(cfg.part);
-          const filteredQuestions = questions.filter(q => 
+          const { data: questions, error } = await this.questionService.getQuestionsByPart(cfg.part);
+          if (error) continue;
+          
+          const questionData = questions?.map(q => q.toJSON()) || [];
+          const filteredQuestions = questionData.filter(q => 
             !usedQuestionIds.has(q.id) && 
             (this.state.formData.difficulty === 'mixed' || q.difficulty === this.state.formData.difficulty)
           );
@@ -392,8 +404,11 @@ export class ExamSetCreatorController {
           }
         } else if (cfg.part === 6) {
           // 4 blanks per passage (blank_index 1-4)
-          const questions = await this.questionService.getQuestionsByPart(6);
-          const filteredQuestions = questions.filter(q => 
+          const { data: questions, error } = await this.questionService.getQuestionsByPart(6);
+          if (error) continue;
+          
+          const questionData = questions?.map(q => q.toJSON()) || [];
+          const filteredQuestions = questionData.filter(q => 
             !usedQuestionIds.has(q.id) && 
             (this.state.formData.difficulty === 'mixed' || q.difficulty === this.state.formData.difficulty)
           );
@@ -418,8 +433,11 @@ export class ExamSetCreatorController {
           }
         } else if (cfg.part === 7) {
           // Accumulate by passage groups up to target (prefer full groups)
-          const questions = await this.questionService.getQuestionsByPart(7);
-          const filteredQuestions = questions.filter(q => 
+          const { data: questions, error } = await this.questionService.getQuestionsByPart(7);
+          if (error) continue;
+          
+          const questionData = questions?.map(q => q.toJSON()) || [];
+          const filteredQuestions = questionData.filter(q => 
             !usedQuestionIds.has(q.id) && 
             (this.state.formData.difficulty === 'mixed' || q.difficulty === this.state.formData.difficulty)
           );
@@ -461,7 +479,7 @@ export class ExamSetCreatorController {
       console.error('Error in auto-assignment:', error);
       return {
         success: false,
-        error: error.message || 'Auto-assignment failed'
+        error: error instanceof Error ? error.message : 'Auto-assignment failed'
       };
     } finally {
       this.setState({ loading: false });
@@ -508,14 +526,21 @@ export class ExamSetCreatorController {
         type: 'mix' as const,
         question_count: this.state.examParts.reduce((sum, part) => sum + part.questions.length, 0),
         time_limit: this.state.examParts.reduce((sum, part) => sum + part.timeLimit, 0),
-        difficulty: this.state.formData.difficulty,
+        difficulty: this.state.formData.difficulty === 'mixed' ? 'medium' : this.state.formData.difficulty,
         is_active: this.state.formData.status === 'active',
         allow_multiple_attempts: this.state.formData.allow_multiple_attempts,
         max_attempts: this.state.formData.max_attempts === '' ? null : this.state.formData.max_attempts,
         created_by: userId
       };
 
-      const examSet = await this.examService.createExamSet(examSetData);
+      const { data: examSet, error: examSetError } = await this.examService.createExamSet(examSetData);
+      if (examSetError) {
+        throw new Error(examSetError instanceof Error ? examSetError.message : 'Failed to create exam set');
+      }
+
+      if (!examSet) {
+        throw new Error('Exam set creation returned null');
+      }
 
       // Add questions to exam set
       const allQuestions = this.state.examParts.flatMap(part => part.questions);
@@ -524,7 +549,17 @@ export class ExamSetCreatorController {
       );
       
       if (uniqueQuestions.length > 0) {
-        await this.examService.addQuestionsToExamSet(examSet.id, uniqueQuestions);
+        // Add questions one by one with proper order
+        for (let i = 0; i < uniqueQuestions.length; i++) {
+          const { error: addError } = await this.examService.addQuestionToExamSet(
+            examSet.id, 
+            uniqueQuestions[i].id, 
+            i
+          );
+          if (addError) {
+            console.warn(`Failed to add question ${uniqueQuestions[i].id}:`, addError);
+          }
+        }
       }
 
       // Reset form
@@ -543,13 +578,13 @@ export class ExamSetCreatorController {
 
       return { 
         success: true, 
-        examSet 
+        examSet: examSet.toJSON()
       };
     } catch (error: unknown) {
       console.error('Error creating exam set:', error);
       return {
         success: false,
-        error: error.message || 'Failed to create exam set'
+        error: error instanceof Error ? error.message : 'Failed to create exam set'
       };
     } finally {
       this.setState({ saving: false });

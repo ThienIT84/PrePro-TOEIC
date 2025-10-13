@@ -64,27 +64,26 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
       setExamSession(sessionData);
       setExamSet(sessionData.exam_sets as any);
 
-      // Fetch questions for this exam through exam_questions table
-      const { data: examQuestionsData, error: examQuestionsError } = await supabase
-        .from('exam_questions')
-        .select(`
-          question_id,
-          order_index,
-          questions (
-            *,
-            passages (*)
-          )
-        `)
-        .eq('exam_set_id', sessionData.exam_set_id)
-        .order('order_index', { ascending: true });
-
-      if (examQuestionsError) {
-        console.error('Exam questions error:', examQuestionsError);
-        throw examQuestionsError;
+      // Get served question IDs from session results (only questions from selected parts)
+      const servedQuestionIds = (sessionData as any)?.results?.served_question_ids as string[] | undefined;
+      
+      if (!servedQuestionIds || servedQuestionIds.length === 0) {
+        throw new Error('Không tìm thấy danh sách câu hỏi đã thi');
       }
 
-      // Extract questions from the joined data
-      const questionsData = examQuestionsData?.map(eq => eq.questions).filter(Boolean) || [];
+      // Fetch only the questions that were actually served (from selected parts)
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          passages (*)
+        `)
+        .in('id', servedQuestionIds);
+
+      if (questionsError) {
+        console.error('Questions error:', questionsError);
+        throw questionsError;
+      }
 
       console.log('Questions data:', questionsData);
       setQuestions(questionsData as any || []);

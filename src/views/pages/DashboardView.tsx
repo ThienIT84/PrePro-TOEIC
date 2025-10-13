@@ -18,7 +18,35 @@ import {
   Users
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Analytics, ExamSet } from '@/types';
+import { Analytics, ExamSet, Profile } from '@/types';
+
+/**
+ * TOEIC Part interface
+ */
+interface TOEICPart {
+  part: number;
+  title: string;
+  description: string;
+  icon: 'Headphones' | 'BookOpen' | 'FileText';
+  bgColor: string;
+  borderColor: string;
+  color: string;
+}
+
+/**
+ * Recent Student Exam interface
+ */
+interface RecentStudentExam {
+  id: string;
+  score: number;
+  completed_at: string;
+  profiles?: {
+    name: string;
+  };
+  exam_sets?: {
+    title: string;
+  };
+}
 
 /**
  * Props interface cho Dashboard View
@@ -28,14 +56,14 @@ interface DashboardViewProps {
   analytics: Analytics | null;
   reviewCount: number;
   examSets: ExamSet[];
-  recentStudentExams: unknown[];
+  recentStudentExams: RecentStudentExam[];
   
   // Loading state
   loading: boolean;
   error: string | null;
   
   // Computed values
-  toeicParts: unknown[];
+  toeicParts: TOEICPart[];
   teacherStats: {
     totalExamSets: number;
     totalStudents: number;
@@ -51,7 +79,7 @@ interface DashboardViewProps {
   
   // User info
   user: unknown;
-  profile: unknown;
+  profile: Profile | null;
   isTeacher: boolean;
   
   // Actions

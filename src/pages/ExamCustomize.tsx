@@ -51,7 +51,7 @@ const ExamCustomize = () => {
   const location = useLocation();
   const { examSetId } = useParams<{ examSetId: string }>();
   const [selectedParts, setSelectedParts] = useState<number[]>([]);
-  const [timeMode, setTimeMode] = useState<TimeMode>((location.state as unknown)?.timeMode || 'standard');
+  const [timeMode, setTimeMode] = useState<TimeMode>((location.state as any)?.timeMode || 'standard');
 
   const timeModeConfigs = [
     {

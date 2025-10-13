@@ -3,6 +3,21 @@ import { DashboardController } from './DashboardController';
 import { Analytics, ExamSet } from '@/types';
 
 /**
+ * Recent Student Exam interface
+ */
+interface RecentStudentExam {
+  id: string;
+  score: number;
+  completed_at: string;
+  profiles?: {
+    name: string;
+  };
+  exam_sets?: {
+    title: string;
+  };
+}
+
+/**
  * React hook để sử dụng Dashboard Controller
  */
 export function useDashboardController(userId: string | null, isTeacher: boolean = false) {
@@ -12,7 +27,7 @@ export function useDashboardController(userId: string | null, isTeacher: boolean
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
   const [examSets, setExamSets] = useState<ExamSet[]>([]);
-  const [recentStudentExams, setRecentStudentExams] = useState<unknown[]>([]);
+  const [recentStudentExams, setRecentStudentExams] = useState<RecentStudentExam[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

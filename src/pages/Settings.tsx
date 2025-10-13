@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { t, getLanguage, setLanguage } from '@/lib/i18n';
-import { Settings as SettingsIcon, User, Target, Globe, BookOpen } from 'lucide-react';
+import { Settings as SettingsIcon, User, Target, Globe, BookOpen, Bell, Shield, Palette } from 'lucide-react';
 
 const Settings = () => {
   const { user, profile, updateProfile } = useAuth();
@@ -22,6 +24,9 @@ const Settings = () => {
     focus: profile?.focus || ['grammar', 'vocabulary'],
     locales: profile?.locales || 'vi',
     role: profile?.role || 'student',
+    notifications: (profile as any)?.notifications || true,
+    theme: (profile as any)?.theme || 'light',
+    privacy: (profile as any)?.privacy || 'public',
   });
 
   useEffect(() => {
@@ -33,6 +38,9 @@ const Settings = () => {
         focus: profile.focus || ['grammar', 'vocabulary'],
         locales: profile.locales || 'vi',
         role: profile.role || 'student',
+        notifications: (profile as any)?.notifications || true,
+        theme: (profile as any)?.theme || 'light',
+        privacy: (profile as any)?.privacy || 'public',
       });
     }
   }, [profile]);
@@ -142,7 +150,7 @@ const Settings = () => {
               <div className="flex items-center space-x-2">
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  onValueChange={(value) => setFormData({ ...formData, role: value as 'student' | 'teacher' })}
                   disabled={!isTeacher()} // Chỉ teacher mới có thể thay đổi role
                 >
                   <SelectTrigger>
@@ -267,6 +275,144 @@ const Settings = () => {
                   <SelectItem value="en">English</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Theme Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-primary" />
+              <CardTitle>Giao diện</CardTitle>
+            </div>
+            <CardDescription>
+              Tùy chỉnh giao diện và chủ đề
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="theme">Chủ đề</Label>
+              <Select
+                value={formData.theme}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, theme: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">Sáng</SelectItem>
+                  <SelectItem value="dark">Tối</SelectItem>
+                  <SelectItem value="system">Theo hệ thống</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notification Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              <CardTitle>Thông báo</CardTitle>
+            </div>
+            <CardDescription>
+              Quản lý thông báo và cảnh báo
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="notifications"
+                  checked={formData.notifications}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, notifications: checked as boolean }))
+                  }
+                />
+                <Label htmlFor="notifications" className="text-sm font-normal">
+                  Nhận thông báo về tiến độ học tập
+                </Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Privacy Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              <CardTitle>Quyền riêng tư</CardTitle>
+            </div>
+            <CardDescription>
+              Kiểm soát quyền riêng tư và chia sẻ dữ liệu
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="privacy">Mức độ chia sẻ</Label>
+              <Select
+                value={formData.privacy}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, privacy: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Công khai</SelectItem>
+                  <SelectItem value="friends">Bạn bè</SelectItem>
+                  <SelectItem value="private">Riêng tư</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.privacy === 'public' && 'Mọi người có thể xem tiến độ của bạn'}
+                {formData.privacy === 'friends' && 'Chỉ bạn bè có thể xem tiến độ của bạn'}
+                {formData.privacy === 'private' && 'Chỉ bạn có thể xem tiến độ của bạn'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* User Info Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Tóm tắt thông tin</CardTitle>
+            <CardDescription>
+              Xem lại các cài đặt hiện tại của bạn
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Thông tin cơ bản</Label>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p><strong>Tên:</strong> {formData.name || 'Chưa cập nhật'}</p>
+                  <p><strong>Email:</strong> {user?.email}</p>
+                  <p><strong>Vai trò:</strong> 
+                    <Badge variant={formData.role === 'teacher' ? 'default' : 'secondary'} className="ml-2">
+                      {formData.role === 'teacher' ? 'Giáo viên' : 'Học sinh'}
+                    </Badge>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Mục tiêu học tập</Label>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p><strong>Điểm mục tiêu:</strong> {formData.target_score} điểm</p>
+                  <p><strong>Ngày thi:</strong> {formData.test_date || 'Chưa đặt'}</p>
+                  <p><strong>Lĩnh vực tập trung:</strong></p>
+                  <div className="flex flex-wrap gap-1">
+                    {formData.focus.map((focus) => (
+                      <Badge key={focus} variant="outline" className="text-xs">
+                        {focusOptions.find(opt => opt.id === focus)?.label || focus}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

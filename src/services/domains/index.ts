@@ -20,6 +20,13 @@ export { AnalyticsService } from './analytics/AnalyticsService';
 // Media Domain
 export { MediaService } from './media/MediaService';
 
+// Import services for ServiceFactory
+import { QuestionService } from './question/QuestionService';
+import { ExamService } from './exam/ExamService';
+import { UserService } from './user/UserService';
+import { AnalyticsService } from './analytics/AnalyticsService';
+import { MediaService } from './media/MediaService';
+
 // Service Factory
 export class ServiceFactory {
   private static instances: Map<string, unknown> = new Map();
@@ -28,35 +35,35 @@ export class ServiceFactory {
     if (!this.instances.has('question')) {
       this.instances.set('question', new QuestionService());
     }
-    return this.instances.get('question');
+    return this.instances.get('question') as QuestionService;
   }
 
   static getExamService(): ExamService {
     if (!this.instances.has('exam')) {
       this.instances.set('exam', new ExamService());
     }
-    return this.instances.get('exam');
+    return this.instances.get('exam') as ExamService;
   }
 
   static getUserService(): UserService {
     if (!this.instances.has('user')) {
       this.instances.set('user', new UserService());
     }
-    return this.instances.get('user');
+    return this.instances.get('user') as UserService;
   }
 
   static getAnalyticsService(): AnalyticsService {
     if (!this.instances.has('analytics')) {
       this.instances.set('analytics', new AnalyticsService());
     }
-    return this.instances.get('analytics');
+    return this.instances.get('analytics') as AnalyticsService;
   }
 
   static getMediaService(): MediaService {
     if (!this.instances.has('media')) {
       this.instances.set('media', new MediaService());
     }
-    return this.instances.get('media');
+    return this.instances.get('media') as MediaService;
   }
 
   static getAllServices() {
@@ -71,5 +78,13 @@ export class ServiceFactory {
 
   static clearInstances() {
     this.instances.clear();
+  }
+
+  static getInstanceCount(): number {
+    return this.instances.size;
+  }
+
+  static hasService(serviceName: string): boolean {
+    return this.instances.has(serviceName);
   }
 }

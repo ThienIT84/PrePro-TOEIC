@@ -16,15 +16,17 @@ interface QuestionDetailModalProps {
 const QuestionDetailModal = ({ question, isOpen, onClose, onEdit }: QuestionDetailModalProps) => {
   if (!question) return null;
 
-  const getTypeLabel = (type: string) => {
+  const getPartLabel = (part: number) => {
     const labels = {
-      vocab: 'Từ vựng',
-      grammar: 'Ngữ pháp',
-      listening: 'Nghe hiểu',
-      reading: 'Đọc hiểu',
-      mix: 'Tổng hợp'
+      1: 'Part 1 - Photos',
+      2: 'Part 2 - Question-Response',
+      3: 'Part 3 - Conversations',
+      4: 'Part 4 - Talks',
+      5: 'Part 5 - Incomplete Sentences',
+      6: 'Part 6 - Text Completion',
+      7: 'Part 7 - Reading Comprehension'
     };
-    return labels[type as keyof typeof labels] || type;
+    return labels[part as keyof typeof labels] || `Part ${part}`;
   };
 
   const getDifficultyLabel = (difficulty: string) => {
@@ -59,7 +61,7 @@ const QuestionDetailModal = ({ question, isOpen, onClose, onEdit }: QuestionDeta
           <DialogTitle className="flex items-center justify-between">
             <span>Chi tiết câu hỏi</span>
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary">{getTypeLabel(question.type)}</Badge>
+              <Badge variant="secondary">{getPartLabel(question.part)}</Badge>
               <Badge className={getDifficultyColor(question.difficulty)}>
                 {getDifficultyLabel(question.difficulty)}
               </Badge>
@@ -74,11 +76,11 @@ const QuestionDetailModal = ({ question, isOpen, onClose, onEdit }: QuestionDeta
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Nội dung câu hỏi</h3>
-                  <p className="text-gray-700 leading-relaxed">{question.question}</p>
+                  <p className="text-gray-700 leading-relaxed">{question.prompt_text}</p>
                 </div>
 
                 {/* Audio for listening questions */}
-                {question.type === 'listening' && question.audio_url && (
+                {(question.part <= 4) && question.audio_url && (
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="outline"
@@ -116,26 +118,26 @@ const QuestionDetailModal = ({ question, isOpen, onClose, onEdit }: QuestionDeta
             <CardContent className="pt-6">
               <h3 className="text-lg font-semibold mb-4">Các lựa chọn</h3>
               <div className="space-y-3">
-                {question.choices.map((choice, index) => (
+                {Object.entries(question.choices).map(([key, value], index) => (
                   <div
-                    key={index}
+                    key={key}
                     className={`flex items-center space-x-3 p-3 rounded-lg border ${
-                      String.fromCharCode(65 + index) === question.answer
+                      key === question.correct_choice
                         ? 'bg-green-50 border-green-200'
                         : 'bg-gray-50 border-gray-200'
                     }`}
                   >
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                        String.fromCharCode(65 + index) === question.answer
+                        key === question.correct_choice
                           ? 'bg-green-500 text-white'
                           : 'bg-gray-200 text-gray-700'
                       }`}
                     >
-                      {String.fromCharCode(65 + index)}
+                      {key}
                     </div>
-                    <span className="flex-1">{choice}</span>
-                    {String.fromCharCode(65 + index) === question.answer && (
+                    <span className="flex-1">{value}</span>
+                    {key === question.correct_choice && (
                       <Badge variant="default" className="bg-green-500">
                         Đáp án đúng
                       </Badge>
