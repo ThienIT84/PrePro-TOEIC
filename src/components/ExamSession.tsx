@@ -305,9 +305,27 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
   const startExam = () => {
     setIsStarted(true);
+    
+    // Calculate actual time limit based on selected parts or exam set
+    let actualTimeLimit = examSet?.time_limit || 120;
+    
+    if (timeMode === 'unlimited') {
+      actualTimeLimit = -1; // Unlimited
+    } else if (selectedParts && selectedParts.length > 0) {
+      // Calculate time based on selected parts
+      actualTimeLimit = selectedParts.reduce((sum, p) => {
+        const cfg = toeicQuestionGenerator.getPartConfig(p);
+        return sum + (cfg ? cfg.timeLimit : 0);
+      }, 0);
+    }
+    
+    const timeMessage = actualTimeLimit === -1 
+      ? 'Không giới hạn thời gian' 
+      : `${actualTimeLimit} phút`;
+      
     toast({
       title: "Bắt đầu làm bài",
-      description: `Bạn có ${examSet?.time_limit} phút để hoàn thành bài thi`,
+      description: `Bạn có ${timeMessage} để hoàn thành bài thi`,
     });
   };
 
