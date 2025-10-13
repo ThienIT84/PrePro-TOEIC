@@ -53,14 +53,10 @@ interface QuestionResult {
   passage_image_url?: string | null;
   passage_transcript?: string | null;
   passage_translation_vi?: {
-    title?: string;
     content: string;
-    additional?: string;
   } | null;
   passage_translation_en?: {
-    title?: string;
     content: string;
-    additional?: string;
   } | null;
 }
 

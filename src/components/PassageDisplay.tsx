@@ -12,14 +12,10 @@ interface PassageDisplayProps {
     additional?: string;
   };
   translationVi?: {
-    title?: string;
     content: string;
-    additional?: string;
   };
   translationEn?: {
-    title?: string;
     content: string;
-    additional?: string;
   };
   showTranslation?: boolean;
   className?: string;
@@ -97,14 +93,8 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
             {translationVi && (
               <TabsContent value="vietnamese" className="mt-4">
                 <div className="space-y-3">
-                  {translationVi.title && (
-                    <h3 className="text-lg font-semibold text-gray-900">{translationVi.title}</h3>
-                  )}
                   <div className="prose prose-sm max-w-none">
                     <p className="whitespace-pre-wrap leading-relaxed">{translationVi.content}</p>
-                    {translationVi.additional && (
-                      <p className="whitespace-pre-wrap leading-relaxed mt-3">{translationVi.additional}</p>
-                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -113,14 +103,8 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
             {translationEn && (
               <TabsContent value="english" className="mt-4">
                 <div className="space-y-3">
-                  {translationEn.title && (
-                    <h3 className="text-lg font-semibold text-gray-900">{translationEn.title}</h3>
-                  )}
                   <div className="prose prose-sm max-w-none">
                     <p className="whitespace-pre-wrap leading-relaxed">{translationEn.content}</p>
-                    {translationEn.additional && (
-                      <p className="whitespace-pre-wrap leading-relaxed mt-3">{translationEn.additional}</p>
-                    )}
                   </div>
                 </div>
               </TabsContent>
