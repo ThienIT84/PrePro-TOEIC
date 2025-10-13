@@ -16,7 +16,8 @@ import {
   Play,
   Pause,
   Eye,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamSet, ExamQuestion, Question, DrillType, TimeMode } from '@/types';
@@ -64,6 +65,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [passageMap, setPassageMap] = useState<Record<string, PassageLite>>({});
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   useEffect(() => {
     fetchExamData();
@@ -88,6 +90,40 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
     return () => clearInterval(interval);
   }, [isStarted, isPaused, timeLeft, timeMode]);
+
+  // Handle browser back button and page unload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isStarted && !isSubmitted) {
+        e.preventDefault();
+        e.returnValue = 'Bạn có chắc chắn muốn thoát? Tiến độ bài thi sẽ được lưu tự động.';
+        return e.returnValue;
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (isStarted && !isSubmitted) {
+        e.preventDefault();
+        setShowExitDialog(true);
+        // Push state back to prevent navigation
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Add a state to history to detect back button
+    if (isStarted && !isSubmitted) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isStarted, isSubmitted]);
 
   const checkIfCompleted = async () => {
     try {
@@ -382,7 +418,23 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       const totalQuestions = questions.length;
       const correctAnswers = Array.from(finalAnswers.values()).filter(a => a.isCorrect).length;
       const score = Math.round((correctAnswers / totalQuestions) * 100);
-      const timeSpent = (examSet?.time_limit || 0) * 60 - timeLeft;
+      
+      // Calculate actual time spent based on selected parts or exam set
+      let timeSpent = 0;
+      if (timeMode === 'unlimited') {
+        timeSpent = 0; // No time tracking for unlimited mode
+      } else if (selectedParts && selectedParts.length > 0) {
+        // Calculate time spent for selected parts
+        const totalMinutes = selectedParts.reduce((sum, p) => {
+          const cfg = toeicQuestionGenerator.getPartConfig(p);
+          return sum + (cfg ? cfg.timeLimit : 0);
+        }, 0);
+        const totalSeconds = totalMinutes * 60;
+        timeSpent = Math.max(0, totalSeconds - timeLeft);
+      } else {
+        // Use exam set time limit
+        timeSpent = Math.max(0, (examSet?.time_limit || 0) * 60 - timeLeft);
+      }
 
       // Create exam session (store served questions for review)
       const { data: sessionData, error: sessionError } = await supabase
@@ -496,6 +548,58 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
   const getAnsweredCount = () => {
     return Array.from(answers.values()).filter(a => a.answer).length;
+  };
+
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!sessionId || !isStarted) return;
+
+    try {
+      // Save current progress to localStorage
+      const progressData = {
+        sessionId,
+        examSetId,
+        currentIndex,
+        answers: Array.from(answers.entries()),
+        timeLeft,
+        isStarted,
+        timestamp: new Date().toISOString()
+      };
+      
+      localStorage.setItem(`exam_progress_${sessionId}`, JSON.stringify(progressData));
+      console.log('Auto-save completed');
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    }
+  }, [sessionId, isStarted, currentIndex, answers, timeLeft, examSetId]);
+
+  // Handle exit
+  const handleExit = () => {
+    setShowExitDialog(true);
+  };
+
+  const confirmExit = async () => {
+    setShowExitDialog(false);
+    
+    // Save current progress
+    await autoSave();
+    
+    toast({
+      title: "Đã lưu tiến độ",
+      description: "Bạn có thể tiếp tục bài thi sau.",
+    });
+    
+    // Clear the history state we added
+    window.history.replaceState(null, '', window.location.href);
+    
+    // Navigate back
+    navigate('/exam-sets');
+  };
+
+  const cancelExit = () => {
+    setShowExitDialog(false);
+    // Push state back to prevent navigation if user cancels
+    window.history.pushState(null, '', window.location.href);
   };
 
   if (loading) {
@@ -658,6 +762,14 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExit}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Thoát
+              </Button>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4" />
                 <span className={`font-mono text-lg ${timeMode === 'standard' && timeLeft < 300 ? 'text-red-500' : ''}`}>
@@ -1255,7 +1367,8 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-blue-600">
-                  {((Array.from(answers.values()).filter(a => a.isCorrect).length / questions.length) * 100).toFixed(1)}%
+                  {questions.length > 0 ? 
+                    ((Array.from(answers.values()).filter(a => a.isCorrect).length / questions.length) * 100).toFixed(1) : 0}%
                 </div>
                 <div className="text-sm text-muted-foreground">Độ chính xác</div>
               </div>
@@ -1274,6 +1387,58 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Xác nhận thoát bài thi
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Bạn có chắc chắn muốn thoát bài thi này không?</p>
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-blue-900 mb-2">Tiến độ hiện tại:</h4>
+              <div className="space-y-1 text-sm text-blue-800">
+                <div className="flex justify-between">
+                  <span>Câu hỏi:</span>
+                  <span className="font-medium">{currentIndex + 1}/{questions.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Đã trả lời:</span>
+                  <span className="font-medium">{getAnsweredCount()}/{questions.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Hoàn thành:</span>
+                  <span className="font-medium">{Math.round(getProgress())}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Thời gian còn lại:</span>
+                  <span className="font-medium">{formatTime(timeLeft)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
+                <p className="text-sm text-orange-800">
+                  <strong>Lưu ý:</strong> Tiến độ sẽ được lưu tự động. Bạn có thể tiếp tục bài thi này sau.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={cancelExit}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={confirmExit}>
+              Thoát bài thi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

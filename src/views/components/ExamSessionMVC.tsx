@@ -372,9 +372,27 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
         }
       });
 
-      // Calculate results
-      const results = calculateResults();
-      const { totalQuestions, correctAnswers, score, timeSpent } = results;
+      // Calculate results manually since controller is mock
+      const totalQuestions = questions.length;
+      const correctAnswers = Array.from(finalAnswers.values()).filter(a => (a as any).isCorrect).length;
+      const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+      
+      // Calculate actual time spent based on selected parts or exam set
+      let timeSpent = 0;
+      if (timeMode === 'unlimited') {
+        timeSpent = 0; // No time tracking for unlimited mode
+      } else if (selectedParts && selectedParts.length > 0) {
+        // Calculate time spent for selected parts
+        const totalMinutes = selectedParts.reduce((sum, p) => {
+          const cfg = toeicQuestionGenerator.getPartConfig(p);
+          return sum + (cfg ? cfg.timeLimit : 0);
+        }, 0);
+        const totalSeconds = totalMinutes * 60;
+        timeSpent = Math.max(0, totalSeconds - timeLeft);
+      } else {
+        // Use exam set time limit
+        timeSpent = Math.max(0, (examSet?.time_limit || 0) * 60 - timeLeft);
+      }
 
       // Create exam session
       const { data: sessionData, error: sessionError } = await supabase
