@@ -70,7 +70,73 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   useEffect(() => {
     fetchExamData();
     checkIfCompleted();
+    checkForSavedProgress();
   }, [examSetId]);
+
+  // Check for saved progress from localStorage
+  const checkForSavedProgress = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check for in-progress sessions in database
+      const { data: sessions } = await supabase
+        .from('exam_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('exam_set_id', examSetId)
+        .eq('status', 'in_progress')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (sessions && sessions.length > 0) {
+        const session = sessions[0];
+        const savedProgress = localStorage.getItem(`exam_progress_${session.id}`);
+        
+        if (savedProgress) {
+          const progressData = JSON.parse(savedProgress);
+          
+          // Show resume dialog
+          const shouldResume = window.confirm(
+            `Bạn có một bài thi đang làm dở cho "${examSet?.title || 'Bài thi này'}". ` +
+            `Tiến độ: ${progressData.currentIndex + 1}/${questions.length} câu hỏi. ` +
+            `Bạn có muốn tiếp tục không?`
+          );
+
+          if (shouldResume) {
+            // Resume session
+            setSessionId(session.id);
+            setCurrentIndex(progressData.currentIndex);
+            setTimeLeft(progressData.timeLeft);
+            setIsStarted(true);
+            
+            // Restore answers
+            const restoredAnswers = new Map(progressData.answers as [string, ExamAnswer][]);
+            setAnswers(restoredAnswers);
+            
+            toast({
+              title: "Đã khôi phục bài thi",
+              description: "Tiếp tục từ nơi bạn đã dừng lại.",
+            });
+            
+            return true;
+          } else {
+            // Cancel old session
+            await supabase
+              .from('exam_sessions')
+              .update({ status: 'cancelled' })
+              .eq('id', session.id);
+            
+            localStorage.removeItem(`exam_progress_${session.id}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking saved progress:', error);
+    }
+    
+    return false;
+  }, [examSetId, examSet, questions.length, toast]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -339,30 +405,81 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
     }
   };
 
-  const startExam = () => {
-    setIsStarted(true);
-    
-    // Calculate actual time limit based on selected parts or exam set
-    let actualTimeLimit = examSet?.time_limit || 120;
-    
-    if (timeMode === 'unlimited') {
-      actualTimeLimit = -1; // Unlimited
-    } else if (selectedParts && selectedParts.length > 0) {
-      // Calculate time based on selected parts
-      actualTimeLimit = selectedParts.reduce((sum, p) => {
-        const cfg = toeicQuestionGenerator.getPartConfig(p);
-        return sum + (cfg ? cfg.timeLimit : 0);
-      }, 0);
-    }
-    
-    const timeMessage = actualTimeLimit === -1 
-      ? 'Không giới hạn thời gian' 
-      : `${actualTimeLimit} phút`;
+  const startExam = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể xác thực người dùng",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create exam session in database
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('exam_sessions')
+        .insert({
+          user_id: user.id,
+          exam_set_id: examSetId,
+          total_questions: questions.length,
+          correct_answers: 0,
+          score: 0,
+          time_spent: 0,
+          status: 'in_progress',
+          started_at: new Date().toISOString(),
+          results: {
+            served_question_ids: questions.map(q => q.id),
+            selected_parts: selectedParts || null,
+            time_mode: timeMode,
+          },
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Error creating session:', sessionError);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tạo phiên thi",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSessionId(sessionData.id);
+      setIsStarted(true);
       
-    toast({
-      title: "Bắt đầu làm bài",
-      description: `Bạn có ${timeMessage} để hoàn thành bài thi`,
-    });
+      // Calculate actual time limit based on selected parts or exam set
+      let actualTimeLimit = examSet?.time_limit || 120;
+      
+      if (timeMode === 'unlimited') {
+        actualTimeLimit = -1; // Unlimited
+      } else if (selectedParts && selectedParts.length > 0) {
+        // Calculate time based on selected parts
+        actualTimeLimit = selectedParts.reduce((sum, p) => {
+          const cfg = toeicQuestionGenerator.getPartConfig(p);
+          return sum + (cfg ? cfg.timeLimit : 0);
+        }, 0);
+      }
+      
+      const timeMessage = actualTimeLimit === -1 
+        ? 'Không giới hạn thời gian' 
+        : `${actualTimeLimit} phút`;
+        
+      toast({
+        title: "Bắt đầu làm bài",
+        description: `Bạn có ${timeMessage} để hoàn thành bài thi`,
+      });
+    } catch (error) {
+      console.error('Error starting exam:', error);
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra khi bắt đầu bài thi",
+        variant: "destructive",
+      });
+    }
   };
 
   const pauseExam = () => {
@@ -436,42 +553,58 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         timeSpent = Math.max(0, (examSet?.time_limit || 0) * 60 - timeLeft);
       }
 
-      // Create exam session (store served questions for review)
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('exam_sessions')
-        .insert({
-          user_id: user.id,
-          exam_set_id: examSetId,
-          total_questions: totalQuestions,
-          correct_answers: correctAnswers,
-          score: score,
-          time_spent: timeSpent,
-          results: {
-            served_question_ids: questions.map(q => q.id),
-            selected_parts: selectedParts || null
-          },
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (sessionError) {
-        console.error('Error creating session:', sessionError);
-        console.error('Session error details:', {
-          message: sessionError.message,
-          details: sessionError.details,
-          hint: sessionError.hint,
-          code: sessionError.code
-        });
+      // Update existing session or create new one
+      let sessionData;
+      if (sessionId) {
+        // Update existing session
+        const { data, error } = await supabase
+          .from('exam_sessions')
+          .update({
+            total_questions: totalQuestions,
+            correct_answers: correctAnswers,
+            score: score,
+            time_spent: timeSpent,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            results: {
+              served_question_ids: questions.map(q => q.id),
+              selected_parts: selectedParts || null,
+              time_mode: timeMode,
+            }
+          })
+          .eq('id', sessionId)
+          .select()
+          .single();
         
-        toast({
-          title: "Lỗi",
-          description: `Không thể lưu kết quả thi: ${sessionError.message}`,
-          variant: "destructive",
-        });
-        return;
+        if (error) throw error;
+        sessionData = data;
+      } else {
+        // Create new session
+        const { data, error } = await supabase
+          .from('exam_sessions')
+          .insert({
+            user_id: user.id,
+            exam_set_id: examSetId,
+            total_questions: totalQuestions,
+            correct_answers: correctAnswers,
+            score: score,
+            time_spent: timeSpent,
+            results: {
+              served_question_ids: questions.map(q => q.id),
+              selected_parts: selectedParts || null,
+              time_mode: timeMode,
+            },
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        sessionData = data;
       }
+
+      // Session data is already handled above
 
       setSessionId(sessionData.id);
 
@@ -511,6 +644,11 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       }
 
       console.log('Attempts created successfully');
+
+      // Clear localStorage after successful submission
+      if (sessionId) {
+        localStorage.removeItem(`exam_progress_${sessionId}`);
+      }
 
       toast({
         title: "Hoàn thành bài thi",
@@ -581,19 +719,47 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const confirmExit = async () => {
     setShowExitDialog(false);
     
-    // Save current progress
-    await autoSave();
-    
-    toast({
-      title: "Đã lưu tiến độ",
-      description: "Bạn có thể tiếp tục bài thi sau.",
-    });
-    
-    // Clear the history state we added
-    window.history.replaceState(null, '', window.location.href);
-    
-    // Navigate back
-    navigate('/exam-sets');
+    try {
+      // Save current progress to localStorage
+      await autoSave();
+      
+      // Update session in database
+      if (sessionId) {
+        await supabase
+          .from('exam_sessions')
+          .update({
+            time_spent: (examSet?.time_limit || 0) * 60 - timeLeft,
+            updated_at: new Date().toISOString(),
+            results: {
+              current_index: currentIndex,
+              time_left: timeLeft,
+              answers: Array.from(answers.entries()) as any,
+              served_question_ids: questions.map(q => q.id),
+              selected_parts: selectedParts || null,
+              time_mode: timeMode,
+            }
+          })
+          .eq('id', sessionId);
+      }
+      
+      toast({
+        title: "Đã lưu tiến độ",
+        description: "Bạn có thể tiếp tục bài thi sau.",
+      });
+      
+      // Clear the history state we added
+      window.history.replaceState(null, '', window.location.href);
+      
+      // Navigate back
+      navigate('/exam-sets');
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra khi lưu tiến độ",
+        variant: "destructive",
+      });
+    }
   };
 
   const cancelExit = () => {

@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Play, Clock, Timer, Target } from 'lucide-react';
+import { ArrowLeft, Play, Clock, Timer, Target, History } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
+import ExamHistoryTable from '@/components/ExamHistoryTable';
 
 const PART_DETAILS: Record<number, { title: string; defaultCount: number; items: { name: string; count: number }[] }> = {
   1: { title: 'Part 1 - Photos', defaultCount: 6, items: [
@@ -52,6 +53,7 @@ const ExamCustomize = () => {
   const { examSetId } = useParams<{ examSetId: string }>();
   const [selectedParts, setSelectedParts] = useState<number[]>([]);
   const [timeMode, setTimeMode] = useState<TimeMode>((location.state as any)?.timeMode || 'standard');
+  const [showHistory, setShowHistory] = useState(true);
 
   const timeModeConfigs = [
     {
@@ -86,6 +88,10 @@ const ExamCustomize = () => {
     navigate(`/exam-sets/${examSetId}/take`, { state: { parts: selectedParts, timeMode } });
   };
 
+  const handleViewDetails = (sessionId: string) => {
+    navigate(`/exam-result/${sessionId}`);
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="mb-6 flex items-center justify-between">
@@ -96,6 +102,14 @@ const ExamCustomize = () => {
           <h1 className="text-2xl font-bold">Chọn Part trong đề</h1>
         </div>
         <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2"
+          >
+            <History className="h-4 w-4" />
+            {showHistory ? 'Ẩn lịch sử' : 'Xem lịch sử'}
+          </Button>
           <Badge> {totalQuestions} câu</Badge>
           <Badge> {typeof totalMinutes === 'string' ? totalMinutes : `${totalMinutes} phút`}</Badge>
           <Button disabled={selectedParts.length === 0} onClick={start}>
@@ -103,6 +117,17 @@ const ExamCustomize = () => {
           </Button>
         </div>
       </div>
+
+      {/* Exam History Table */}
+      {showHistory && examSetId && (
+        <div className="mb-8">
+          <ExamHistoryTable
+            examSetId={examSetId}
+            examSetTitle="Đề thi hiện tại"
+            onViewDetails={handleViewDetails}
+          />
+        </div>
+      )}
 
       {/* Time Mode Selection */}
       <Card className="mb-6">

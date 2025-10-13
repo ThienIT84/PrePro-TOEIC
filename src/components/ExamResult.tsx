@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import SimpleAudioPlayer from '@/components/SimpleAudioPlayer';
+import RetryMode from '@/components/RetryMode';
 
 interface ExamResult {
   session_id: string;
@@ -66,6 +67,9 @@ const ExamResult = () => {
   const [result, setResult] = useState<ExamResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryMode, setRetryMode] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<any[]>([]);
 
   useEffect(() => {
     if (sessionId) {
@@ -227,6 +231,44 @@ const ExamResult = () => {
         console.log('Questions with audio_url:', transformedResult.questions.filter(q => q.audio_url));
         console.log('Questions with image_url:', transformedResult.questions.filter(q => q.image_url));
         setResult(transformedResult as ExamResult);
+        
+        // Store questions and attempts for retry mode
+        console.log('ExamResult: attemptsData sample:', attemptsData[0]);
+        console.log('ExamResult: question_detail sample:', (attemptsData[0] as any)?.question_detail);
+        
+        // Get all question IDs from attempts
+        const questionIds = attemptsData.map(a => a.question_id);
+        console.log('ExamResult: questionIds to fetch:', questionIds);
+        
+        // Fetch full question data from database
+        const { data: fullQuestions, error: qErr } = await supabase
+          .from('questions')
+          .select('*')
+          .in('id', questionIds);
+        
+        if (qErr) {
+          console.error('Error fetching full questions:', qErr);
+        } else {
+          console.log('ExamResult: fetched fullQuestions:', fullQuestions);
+        }
+        
+        const validQuestions = (fullQuestions || []).map(question => {
+          const attempt = attemptsData.find(a => a.question_id === question.id);
+          return {
+            ...question,
+            // Add attempt data
+            user_answer: attempt?.user_answer || '',
+            is_correct: attempt?.is_correct || false,
+            time_spent: attempt?.time_spent || 0
+          };
+        });
+        
+        console.log('ExamResult: validQuestions count:', validQuestions.length);
+        console.log('ExamResult: validQuestions sample:', validQuestions[0]);
+        console.log('ExamResult: validQuestions choices sample:', validQuestions[0]?.choices);
+        console.log('ExamResult: validQuestions image_url sample:', validQuestions[0]?.image_url);
+        setQuestions(validQuestions);
+        setAttempts(attemptsData);
         return;
       }
 
@@ -243,6 +285,45 @@ const ExamResult = () => {
         
         console.log('Transformed RPC result:', transformedResult);
         setResult(transformedResult as ExamResult);
+        
+        // Store questions and attempts for retry mode (RPC case)
+        if (rpcResult.attempts_data && Array.isArray(rpcResult.attempts_data)) {
+          console.log('ExamResult RPC: attempts_data sample:', rpcResult.attempts_data[0]);
+          
+          // Get all question IDs from attempts_data
+          const questionIds = rpcResult.attempts_data.map((attempt: any) => attempt.question_id);
+          console.log('ExamResult RPC: questionIds to fetch:', questionIds);
+          
+          // Fetch full question data from database
+          const { data: fullQuestions, error: qErr } = await supabase
+            .from('questions')
+            .select('*')
+            .in('id', questionIds);
+          
+          if (qErr) {
+            console.error('ExamResult RPC: Error fetching full questions:', qErr);
+          } else {
+            console.log('ExamResult RPC: fetched fullQuestions:', fullQuestions);
+          }
+          
+          const validQuestions = (fullQuestions || []).map(question => {
+            const attempt = rpcResult.attempts_data.find((a: any) => a.question_id === question.id);
+            return {
+              ...question,
+              // Add attempt data
+              user_answer: attempt?.user_answer || '',
+              is_correct: attempt?.is_correct || false,
+              time_spent: attempt?.time_spent || 0
+            };
+          });
+          
+          console.log('ExamResult RPC: validQuestions count:', validQuestions.length);
+          console.log('ExamResult RPC: validQuestions sample:', validQuestions[0]);
+          console.log('ExamResult RPC: validQuestions choices sample:', validQuestions[0]?.choices);
+          console.log('ExamResult RPC: validQuestions image_url sample:', validQuestions[0]?.image_url);
+          setQuestions(validQuestions);
+          setAttempts(rpcResult.attempts_data);
+        }
       } else {
         setError('Không tìm thấy kết quả thi');
       }
@@ -264,6 +345,27 @@ const ExamResult = () => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  // Handle retry mode
+  const handleRetryMode = () => {
+    console.log('ExamResult: Entering retry mode with questions:', questions?.length, 'attempts:', attempts?.length);
+    setRetryMode(true);
+  };
+
+  const handleExitRetryMode = () => {
+    setRetryMode(false);
+  };
+
+  const handleUpdateResult = (newScore: number, newCorrectCount: number) => {
+    if (result) {
+      setResult({
+        ...result,
+        score: newScore,
+        correct_answers: newCorrectCount
+      });
+    }
+    setRetryMode(false);
   };
 
   const getScoreBadgeVariant = (score: number) => {
@@ -342,26 +444,49 @@ const ExamResult = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Kết quả thi</h1>
-          <p className="text-muted-foreground">{result.exam_set_name}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Về Dashboard
-          </Button>
-          <Button onClick={() => navigate(`/exam-review/${sessionId}`)}>
-            Xem chi tiết đáp án
-          </Button>
-          <Button variant="outline" onClick={() => navigate('/exams')}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Thi khác
-          </Button>
-        </div>
-      </div>
+      {/* Retry Mode */}
+      {retryMode && sessionId && (
+        <RetryMode
+          sessionId={sessionId}
+          questions={questions || []}
+          attempts={attempts || []}
+          onExit={handleExitRetryMode}
+          onUpdate={handleUpdateResult}
+        />
+      )}
+
+      {/* Normal Result View */}
+      {!retryMode && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Kết quả thi</h1>
+              <p className="text-muted-foreground">{result.exam_set_name}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Về Dashboard
+              </Button>
+              <Button onClick={() => navigate(`/exam-review/${sessionId}`)}>
+                <Eye className="h-4 w-4 mr-2" />
+                Xem chi tiết đáp án
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={handleRetryMode}
+                className="bg-orange-100 text-orange-700 hover:bg-orange-200"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Làm lại câu sai
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/exams')}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Thi khác
+              </Button>
+            </div>
+          </div>
 
       {/* Score Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -825,6 +950,8 @@ const ExamResult = () => {
           </Card>
         </TabsContent>
       </Tabs>
+        </>
+      )}
     </div>
   );
 };
