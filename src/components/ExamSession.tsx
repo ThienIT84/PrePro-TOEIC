@@ -16,7 +16,8 @@ import {
   Play,
   Pause,
   Eye,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamSet, ExamQuestion, Question, DrillType, TimeMode } from '@/types';
@@ -64,11 +65,78 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [passageMap, setPassageMap] = useState<Record<string, PassageLite>>({});
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   useEffect(() => {
     fetchExamData();
     checkIfCompleted();
+    checkForSavedProgress();
   }, [examSetId]);
+
+  // Check for saved progress from localStorage
+  const checkForSavedProgress = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check for in-progress sessions in database
+      const { data: sessions } = await supabase
+        .from('exam_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('exam_set_id', examSetId)
+        .eq('status', 'in_progress')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (sessions && sessions.length > 0) {
+        const session = sessions[0];
+        const savedProgress = localStorage.getItem(`exam_progress_${session.id}`);
+        
+        if (savedProgress) {
+          const progressData = JSON.parse(savedProgress);
+          
+          // Show resume dialog
+          const shouldResume = window.confirm(
+            `Bạn có một bài thi đang làm dở cho "${examSet?.title || 'Bài thi này'}". ` +
+            `Tiến độ: ${progressData.currentIndex + 1}/${questions.length} câu hỏi. ` +
+            `Bạn có muốn tiếp tục không?`
+          );
+
+          if (shouldResume) {
+            // Resume session
+            setSessionId(session.id);
+            setCurrentIndex(progressData.currentIndex);
+            setTimeLeft(progressData.timeLeft);
+            setIsStarted(true);
+            
+            // Restore answers
+            const restoredAnswers = new Map(progressData.answers as [string, ExamAnswer][]);
+            setAnswers(restoredAnswers);
+            
+            toast({
+              title: "Đã khôi phục bài thi",
+              description: "Tiếp tục từ nơi bạn đã dừng lại.",
+            });
+            
+            return true;
+          } else {
+            // Cancel old session
+            await supabase
+              .from('exam_sessions')
+              .update({ status: 'cancelled' })
+              .eq('id', session.id);
+            
+            localStorage.removeItem(`exam_progress_${session.id}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking saved progress:', error);
+    }
+    
+    return false;
+  }, [examSetId, examSet, questions.length, toast]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -88,6 +156,40 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
     return () => clearInterval(interval);
   }, [isStarted, isPaused, timeLeft, timeMode]);
+
+  // Handle browser back button and page unload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isStarted && !isSubmitted) {
+        e.preventDefault();
+        e.returnValue = 'Bạn có chắc chắn muốn thoát? Tiến độ bài thi sẽ được lưu tự động.';
+        return e.returnValue;
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (isStarted && !isSubmitted) {
+        e.preventDefault();
+        setShowExitDialog(true);
+        // Push state back to prevent navigation
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Add a state to history to detect back button
+    if (isStarted && !isSubmitted) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isStarted, isSubmitted]);
 
   const checkIfCompleted = async () => {
     try {
@@ -303,12 +405,81 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
     }
   };
 
-  const startExam = () => {
-    setIsStarted(true);
-    toast({
-      title: "Bắt đầu làm bài",
-      description: `Bạn có ${examSet?.time_limit} phút để hoàn thành bài thi`,
-    });
+  const startExam = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể xác thực người dùng",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create exam session in database
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('exam_sessions')
+        .insert({
+          user_id: user.id,
+          exam_set_id: examSetId,
+          total_questions: questions.length,
+          correct_answers: 0,
+          score: 0,
+          time_spent: 0,
+          status: 'in_progress',
+          started_at: new Date().toISOString(),
+          results: {
+            served_question_ids: questions.map(q => q.id),
+            selected_parts: selectedParts || null,
+            time_mode: timeMode,
+          },
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Error creating session:', sessionError);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tạo phiên thi",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSessionId(sessionData.id);
+      setIsStarted(true);
+      
+      // Calculate actual time limit based on selected parts or exam set
+      let actualTimeLimit = examSet?.time_limit || 120;
+      
+      if (timeMode === 'unlimited') {
+        actualTimeLimit = -1; // Unlimited
+      } else if (selectedParts && selectedParts.length > 0) {
+        // Calculate time based on selected parts
+        actualTimeLimit = selectedParts.reduce((sum, p) => {
+          const cfg = toeicQuestionGenerator.getPartConfig(p);
+          return sum + (cfg ? cfg.timeLimit : 0);
+        }, 0);
+      }
+      
+      const timeMessage = actualTimeLimit === -1 
+        ? 'Không giới hạn thời gian' 
+        : `${actualTimeLimit} phút`;
+        
+      toast({
+        title: "Bắt đầu làm bài",
+        description: `Bạn có ${timeMessage} để hoàn thành bài thi`,
+      });
+    } catch (error) {
+      console.error('Error starting exam:', error);
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra khi bắt đầu bài thi",
+        variant: "destructive",
+      });
+    }
   };
 
   const pauseExam = () => {
@@ -364,44 +535,76 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       const totalQuestions = questions.length;
       const correctAnswers = Array.from(finalAnswers.values()).filter(a => a.isCorrect).length;
       const score = Math.round((correctAnswers / totalQuestions) * 100);
-      const timeSpent = (examSet?.time_limit || 0) * 60 - timeLeft;
-
-      // Create exam session (store served questions for review)
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('exam_sessions')
-        .insert({
-          user_id: user.id,
-          exam_set_id: examSetId,
-          total_questions: totalQuestions,
-          correct_answers: correctAnswers,
-          score: score,
-          time_spent: timeSpent,
-          results: {
-            served_question_ids: questions.map(q => q.id),
-            selected_parts: selectedParts || null
-          },
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (sessionError) {
-        console.error('Error creating session:', sessionError);
-        console.error('Session error details:', {
-          message: sessionError.message,
-          details: sessionError.details,
-          hint: sessionError.hint,
-          code: sessionError.code
-        });
-        
-        toast({
-          title: "Lỗi",
-          description: `Không thể lưu kết quả thi: ${sessionError.message}`,
-          variant: "destructive",
-        });
-        return;
+      
+      // Calculate actual time spent based on selected parts or exam set
+      let timeSpent = 0;
+      if (timeMode === 'unlimited') {
+        timeSpent = 0; // No time tracking for unlimited mode
+      } else if (selectedParts && selectedParts.length > 0) {
+        // Calculate time spent for selected parts
+        const totalMinutes = selectedParts.reduce((sum, p) => {
+          const cfg = toeicQuestionGenerator.getPartConfig(p);
+          return sum + (cfg ? cfg.timeLimit : 0);
+        }, 0);
+        const totalSeconds = totalMinutes * 60;
+        timeSpent = Math.max(0, totalSeconds - timeLeft);
+      } else {
+        // Use exam set time limit
+        timeSpent = Math.max(0, (examSet?.time_limit || 0) * 60 - timeLeft);
       }
+
+      // Update existing session or create new one
+      let sessionData;
+      if (sessionId) {
+        // Update existing session
+        const { data, error } = await supabase
+          .from('exam_sessions')
+          .update({
+            total_questions: totalQuestions,
+            correct_answers: correctAnswers,
+            score: score,
+            time_spent: timeSpent,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            results: {
+              served_question_ids: questions.map(q => q.id),
+              selected_parts: selectedParts || null,
+              time_mode: timeMode,
+            }
+          })
+          .eq('id', sessionId)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        sessionData = data;
+      } else {
+        // Create new session
+        const { data, error } = await supabase
+          .from('exam_sessions')
+          .insert({
+            user_id: user.id,
+            exam_set_id: examSetId,
+            total_questions: totalQuestions,
+            correct_answers: correctAnswers,
+            score: score,
+            time_spent: timeSpent,
+            results: {
+              served_question_ids: questions.map(q => q.id),
+              selected_parts: selectedParts || null,
+              time_mode: timeMode,
+            },
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        sessionData = data;
+      }
+
+      // Session data is already handled above
 
       setSessionId(sessionData.id);
 
@@ -442,6 +645,11 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
       console.log('Attempts created successfully');
 
+      // Clear localStorage after successful submission
+      if (sessionId) {
+        localStorage.removeItem(`exam_progress_${sessionId}`);
+      }
+
       toast({
         title: "Hoàn thành bài thi",
         description: `Kết quả: ${correctAnswers}/${totalQuestions} câu đúng (${score}%)`,
@@ -478,6 +686,86 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
 
   const getAnsweredCount = () => {
     return Array.from(answers.values()).filter(a => a.answer).length;
+  };
+
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!sessionId || !isStarted) return;
+
+    try {
+      // Save current progress to localStorage
+      const progressData = {
+        sessionId,
+        examSetId,
+        currentIndex,
+        answers: Array.from(answers.entries()),
+        timeLeft,
+        isStarted,
+        timestamp: new Date().toISOString()
+      };
+      
+      localStorage.setItem(`exam_progress_${sessionId}`, JSON.stringify(progressData));
+      console.log('Auto-save completed');
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    }
+  }, [sessionId, isStarted, currentIndex, answers, timeLeft, examSetId]);
+
+  // Handle exit
+  const handleExit = () => {
+    setShowExitDialog(true);
+  };
+
+  const confirmExit = async () => {
+    setShowExitDialog(false);
+    
+    try {
+      // Save current progress to localStorage
+      await autoSave();
+      
+      // Update session in database
+      if (sessionId) {
+        await supabase
+          .from('exam_sessions')
+          .update({
+            time_spent: (examSet?.time_limit || 0) * 60 - timeLeft,
+            updated_at: new Date().toISOString(),
+            results: {
+              current_index: currentIndex,
+              time_left: timeLeft,
+              answers: Array.from(answers.entries()) as any,
+              served_question_ids: questions.map(q => q.id),
+              selected_parts: selectedParts || null,
+              time_mode: timeMode,
+            }
+          })
+          .eq('id', sessionId);
+      }
+      
+      toast({
+        title: "Đã lưu tiến độ",
+        description: "Bạn có thể tiếp tục bài thi sau.",
+      });
+      
+      // Clear the history state we added
+      window.history.replaceState(null, '', window.location.href);
+      
+      // Navigate back
+      navigate('/exam-sets');
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra khi lưu tiến độ",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelExit = () => {
+    setShowExitDialog(false);
+    // Push state back to prevent navigation if user cancels
+    window.history.pushState(null, '', window.location.href);
   };
 
   if (loading) {
@@ -640,6 +928,14 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExit}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Thoát
+              </Button>
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4" />
                 <span className={`font-mono text-lg ${timeMode === 'standard' && timeLeft < 300 ? 'text-red-500' : ''}`}>
@@ -1237,7 +1533,8 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               </div>
               <div>
                 <div className="text-2xl font-bold text-blue-600">
-                  {((Array.from(answers.values()).filter(a => a.isCorrect).length / questions.length) * 100).toFixed(1)}%
+                  {questions.length > 0 ? 
+                    ((Array.from(answers.values()).filter(a => a.isCorrect).length / questions.length) * 100).toFixed(1) : 0}%
                 </div>
                 <div className="text-sm text-muted-foreground">Độ chính xác</div>
               </div>
@@ -1256,6 +1553,58 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Xác nhận thoát bài thi
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Bạn có chắc chắn muốn thoát bài thi này không?</p>
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-blue-900 mb-2">Tiến độ hiện tại:</h4>
+              <div className="space-y-1 text-sm text-blue-800">
+                <div className="flex justify-between">
+                  <span>Câu hỏi:</span>
+                  <span className="font-medium">{currentIndex + 1}/{questions.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Đã trả lời:</span>
+                  <span className="font-medium">{getAnsweredCount()}/{questions.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Hoàn thành:</span>
+                  <span className="font-medium">{Math.round(getProgress())}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Thời gian còn lại:</span>
+                  <span className="font-medium">{formatTime(timeLeft)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
+                <p className="text-sm text-orange-800">
+                  <strong>Lưu ý:</strong> Tiến độ sẽ được lưu tự động. Bạn có thể tiếp tục bài thi này sau.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={cancelExit}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={confirmExit}>
+              Thoát bài thi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

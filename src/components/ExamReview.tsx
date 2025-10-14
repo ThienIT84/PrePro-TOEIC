@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ExamSet, Question } from '@/types';
 import SimpleAudioPlayer from './SimpleAudioPlayer';
 import TimeStatistics from './TimeStatistics';
+import { PassageDisplay } from './PassageDisplay';
 
 interface ExamReviewProps {
   sessionId: string;
@@ -196,6 +197,9 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
     const userAnswer = userAnswers[question.id];
     return userAnswer === question.correct_choice;
   }).length;
+
+  // Use actual time spent from exam session, but validate it
+  const actualTimeSpent = (examSession as any)?.time_spent || 0;
 
   // Group questions by part
   const questionsByPart = questions.reduce((acc, question, index) => {
@@ -385,13 +389,18 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                       );
                     })()}
 
-                    {/* Passage Text */}
+                    {/* Passage Text with Translation */}
                     {(currentQuestion as any).passages?.texts?.content && (
-                      <div className="prose max-w-none">
-                        <div className="text-gray-800 leading-relaxed text-lg whitespace-pre-wrap">
-                          {(currentQuestion as any).passages.texts.content}
-                        </div>
-                      </div>
+                      <PassageDisplay
+                        passage={{
+                          content: (currentQuestion as any).passages.texts.content,
+                          title: (currentQuestion as any).passages.texts.title || `Passage ${currentQuestionIndex + 1}`,
+                          additional: (currentQuestion as any).passages.texts.additional
+                        }}
+                        translationVi={(currentQuestion as any).passages?.translation_vi}
+                        translationEn={(currentQuestion as any).passages?.translation_en}
+                        showTranslation={true}
+                      />
                     )}
                   </CardContent>
                 </Card>
@@ -689,7 +698,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                   {/* Time Spent */}
                   <div className="text-center p-2 bg-gray-50 rounded">
                     <div className="text-sm font-medium text-gray-700">
-                      Thời gian: {Math.floor((examSession as any).time_spent / 60)} phút
+                      Thời gian: {Math.floor(actualTimeSpent / 60)}m {actualTimeSpent % 60}s
                     </div>
                   </div>
                 </div>
@@ -786,7 +795,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
 
             {/* Time Statistics */}
             <TimeStatistics
-              timeSpent={(examSession as any).time_spent}
+              timeSpent={actualTimeSpent}
               totalQuestions={totalQuestions}
               correctAnswers={correctAnswers}
               partStatistics={partStatistics}

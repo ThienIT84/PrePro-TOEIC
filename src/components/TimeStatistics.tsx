@@ -20,10 +20,10 @@ const TimeStatistics: React.FC<TimeStatisticsProps> = ({
   correctAnswers,
   partStatistics
 }) => {
-  const averageTimePerQuestion = timeSpent / totalQuestions;
+  const averageTimePerQuestion = totalQuestions > 0 ? timeSpent / totalQuestions : 0;
   const timePerCorrectAnswer = correctAnswers > 0 ? timeSpent / correctAnswers : 0;
   
-  // Calculate time efficiency score (0-100)
+  // Calculate time efficiency score (0-100) - adjusted for TOEIC standards
   const timeEfficiency = Math.max(0, Math.min(100, 
     100 - ((averageTimePerQuestion - 60) / 60) * 50
   ));
@@ -41,6 +41,15 @@ const TimeStatistics: React.FC<TimeStatisticsProps> = ({
     return 'Cần cải thiện';
   };
 
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+    return `${remainingSeconds}s`;
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -55,7 +64,7 @@ const TimeStatistics: React.FC<TimeStatisticsProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <div className="text-lg font-bold text-blue-600">
-                {Math.floor(timeSpent / 60)}m {timeSpent % 60}s
+                {formatTime(timeSpent)}
               </div>
               <div className="text-xs text-blue-700">Tổng thời gian</div>
             </div>
@@ -97,8 +106,8 @@ const TimeStatistics: React.FC<TimeStatisticsProps> = ({
             <h4 className="font-semibold text-sm text-gray-700">Phân tích theo Part:</h4>
             <div className="space-y-1">
               {partStatistics.map((stat) => {
-                const partTime = (stat.total / totalQuestions) * timeSpent;
-                const avgTimePerQuestion = partTime / stat.total;
+                // Calculate average time per question for this part
+                const avgTimePerQuestion = totalQuestions > 0 ? (stat.total / totalQuestions) * averageTimePerQuestion : 0;
                 
                 return (
                   <div key={stat.part} className="flex justify-between items-center text-xs">

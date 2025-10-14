@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { PassageDisplay } from '@/components/PassageDisplay';
 import { 
   CheckCircle, 
   XCircle, 
@@ -20,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import SimpleAudioPlayer from '@/components/SimpleAudioPlayer';
+import RetryMode from '@/components/RetryMode';
 
 interface ExamResult {
   session_id: string;
@@ -51,6 +53,12 @@ interface QuestionResult {
   passage_audio_url?: string | null;
   passage_image_url?: string | null;
   passage_transcript?: string | null;
+  passage_translation_vi?: {
+    content: string;
+  } | null;
+  passage_translation_en?: {
+    content: string;
+  } | null;
 }
 
 const ExamResult = () => {
@@ -59,6 +67,9 @@ const ExamResult = () => {
   const [result, setResult] = useState<ExamResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryMode, setRetryMode] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<any[]>([]);
 
   useEffect(() => {
     if (sessionId) {
@@ -70,6 +81,7 @@ const ExamResult = () => {
     try {
       setLoading(true);
       console.log('Fetching exam result for session:', sessionId);
+      console.log('ExamResult component mounted, starting fetch...');
       
       // Thử dùng RPC function trước
       const { data: rpcData, error: rpcError } = await supabase.rpc('get_exam_result', {
@@ -130,20 +142,26 @@ const ExamResult = () => {
 
             // Get passage data for questions with passage_id
             const passageIds = [...new Set((qs || []).map(q => q.passage_id).filter(Boolean))];
+            console.log('Passage IDs found:', passageIds);
             if (passageIds.length > 0) {
               const { data: passages, error: passageError } = await supabase
                 .from('passages')
-                .select('id, audio_url, image_url, texts')
+                .select('id, audio_url, image_url, texts, translation_vi, translation_en')
                 .in('id', passageIds);
+              
+              console.log('Passages query result:', { passages, passageError });
               
               if (!passageError && passages) {
                 passages.forEach((p: any) => {
                   passageMap[p.id] = {
                     audio_url: p.audio_url,
                     image_url: p.image_url,
-                    texts: p.texts
+                    texts: p.texts,
+                    translation_vi: p.translation_vi,
+                    translation_en: p.translation_en
                   };
                 });
+                console.log('PassageMap created:', passageMap);
               }
             }
 
@@ -201,7 +219,9 @@ const ExamResult = () => {
               passage_id: passageId || null,
               passage_audio_url: (passageData as any)?.audio_url || null,
               passage_image_url: (passageData as any)?.image_url || null,
-              passage_transcript: (passageData as any)?.texts?.content || null
+              passage_transcript: (passageData as any)?.texts?.content || null,
+              passage_translation_vi: (passageData as any)?.translation_vi || null,
+              passage_translation_en: (passageData as any)?.translation_en || null
             };
           })
         };
@@ -211,12 +231,99 @@ const ExamResult = () => {
         console.log('Questions with audio_url:', transformedResult.questions.filter(q => q.audio_url));
         console.log('Questions with image_url:', transformedResult.questions.filter(q => q.image_url));
         setResult(transformedResult as ExamResult);
+        
+        // Store questions and attempts for retry mode
+        console.log('ExamResult: attemptsData sample:', attemptsData[0]);
+        console.log('ExamResult: question_detail sample:', (attemptsData[0] as any)?.question_detail);
+        
+        // Get all question IDs from attempts
+        const questionIds = attemptsData.map(a => a.question_id);
+        console.log('ExamResult: questionIds to fetch:', questionIds);
+        
+        // Fetch full question data from database
+        const { data: fullQuestions, error: qErr } = await supabase
+          .from('questions')
+          .select('*')
+          .in('id', questionIds);
+        
+        if (qErr) {
+          console.error('Error fetching full questions:', qErr);
+        } else {
+          console.log('ExamResult: fetched fullQuestions:', fullQuestions);
+        }
+        
+        const validQuestions = (fullQuestions || []).map(question => {
+          const attempt = attemptsData.find(a => a.question_id === question.id);
+          return {
+            ...question,
+            // Add attempt data
+            user_answer: attempt?.user_answer || '',
+            is_correct: attempt?.is_correct || false,
+            time_spent: attempt?.time_spent || 0
+          };
+        });
+        
+        console.log('ExamResult: validQuestions count:', validQuestions.length);
+        console.log('ExamResult: validQuestions sample:', validQuestions[0]);
+        console.log('ExamResult: validQuestions choices sample:', validQuestions[0]?.choices);
+        console.log('ExamResult: validQuestions image_url sample:', validQuestions[0]?.image_url);
+        setQuestions(validQuestions);
+        setAttempts(attemptsData);
         return;
       }
 
       if (rpcData && rpcData.length > 0) {
         console.log('RPC result:', rpcData[0]);
-        setResult(rpcData[0] as any as ExamResult);
+        console.log('RPC result fields:', Object.keys(rpcData[0]));
+        
+        // RPC function trả về attempts_data thay vì questions
+        const rpcResult = rpcData[0] as any;
+        const transformedResult = {
+          ...rpcResult,
+          questions: rpcResult.attempts_data || [] // Map attempts_data to questions
+        };
+        
+        console.log('Transformed RPC result:', transformedResult);
+        setResult(transformedResult as ExamResult);
+        
+        // Store questions and attempts for retry mode (RPC case)
+        if (rpcResult.attempts_data && Array.isArray(rpcResult.attempts_data)) {
+          console.log('ExamResult RPC: attempts_data sample:', rpcResult.attempts_data[0]);
+          
+          // Get all question IDs from attempts_data
+          const questionIds = rpcResult.attempts_data.map((attempt: any) => attempt.question_id);
+          console.log('ExamResult RPC: questionIds to fetch:', questionIds);
+          
+          // Fetch full question data from database
+          const { data: fullQuestions, error: qErr } = await supabase
+            .from('questions')
+            .select('*')
+            .in('id', questionIds);
+          
+          if (qErr) {
+            console.error('ExamResult RPC: Error fetching full questions:', qErr);
+          } else {
+            console.log('ExamResult RPC: fetched fullQuestions:', fullQuestions);
+          }
+          
+          const validQuestions = (fullQuestions || []).map(question => {
+            const attempt = rpcResult.attempts_data.find((a: any) => a.question_id === question.id);
+            return {
+              ...question,
+              // Add attempt data
+              user_answer: attempt?.user_answer || '',
+              is_correct: attempt?.is_correct || false,
+              time_spent: attempt?.time_spent || 0
+            };
+          });
+          
+          console.log('ExamResult RPC: validQuestions count:', validQuestions.length);
+          console.log('ExamResult RPC: validQuestions sample:', validQuestions[0]);
+          console.log('ExamResult RPC: validQuestions choices sample:', validQuestions[0]?.choices);
+          console.log('ExamResult RPC: validQuestions image_url sample:', validQuestions[0]?.image_url);
+          setQuestions(validQuestions);
+          setAttempts(rpcResult.attempts_data);
+        }
       } else {
         setError('Không tìm thấy kết quả thi');
       }
@@ -238,6 +345,27 @@ const ExamResult = () => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  // Handle retry mode
+  const handleRetryMode = () => {
+    console.log('ExamResult: Entering retry mode with questions:', questions?.length, 'attempts:', attempts?.length);
+    setRetryMode(true);
+  };
+
+  const handleExitRetryMode = () => {
+    setRetryMode(false);
+  };
+
+  const handleUpdateResult = (newScore: number, newCorrectCount: number) => {
+    if (result) {
+      setResult({
+        ...result,
+        score: newScore,
+        correct_answers: newCorrectCount
+      });
+    }
+    setRetryMode(false);
   };
 
   const getScoreBadgeVariant = (score: number) => {
@@ -292,31 +420,73 @@ const ExamResult = () => {
     );
   }
 
-  const wrongAnswers = result.questions.filter(q => !q.is_correct);
-  const correctAnswers = result.questions.filter(q => q.is_correct);
+  // Phân loại câu hỏi thành 3 loại
+  const correctAnswers = result.questions?.filter(q => q.is_correct === true) || [];
+  const wrongAnswers = result.questions?.filter(q => q.is_correct === false) || [];
+  const unansweredQuestions = result.questions?.filter(q => q.is_correct === null || q.is_correct === undefined) || [];
+  const totalQuestions = result.questions?.length || 0;
+  
+  // Tính thời gian thực tế từ tổng thời gian của các câu hỏi
+  const actualTimeSpent = result.questions?.reduce((total, q) => total + (q.time_spent || 0), 0) || 0;
+  
+  // Debug log để kiểm tra dữ liệu
+  console.log('Exam result debug:', {
+    totalQuestions,
+    correctAnswers: correctAnswers.length,
+    wrongAnswers: wrongAnswers.length,
+    unansweredQuestions: unansweredQuestions.length,
+    resultScore: result.score,
+    resultCorrectAnswers: result.correct_answers,
+    resultTotalQuestions: result.total_questions,
+    resultTimeSpent: result.time_spent,
+    actualTimeSpent: actualTimeSpent
+  });
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Kết quả thi</h1>
-          <p className="text-muted-foreground">{result.exam_set_name}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Về Dashboard
-          </Button>
-          <Button onClick={() => navigate(`/exam-review/${sessionId}`)}>
-            Xem chi tiết đáp án
-          </Button>
-          <Button variant="outline" onClick={() => navigate('/exams')}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Thi khác
-          </Button>
-        </div>
-      </div>
+      {/* Retry Mode */}
+      {retryMode && sessionId && (
+        <RetryMode
+          sessionId={sessionId}
+          questions={questions || []}
+          attempts={attempts || []}
+          onExit={handleExitRetryMode}
+          onUpdate={handleUpdateResult}
+        />
+      )}
+
+      {/* Normal Result View */}
+      {!retryMode && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Kết quả thi</h1>
+              <p className="text-muted-foreground">{result.exam_set_name}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Về Dashboard
+              </Button>
+              <Button onClick={() => navigate(`/exam-review/${sessionId}`)}>
+                <Eye className="h-4 w-4 mr-2" />
+                Xem chi tiết đáp án
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={handleRetryMode}
+                className="bg-orange-100 text-orange-700 hover:bg-orange-200"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Làm lại câu sai
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/exams')}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Thi khác
+              </Button>
+            </div>
+          </div>
 
       {/* Score Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -342,10 +512,10 @@ const ExamResult = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {result.correct_answers}/{result.total_questions}
+              {correctAnswers.length}/{totalQuestions}
             </div>
             <Progress 
-              value={(result.correct_answers / result.total_questions) * 100} 
+              value={totalQuestions > 0 ? (correctAnswers.length / totalQuestions) * 100 : 0} 
               className="mt-2"
             />
           </CardContent>
@@ -358,7 +528,7 @@ const ExamResult = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatTime(result.time_spent)}
+              {formatTime(actualTimeSpent)}
             </div>
             <p className="text-xs text-muted-foreground">
               Hoàn thành lúc {new Date(result.completed_at).toLocaleString('vi-VN')}
@@ -368,12 +538,12 @@ const ExamResult = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Câu sai</CardTitle>
+            <CardTitle className="text-sm font-medium">Câu sai + Chưa làm</CardTitle>
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {wrongAnswers.length}
+              {wrongAnswers.length + unansweredQuestions.length}
             </div>
             <p className="text-xs text-muted-foreground">
               Cần ôn tập lại
@@ -384,9 +554,10 @@ const ExamResult = () => {
 
       {/* Detailed Results */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="wrong">Câu sai ({wrongAnswers.length})</TabsTrigger>
+          <TabsTrigger value="unanswered">Chưa làm ({unansweredQuestions.length})</TabsTrigger>
           <TabsTrigger value="all">Tất cả câu hỏi</TabsTrigger>
         </TabsList>
 
@@ -399,7 +570,7 @@ const ExamResult = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-3xl font-bold text-green-600">
                     {correctAnswers.length}
@@ -412,14 +583,20 @@ const ExamResult = () => {
                   </div>
                   <div className="text-sm text-muted-foreground">Câu sai</div>
                 </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-3xl font-bold text-gray-600">
+                    {unansweredQuestions.length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Chưa làm</div>
+                </div>
               </div>
               
               <div className="text-center p-4 bg-muted rounded-lg">
                 <div className="text-lg font-semibold">
-                  Tỷ lệ đúng: {((result.correct_answers / result.total_questions) * 100).toFixed(1)}%
+                  Tỷ lệ đúng: {totalQuestions > 0 ? ((correctAnswers.length / totalQuestions) * 100).toFixed(1) : 0}%
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Thời gian trung bình mỗi câu: {formatTime(Math.round(result.time_spent / result.total_questions))}
+                  Thời gian trung bình mỗi câu: {totalQuestions > 0 ? formatTime(Math.round(actualTimeSpent / totalQuestions)) : '0:00'}
                 </div>
               </div>
             </CardContent>
@@ -518,6 +695,87 @@ const ExamResult = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="unanswered" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Câu chưa làm</CardTitle>
+              <CardDescription>
+                Những câu hỏi bạn chưa trả lời
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {unansweredQuestions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                  <p>Tuyệt vời! Bạn đã làm hết tất cả câu hỏi! 🎉</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {unansweredQuestions.map((question, index) => (
+                    <div key={question.question_id} className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge variant="secondary">Câu {index + 1}</Badge>
+                        <Badge variant="outline">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatTime(question.time_spent)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">{question.question_text}</p>
+                        
+                        {question.choices && (
+                          <div className="space-y-1">
+                            {Object.entries(question.choices).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-2 text-sm">
+                                <span className="font-medium">{key}:</span>
+                                <span className={question.user_answer === key ? 'font-semibold text-blue-600' : ''}>
+                                  {value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-500">Bạn chọn:</span>
+                          <Badge variant="secondary">
+                            {question.user_answer || 'Chưa trả lời'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-green-600">Đáp án đúng:</span>
+                          <Badge variant="default">{question.correct_answer}</Badge>
+                        </div>
+                      </div>
+
+                      {/* Image */}
+                      {question.image_url && (
+                        <div className="mt-3">
+                          <img 
+                            src={question.image_url} 
+                            alt="Question image" 
+                            className="max-w-full h-auto rounded-lg border"
+                            style={{ maxHeight: '300px' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Audio replay + Transcript */}
+                      {(question.audio_url || question.transcript) && (
+                        <div className="mt-3">
+                          <SimpleAudioPlayer audioUrl={question.audio_url || ''} transcript={question.transcript} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="all" className="space-y-4">
           <Card>
             <CardHeader>
@@ -530,7 +788,7 @@ const ExamResult = () => {
               <div className="space-y-6">
                 {(() => {
                   // Group questions by passage_id
-                  const groupedQuestions = result.questions.reduce((groups, question, index) => {
+                  const groupedQuestions = (result.questions || []).reduce((groups, question, index) => {
                     const passageId = question.passage_id || `single_${question.question_id}`;
                     if (!groups[passageId]) {
                       groups[passageId] = [];
@@ -546,31 +804,53 @@ const ExamResult = () => {
                       <div key={passageId} className="space-y-4">
                         {/* Passage Header */}
                         {isPassage && (
-                          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
-                            <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                              📖 Passage (Câu {questions[0].originalIndex + 1}-{questions[questions.length - 1].originalIndex + 1})
-                            </h3>
-                            
-                            {/* Passage Image */}
-                            {questions[0].passage_image_url && (
-                              <div className="mb-4">
-                                <img 
-                                  src={questions[0].passage_image_url} 
-                                  alt="Passage Image" 
-                                  className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
-                                  style={{ maxHeight: '400px' }}
+                          <div className="space-y-4">
+                            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
+                              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                                📖 Passage (Câu {questions[0].originalIndex + 1}-{questions[questions.length - 1].originalIndex + 1})
+                              </h3>
+                              
+                              {/* Passage Image */}
+                              {questions[0].passage_image_url && (
+                                <div className="mb-4">
+                                  <img 
+                                    src={questions[0].passage_image_url} 
+                                    alt="Passage Image" 
+                                    className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                                    style={{ maxHeight: '400px' }}
+                                  />
+                                </div>
+                              )}
+                              
+                              {/* Passage Audio */}
+                              {questions[0].passage_audio_url && (
+                                <div>
+                                  <SimpleAudioPlayer 
+                                    audioUrl={questions[0].passage_audio_url} 
+                                    transcript={questions[0].passage_transcript || ''} 
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Passage Text with Translation */}
+                            {questions[0].passage_transcript && (
+                              <>
+                                {console.log('Passage translation data:', {
+                                  transcript: questions[0].passage_transcript,
+                                  translationVi: questions[0].passage_translation_vi,
+                                  translationEn: questions[0].passage_translation_en
+                                })}
+                                <PassageDisplay
+                                  passage={{
+                                    content: questions[0].passage_transcript || '',
+                                    title: `Passage ${questions[0].originalIndex + 1}-${questions[questions.length - 1].originalIndex + 1}`
+                                  }}
+                                  translationVi={questions[0].passage_translation_vi}
+                                  translationEn={questions[0].passage_translation_en}
+                                  showTranslation={true}
                                 />
-                              </div>
-                            )}
-                            
-                            {/* Passage Audio */}
-                            {questions[0].passage_audio_url && (
-                              <div>
-                                <SimpleAudioPlayer 
-                                  audioUrl={questions[0].passage_audio_url} 
-                                  transcript={questions[0].passage_transcript || ''} 
-                                />
-                              </div>
+                              </>
                             )}
                           </div>
                         )}
@@ -670,6 +950,8 @@ const ExamResult = () => {
           </Card>
         </TabsContent>
       </Tabs>
+        </>
+      )}
     </div>
   );
 };
