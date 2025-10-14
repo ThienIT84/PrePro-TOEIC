@@ -43,11 +43,24 @@ interface Passage {
   passage_type: 'single' | 'double' | 'triple';
   texts: {
     title: string;
+    content: string;        // Đoạn 1
+    content2?: string;      // Đoạn 2 (double/triple)
+    content3?: string;      // Đoạn 3 (triple)
+    img_url?: string;       // Ảnh đoạn 1
+    img_url2?: string;      // Ảnh đoạn 2 (double/triple)
+    img_url3?: string;      // Ảnh đoạn 3 (triple)
+  };
+  translation_vi?: {
     content: string;
-    additional: string;
+    content2?: string;
+    content3?: string;
+  };
+  translation_en?: {
+    content: string;
+    content2?: string;
+    content3?: string;
   };
   audio_url?: string;
-  image_url?: string;
   assets?: {
     images: string[];
     charts: string[];
@@ -67,11 +80,24 @@ interface PassageFormData {
   passage_type: 'single' | 'double' | 'triple';
   texts: {
     title: string;
+    content: string;        // Đoạn 1
+    content2?: string;      // Đoạn 2 (double/triple)
+    content3?: string;      // Đoạn 3 (triple)
+    img_url?: string;       // Ảnh đoạn 1
+    img_url2?: string;      // Ảnh đoạn 2 (double/triple)
+    img_url3?: string;      // Ảnh đoạn 3 (triple)
+  };
+  translation_vi?: {
     content: string;
-    additional: string;
+    content2?: string;
+    content3?: string;
+  };
+  translation_en?: {
+    content: string;
+    content2?: string;
+    content3?: string;
   };
   audio_url: string;
-  image_url: string;
   assets: {
     images: string[];
     charts: string[];
@@ -105,10 +131,23 @@ const PassageManager: React.FC = () => {
     texts: {
       title: '',
       content: '',
-      additional: ''
+      content2: '',
+      content3: '',
+      img_url: '',
+      img_url2: '',
+      img_url3: ''
+    },
+    translation_vi: {
+      content: '',
+      content2: '',
+      content3: ''
+    },
+    translation_en: {
+      content: '',
+      content2: '',
+      content3: ''
     },
     audio_url: '',
-    image_url: '',
     assets: {
       images: [],
       charts: []
@@ -133,7 +172,28 @@ const PassageManager: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPassages((data || []) as Passage[]);
+      setPassages((data || []).map((item: any) => ({
+        ...item,
+        texts: {
+          title: item.texts?.title || '',
+          content: item.texts?.content || '',
+          content2: item.texts?.content2 || '',
+          content3: item.texts?.content3 || '',
+          img_url: item.image_url || item.texts?.img_url || '', // Backward compatibility
+          img_url2: item.texts?.img_url2 || '',
+          img_url3: item.texts?.img_url3 || ''
+        },
+        translation_vi: {
+          content: item.translation_vi?.content || '',
+          content2: item.translation_vi?.content2 || '',
+          content3: item.translation_vi?.content3 || ''
+        },
+        translation_en: {
+          content: item.translation_en?.content || '',
+          content2: item.translation_en?.content2 || '',
+          content3: item.translation_en?.content3 || ''
+        }
+      })) as Passage[]);
     } catch (error) {
       console.error('Error fetching passages:', error);
       toast({
@@ -224,9 +284,18 @@ const PassageManager: React.FC = () => {
       setFormData({
         part: 3,
         passage_type: 'single',
-        texts: { title: '', content: '', additional: '' },
+        texts: { 
+          title: '', 
+          content: '', 
+          content2: '', 
+          content3: '',
+          img_url: '',
+          img_url2: '',
+          img_url3: ''
+        },
+        translation_vi: { content: '', content2: '', content3: '' },
+        translation_en: { content: '', content2: '', content3: '' },
         audio_url: '',
-        image_url: '',
         assets: { images: [], charts: [] },
         meta: { topic: '', word_count: 0, reading_time: 0 }
       });
@@ -411,10 +480,23 @@ const PassageManager: React.FC = () => {
       texts: {
         title: passage.texts?.title || '',
         content: passage.texts?.content || '',
-        additional: passage.texts?.additional || ''
+        content2: passage.texts?.content2 || '',
+        content3: passage.texts?.content3 || '',
+        img_url: passage.texts?.img_url || '',
+        img_url2: passage.texts?.img_url2 || '',
+        img_url3: passage.texts?.img_url3 || ''
+      },
+      translation_vi: {
+        content: passage.translation_vi?.content || '',
+        content2: passage.translation_vi?.content2 || '',
+        content3: passage.translation_vi?.content3 || ''
+      },
+      translation_en: {
+        content: passage.translation_en?.content || '',
+        content2: passage.translation_en?.content2 || '',
+        content3: passage.translation_en?.content3 || ''
       },
       audio_url: passage.audio_url || '',
-      image_url: passage.image_url || '',
       assets: passage.assets || { images: [], charts: [] },
       meta: passage.meta
     });
@@ -430,21 +512,24 @@ const PassageManager: React.FC = () => {
         title: 'Office Meeting',
         content: 'Woman: Good morning, everyone. Thank you for coming to today\'s meeting. We need to discuss the quarterly sales report and the upcoming product launch. Man: Yes, I have the sales figures here. Our revenue increased by 15% compared to last quarter. Woman: That\'s excellent news. What about the new product? Man: The launch is scheduled for next month, but we\'re still waiting for final approval from the marketing department.',
         audio_url: 'https://example.com/audio/part3-conversation1.mp3',
-        image_url: 'https://example.com/images/office-meeting.jpg',
+        img_url: 'https://example.com/images/office-meeting.jpg',
         topic: 'Business Meeting',
         word_count: 85,
         reading_time: 1
       },
       {
-        part: 3,
-        passage_type: 'single',
-        title: 'Restaurant Reservation',
-        content: 'Man: Hello, I\'d like to make a reservation for dinner tonight. Woman: Certainly, sir. How munknown people will be in your party? Man: There will be four of us. Woman: What time would you prefer? Man: Around 7:30 PM would be perfect. Woman: I\'m sorry, but we\'re fully booked at that time. Would 8:00 PM work for you? Man: Yes, that\'s fine. Woman: Great, I\'ll reserve a table for four at 8:00 PM. May I have your name and phone number?',
-        audio_url: 'https://example.com/audio/part3-conversation2.mp3',
-        image_url: 'https://example.com/images/restaurant.jpg',
-        topic: 'Restaurant',
-        word_count: 78,
-        reading_time: 1
+        part: 7,
+        passage_type: 'triple',
+        title: 'Company Newsletter',
+        content: 'Company News: Our quarterly earnings report shows a 12% increase in revenue compared to the same period last year. The growth was driven primarily by our new product line and expanded market presence in Asia.',
+        content2: 'Employee Spotlight: Sarah Johnson from the Marketing Department has been promoted to Senior Manager. Sarah has been with the company for five years and has consistently exceeded her performance targets.',
+        content3: 'Upcoming Events: The annual company picnic will be held on Saturday, June 15th at Central Park. All employees and their families are invited to attend. Please RSVP by June 1st.',
+        img_url: 'https://example.com/images/newsletter1.jpg',
+        img_url2: 'https://example.com/images/employee-spotlight.jpg',
+        img_url3: 'https://example.com/images/company-picnic.jpg',
+        topic: 'Company Newsletter',
+        word_count: 120,
+        reading_time: 2
       }
     ];
 
@@ -774,7 +859,7 @@ const PassageManager: React.FC = () => {
                                   Có audio
                                 </div>
                               )}
-                              {passage.image_url && (
+                              {passage.texts?.img_url && (
                                 <div className="flex items-center gap-1">
                                   <FileImage className="h-4 w-4" />
                                   Có ảnh
@@ -875,17 +960,193 @@ const PassageManager: React.FC = () => {
 
               {/* Content */}
               <div className="space-y-2">
-                <Label>Nội dung đoạn văn</Label>
+                <Label>Nội dung đoạn văn 1</Label>
                 <Textarea
                   value={formData.texts.content}
                   onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Nhập nội dung đoạn văn..."
+                  placeholder="Nhập nội dung đoạn văn 1..."
                   rows={8}
                   className="resize-none"
                 />
                 <div className="text-sm text-muted-foreground">
                   {formData.meta?.word_count || 0} từ • {formData.meta?.reading_time || 0} phút đọc
                 </div>
+              </div>
+
+              {/* Additional Content for Double Passages */}
+              {formData.passage_type === 'double' && (
+                <div className="space-y-2">
+                  <Label>Nội dung đoạn văn 2</Label>
+                  <Textarea
+                    value={formData.texts.content2 || ''}
+                    onChange={(e) => handleFormChange('texts.content2', e.target.value)}
+                    placeholder="Nhập nội dung đoạn văn 2..."
+                    rows={8}
+                    className="resize-none"
+                  />
+                </div>
+              )}
+
+              {/* Triple Passages - 3 separate content fields */}
+              {formData.passage_type === 'triple' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nội dung đoạn văn 2</Label>
+                    <Textarea
+                      value={formData.texts.content2 || ''}
+                      onChange={(e) => handleFormChange('texts.content2', e.target.value)}
+                      placeholder="Nhập nội dung đoạn văn 2..."
+                      rows={6}
+                      className="resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nội dung đoạn văn 3</Label>
+                    <Textarea
+                      value={formData.texts.content3 || ''}
+                      onChange={(e) => handleFormChange('texts.content3', e.target.value)}
+                      placeholder="Nhập nội dung đoạn văn 3..."
+                      rows={6}
+                      className="resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Image URLs */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Ảnh đoạn văn 1 (tùy chọn)</Label>
+                  <Input
+                    value={formData.texts.img_url || ''}
+                    onChange={(e) => handleFormChange('texts.img_url', e.target.value)}
+                    placeholder="https://example.com/image1.jpg"
+                  />
+                </div>
+
+                {(formData.passage_type === 'double' || formData.passage_type === 'triple') && (
+                  <div className="space-y-2">
+                    <Label>Ảnh đoạn văn 2 (tùy chọn)</Label>
+                    <Input
+                      value={formData.texts.img_url2 || ''}
+                      onChange={(e) => handleFormChange('texts.img_url2', e.target.value)}
+                      placeholder="https://example.com/image2.jpg"
+                    />
+                  </div>
+                )}
+
+                {formData.passage_type === 'triple' && (
+                  <div className="space-y-2">
+                    <Label>Ảnh đoạn văn 3 (tùy chọn)</Label>
+                    <Input
+                      value={formData.texts.img_url3 || ''}
+                      onChange={(e) => handleFormChange('texts.img_url3', e.target.value)}
+                      placeholder="https://example.com/image3.jpg"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Translation Fields */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Bản dịch tiếng Việt - Đoạn 1 (tùy chọn)</Label>
+                    <Textarea
+                      value={formData.translation_vi?.content || ''}
+                      onChange={(e) => handleFormChange('translation_vi.content', e.target.value)}
+                      placeholder="Nhập bản dịch tiếng Việt cho đoạn 1..."
+                      rows={6}
+                      className="resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bản dịch tiếng Anh - Đoạn 1 (tùy chọn)</Label>
+                    <Textarea
+                      value={formData.translation_en?.content || ''}
+                      onChange={(e) => handleFormChange('translation_en.content', e.target.value)}
+                      placeholder="Enter English translation for passage 1..."
+                      rows={6}
+                      className="resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Translation for Double Passages */}
+                {formData.passage_type === 'double' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Bản dịch tiếng Việt - Đoạn 2 (tùy chọn)</Label>
+                      <Textarea
+                        value={formData.translation_vi?.content2 || ''}
+                        onChange={(e) => handleFormChange('translation_vi.content2', e.target.value)}
+                        placeholder="Nhập bản dịch tiếng Việt cho đoạn 2..."
+                        rows={6}
+                        className="resize-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bản dịch tiếng Anh - Đoạn 2 (tùy chọn)</Label>
+                      <Textarea
+                        value={formData.translation_en?.content2 || ''}
+                        onChange={(e) => handleFormChange('translation_en.content2', e.target.value)}
+                        placeholder="Enter English translation for passage 2..."
+                        rows={6}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Translation for Triple Passages */}
+                {formData.passage_type === 'triple' && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Bản dịch tiếng Việt - Đoạn 2 (tùy chọn)</Label>
+                        <Textarea
+                          value={formData.translation_vi?.content2 || ''}
+                          onChange={(e) => handleFormChange('translation_vi.content2', e.target.value)}
+                          placeholder="Nhập bản dịch tiếng Việt cho đoạn 2..."
+                          rows={6}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Bản dịch tiếng Anh - Đoạn 2 (tùy chọn)</Label>
+                        <Textarea
+                          value={formData.translation_en?.content2 || ''}
+                          onChange={(e) => handleFormChange('translation_en.content2', e.target.value)}
+                          placeholder="Enter English translation for passage 2..."
+                          rows={6}
+                          className="resize-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Bản dịch tiếng Việt - Đoạn 3 (tùy chọn)</Label>
+                        <Textarea
+                          value={formData.translation_vi?.content3 || ''}
+                          onChange={(e) => handleFormChange('translation_vi.content3', e.target.value)}
+                          placeholder="Nhập bản dịch tiếng Việt cho đoạn 3..."
+                          rows={6}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Bản dịch tiếng Anh - Đoạn 3 (tùy chọn)</Label>
+                        <Textarea
+                          value={formData.translation_en?.content3 || ''}
+                          onChange={(e) => handleFormChange('translation_en.content3', e.target.value)}
+                          placeholder="Enter English translation for passage 3..."
+                          rows={6}
+                          className="resize-none"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Audio URL */}
@@ -896,19 +1157,6 @@ const PassageManager: React.FC = () => {
                   onChange={(e) => handleFormChange('audio_url', e.target.value)}
                   placeholder="https://example.com/audio.mp3"
                 />
-              </div>
-
-              {/* Image URL */}
-              <div className="space-y-2">
-                <Label>Image URL (tùy chọn)</Label>
-                <Input
-                  value={formData.image_url}
-                  onChange={(e) => handleFormChange('image_url', e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Ảnh minh họa cho đoạn văn (đặc biệt hữu ích cho Part 3, 4)
-                </p>
               </div>
 
               {/* Meta Info */}
@@ -950,9 +1198,18 @@ const PassageManager: React.FC = () => {
                     setFormData({
                       part: 3,
                       passage_type: 'single',
-                      texts: { title: '', content: '', additional: '' },
+                      texts: { 
+                        title: '', 
+                        content: '', 
+                        content2: '', 
+                        content3: '',
+                        img_url: '',
+                        img_url2: '',
+                        img_url3: ''
+                      },
+                      translation_vi: { content: '', content2: '', content3: '' },
+                      translation_en: { content: '', content2: '', content3: '' },
                       audio_url: '',
-                      image_url: '',
                       assets: { images: [], charts: [] },
                       meta: { topic: '', word_count: 0, reading_time: 0 }
                     });

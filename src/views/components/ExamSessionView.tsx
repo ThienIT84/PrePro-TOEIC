@@ -38,11 +38,16 @@ interface PassageLite {
   title: string;
   content: string;
   audio_url?: string;
-  image_url?: string;
+  image_url?: string; // Backward compatibility
   texts?: {
     title?: string;
     content?: string;
-    additional?: string;
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
+    additional?: string; // Backward compatibility
   };
 }
 
@@ -365,11 +370,25 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
                  passageMap[currentQuestion.passage_id] && (
                   (() => {
                     const p = passageMap[currentQuestion.passage_id];
-                    const extra = (p.texts?.additional || '')
-                      .split('|')
-                      .map(s => s.trim())
-                      .filter(Boolean);
-                    const images = [p.image_url, ...extra].filter(Boolean) as string[];
+                    const images = [];
+                    
+                    // Add images from new structure
+                    if (p.texts?.img_url) images.push(p.texts.img_url);
+                    if (p.texts?.img_url2) images.push(p.texts.img_url2);
+                    if (p.texts?.img_url3) images.push(p.texts.img_url3);
+                    
+                    // Backward compatibility: fallback to old structure
+                    if (images.length === 0) {
+                      if (p.image_url) images.push(p.image_url);
+                      if (p.texts?.additional) {
+                        const extra = p.texts.additional
+                          .split('|')
+                          .map(s => s.trim())
+                          .filter(Boolean);
+                        images.push(...extra);
+                      }
+                    }
+                    
                     if (images.length === 0) return null;
                     
                     return (

@@ -78,6 +78,8 @@ export class QuestionCreatorController {
         part: 3 as TOEICPart,
         passage_type: 'single' as PassageType,
         texts: { title: '', content: '', additional: '' },
+        translation_vi: { content: '' },
+        translation_en: { content: '' },
         audio_url: '',
         assets: { images: [], charts: [] },
         meta: { word_count: 0, reading_time: 0, topic: '' },
@@ -204,6 +206,20 @@ export class QuestionCreatorController {
         texts: {
           ...this.state.passageData.texts,
           [field]: value
+        }
+      }
+    });
+  }
+
+  /**
+   * Handle translation changes
+   */
+  public handleTranslationChange(language: 'vi' | 'en', value: string): void {
+    this.setState({
+      passageData: {
+        ...this.state.passageData,
+        [`translation_${language}`]: {
+          content: value
         }
       }
     });
@@ -465,6 +481,8 @@ export class QuestionCreatorController {
         part: passageData.part,
         passage_type: passageData.passage_type,
         texts: passageData.texts,
+        translation_vi: passageData.translation_vi.content ? passageData.translation_vi : null,
+        translation_en: passageData.translation_en.content ? passageData.translation_en : null,
         audio_url: passageData.audio_url || null,
         assets: passageData.assets,
         meta: passageData.meta,

@@ -39,8 +39,17 @@ interface ExamAnswer {
 
 type PassageLite = {
   id: string;
-  texts: { title?: string; content?: string; additional?: string } | null;
-  image_url: string | null;
+  texts: { 
+    title?: string; 
+    content?: string; 
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
+    additional?: string; // Backward compatibility
+  } | null;
+  image_url: string | null; // Backward compatibility
   audio_url: string | null;
 };
 
@@ -70,73 +79,8 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   useEffect(() => {
     fetchExamData();
     checkIfCompleted();
-    checkForSavedProgress();
   }, [examSetId]);
 
-  // Check for saved progress from localStorage
-  const checkForSavedProgress = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Check for in-progress sessions in database
-      const { data: sessions } = await supabase
-        .from('exam_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('exam_set_id', examSetId)
-        .eq('status', 'in_progress')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (sessions && sessions.length > 0) {
-        const session = sessions[0];
-        const savedProgress = localStorage.getItem(`exam_progress_${session.id}`);
-        
-        if (savedProgress) {
-          const progressData = JSON.parse(savedProgress);
-          
-          // Show resume dialog
-          const shouldResume = window.confirm(
-            `Bạn có một bài thi đang làm dở cho "${examSet?.title || 'Bài thi này'}". ` +
-            `Tiến độ: ${progressData.currentIndex + 1}/${questions.length} câu hỏi. ` +
-            `Bạn có muốn tiếp tục không?`
-          );
-
-          if (shouldResume) {
-            // Resume session
-            setSessionId(session.id);
-            setCurrentIndex(progressData.currentIndex);
-            setTimeLeft(progressData.timeLeft);
-            setIsStarted(true);
-            
-            // Restore answers
-            const restoredAnswers = new Map(progressData.answers as [string, ExamAnswer][]);
-            setAnswers(restoredAnswers);
-            
-            toast({
-              title: "Đã khôi phục bài thi",
-              description: "Tiếp tục từ nơi bạn đã dừng lại.",
-            });
-            
-            return true;
-          } else {
-            // Cancel old session
-            await supabase
-              .from('exam_sessions')
-              .update({ status: 'cancelled' })
-              .eq('id', session.id);
-            
-            localStorage.removeItem(`exam_progress_${session.id}`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking saved progress:', error);
-    }
-    
-    return false;
-  }, [examSetId, examSet, questions.length, toast]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -1028,11 +972,25 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
             {(currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.passage_id && passageMap[currentQuestion.passage_id] && (
               (() => {
                 const p = passageMap[currentQuestion.passage_id];
-                const extra = (p.texts?.additional || '')
-                  .split('|')
-                  .map(s => s.trim())
-                  .filter(Boolean);
-                const images = [p.image_url, ...extra].filter(Boolean) as string[];
+                const images = [];
+                
+                // Add images from new structure
+                if (p.texts?.img_url) images.push(p.texts.img_url);
+                if (p.texts?.img_url2) images.push(p.texts.img_url2);
+                if (p.texts?.img_url3) images.push(p.texts.img_url3);
+                
+                // Backward compatibility: fallback to old structure
+                if (images.length === 0) {
+                  if (p.image_url) images.push(p.image_url);
+                  if (p.texts?.additional) {
+                    const extra = p.texts.additional
+                      .split('|')
+                      .map(s => s.trim())
+                      .filter(Boolean);
+                    images.push(...extra);
+                  }
+                }
+                
                 if (images.length === 0) return null;
                 
                 // For Part 7, always display images in a single column for better readability

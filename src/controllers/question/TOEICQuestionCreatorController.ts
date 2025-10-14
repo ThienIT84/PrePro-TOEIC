@@ -39,6 +39,12 @@ export interface PassageCreateData {
     content: string;
     additional: string;
   };
+  translation_vi?: {
+    content: string;
+  };
+  translation_en?: {
+    content: string;
+  };
   audio_url: string;
   assets: {
     images: string[];
@@ -100,6 +106,8 @@ export class TOEICQuestionCreatorController {
         part: 3,
         passage_type: 'single',
         texts: { title: '', content: '', additional: '' },
+        translation_vi: { content: '' },
+        translation_en: { content: '' },
         audio_url: '',
         assets: { images: [], charts: [] },
         meta: { word_count: 0, reading_time: 0, topic: '' }

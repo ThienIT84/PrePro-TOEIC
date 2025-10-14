@@ -71,11 +71,16 @@ interface PassageLite {
   title: string;
   content: string;
   audio_url?: string;
-  image_url?: string;
+  image_url?: string; // Backward compatibility
   texts?: {
     title?: string;
     content?: string;
-    additional?: string;
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
+    additional?: string; // Backward compatibility
   };
 }
 import ExamSessionView from './ExamSessionView';

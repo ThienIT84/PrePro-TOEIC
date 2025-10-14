@@ -451,6 +451,30 @@ export const TOEICQuestionCreatorView: React.FC<TOEICQuestionCreatorViewProps> =
             />
           </div>
 
+          {/* Translation Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="translation_vi">Vietnamese Translation (Optional)</Label>
+              <Textarea
+                id="translation_vi"
+                value={passageData.translation_vi?.content || ''}
+                onChange={(e) => onPassageDataChange('translation_vi', { content: e.target.value })}
+                placeholder="Enter Vietnamese translation..."
+                rows={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="translation_en">English Translation (Optional)</Label>
+              <Textarea
+                id="translation_en"
+                value={passageData.translation_en?.content || ''}
+                onChange={(e) => onPassageDataChange('translation_en', { content: e.target.value })}
+                placeholder="Enter English translation..."
+                rows={6}
+              />
+            </div>
+          </div>
+
           {/* Audio Upload */}
           <div className="space-y-2">
             <Label>Audio File</Label>

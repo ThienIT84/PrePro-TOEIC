@@ -738,7 +738,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
                   {/* Choices */}
                   <div className="space-y-3">
                     <h4 className="font-medium text-lg">Các lựa chọn:</h4>
-                    {['A', 'B', 'C', 'D'].map((choice) => {
+                    {(currentQuestion.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choice) => {
                       const choices = currentQuestion.choices as unknown;
                       const choiceText = choices?.[choice] || '';
                       const isSelected = currentAnswer?.answer === choice;

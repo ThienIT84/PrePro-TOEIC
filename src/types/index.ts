@@ -81,14 +81,22 @@ export interface Passage {
   passage_type: PassageType;
   texts: {
     title?: string;
-    content: string;
-    additional?: string; // For double/triple passages
+    content: string;        // Đoạn 1
+    content2?: string;      // Đoạn 2 (double/triple)
+    content3?: string;      // Đoạn 3 (triple)
+    img_url?: string;       // Ảnh đoạn 1
+    img_url2?: string;      // Ảnh đoạn 2 (double/triple)
+    img_url3?: string;      // Ảnh đoạn 3 (triple)
   };
   translation_vi?: {
     content: string;
+    content2?: string;
+    content3?: string;
   };
   translation_en?: {
     content: string;
+    content2?: string;
+    content3?: string;
   };
   audio_url: string | null;
   assets: {

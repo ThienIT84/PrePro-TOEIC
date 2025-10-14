@@ -44,25 +44,8 @@ export const useExamSession = (options: UseExamSessionOptions) => {
         return;
       }
 
-      // Kiểm tra localStorage
-      const savedSession = examSessionManager.restoreFromLocalStorage();
-      if (savedSession) {
-        // Resume session từ localStorage
-        const resumedSession = await examSessionManager.resumeSession(savedSession.sessionId!);
-        if (resumedSession) {
-          setSessionData(resumedSession);
-          toast({
-            title: "Tiếp tục bài thi",
-            description: "Đã khôi phục bài thi đang làm dở. Bạn có thể tiếp tục từ nơi đã dừng lại.",
-          });
-        } else {
-          // Tạo session mới
-          await createNewSession();
-        }
-      } else {
-        // Tạo session mới
-        await createNewSession();
-      }
+      // Tạo session mới
+      await createNewSession();
 
       setLoading(false);
     } catch (error) {
