@@ -447,7 +447,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                 <div className="space-y-6">
                   {(() => {
                     // Get all questions for this passage
-                    const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id);
+                    const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part);
                     return passageQuestions.map((question, index) => {
                       const questionAnswer = userAnswers[question.id];
                       const isCorrect = questionAnswer === question.correct_choice;

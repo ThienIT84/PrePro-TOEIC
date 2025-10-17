@@ -163,6 +163,29 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
   }
 
   const currentQuestion = getCurrentQuestion();
+
+  // Calculate correct TOEIC question number based on part
+  const getTOEICQuestionNumber = (questionIndex: number) => {
+    const question = questions[questionIndex];
+    if (!question) return questionIndex + 1;
+    
+    const part = question.part;
+    const partStartNumbers = {
+      1: 1,   // Part 1: 1-6
+      2: 7,   // Part 2: 7-31
+      3: 32,  // Part 3: 32-70
+      4: 71,  // Part 4: 71-100
+      5: 101, // Part 5: 101-130
+      6: 131, // Part 6: 131-146
+      7: 147  // Part 7: 147-200
+    };
+    
+    // Count questions in the same part before this question
+    const questionsInSamePart = questions.slice(0, questionIndex + 1).filter(q => q.part === part);
+    const questionInPartIndex = questionsInSamePart.length - 1;
+    
+    return partStartNumbers[part] + questionInPartIndex;
+  };
   const currentAnswer = getCurrentAnswer();
 
   // Has completed exam
@@ -284,7 +307,7 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
               <div>
                 <h1 className="text-xl font-bold">{examSet.title}</h1>
                 <p className="text-sm text-muted-foreground">
-                  Câu {currentIndex + 1} / {questions.length} • Part {currentQuestion?.part}
+                  Câu {getTOEICQuestionNumber(currentIndex)} / {questions.length} • Part {currentQuestion?.part}
                   {currentQuestion?.passage_id && (
                     <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                       Passage {questions.findIndex(q => q.passage_id === currentQuestion.passage_id) + 1}-{questions.filter(q => q.passage_id === currentQuestion.passage_id).length}
@@ -509,6 +532,7 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
                     {(() => {
                       const passageAudio = passageMap[currentQuestion.passage_id]?.audio_url;
                       const passageImage = passageMap[currentQuestion.passage_id]?.image_url;
+                      const passageText = passageMap[currentQuestion.passage_id]?.texts?.content;
                       
                       // For Part 3, 4: Show audio and image but no transcript
                       if ((currentQuestion.part === 3 || currentQuestion.part === 4) && (passageAudio || passageImage)) {
@@ -544,8 +568,44 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
                         );
                       }
                       
+                      // For Part 6: Show text content and image
+                      if (currentQuestion.part === 6 && (passageText || passageImage)) {
+                        return (
+                          <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
+                            <h4 className="text-lg font-semibold text-blue-900 mb-3">
+                              📖 Nội dung Passage này
+                            </h4>
+                            
+                            {/* Image for Passage */}
+                            {passageImage && (
+                              <div className="mb-4">
+                                <div className="flex justify-center">
+                                  <img 
+                                    src={passageImage} 
+                                    alt="Passage Image" 
+                                    className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                                    style={{ maxHeight: '400px' }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Text Content for Passage */}
+                            {passageText && (
+                              <div className="mb-4">
+                                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                  <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-900">
+                                    {passageText}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      
                       // For other parts: Show full content
-                      return (passageAudio || passageImage) && currentQuestion.part !== 7 && currentQuestion.part !== 6 && (
+                      return (passageAudio || passageImage) && currentQuestion.part !== 7 && (
                         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
                           <h4 className="text-lg font-semibold text-blue-900 mb-3">
                             📖 Nội dung Passage này
@@ -596,7 +656,7 @@ const ExamSessionView: React.FC<ExamSessionViewProps> = ({
                           >
                             <div className="flex items-center justify-between mb-4">
                               <h3 className="text-lg font-semibold text-gray-900">
-                                Câu {globalIndex + 1}
+                                Câu {getTOEICQuestionNumber(globalIndex)}
                               </h3>
                               {questionAnswer && isSubmitted && (
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${

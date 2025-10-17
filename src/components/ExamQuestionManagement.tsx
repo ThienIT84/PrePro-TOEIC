@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Plus, 
   Trash2, 
@@ -17,7 +18,12 @@ import {
   ArrowLeft,
   FileSpreadsheet,
   Volume2,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  SortAsc,
+  SortDesc
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamSet, ExamQuestion, Question } from '@/types';
@@ -42,6 +48,15 @@ const ExamQuestionManagement = () => {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [viewingQuestion, setViewingQuestion] = useState<Question | null>(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [questionsPerPage] = useState(20);
+  
+  // Filter states
+  const [filterPart, setFilterPart] = useState<string>('all');
+  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('order');
 
   useEffect(() => {
     if (examSetId) {
@@ -234,6 +249,46 @@ const ExamQuestionManagement = () => {
     return labels[difficulty as keyof typeof labels] || difficulty;
   };
 
+  // Filter and pagination logic
+  const getFilteredAndSortedQuestions = () => {
+    let filtered = examQuestions.filter(examQuestion => {
+      const question = examQuestion.question as any;
+      const matchesPart = filterPart === 'all' || question?.part?.toString() === filterPart;
+      const matchesDifficulty = filterDifficulty === 'all' || question?.difficulty === filterDifficulty;
+      return matchesPart && matchesDifficulty;
+    });
+
+    // Sort questions
+    if (sortBy === 'part') {
+      filtered.sort((a, b) => {
+        const partA = (a.question as any)?.part || 0;
+        const partB = (b.question as any)?.part || 0;
+        return partA - partB;
+      });
+    } else if (sortBy === 'difficulty') {
+      const difficultyOrder = { 'easy': 1, 'medium': 2, 'hard': 3 };
+      filtered.sort((a, b) => {
+        const diffA = difficultyOrder[(a.question as any)?.difficulty] || 0;
+        const diffB = difficultyOrder[(b.question as any)?.difficulty] || 0;
+        return diffA - diffB;
+      });
+    }
+    // Default sort by order_index (already sorted from database)
+
+    return filtered;
+  };
+
+  const filteredAndSortedQuestions = getFilteredAndSortedQuestions();
+  const totalPages = Math.ceil(filteredAndSortedQuestions.length / questionsPerPage);
+  const startIndex = (currentPage - 1) * questionsPerPage;
+  const endIndex = startIndex + questionsPerPage;
+  const currentQuestions = filteredAndSortedQuestions.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterPart, filterDifficulty, sortBy]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -371,72 +426,187 @@ const ExamQuestionManagement = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-2">
-              {examQuestions.map((examQuestion, index) => (
-                <Card key={examQuestion.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-muted-foreground">
-                            {index + 1}
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium">
-                            {(examQuestion.question as any)?.prompt_text || (examQuestion.question as any)?.question || 'Câu hỏi không có nội dung'}
-                          </p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              Part {(examQuestion.question as any)?.part || ''}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {getDifficultyLabel((examQuestion.question as any)?.difficulty || '')}
-                            </Badge>
-                            {(examQuestion.question as any)?.audio_url && (
-                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                                <Volume2 className="h-3 w-3 mr-1" />
-                                Audio
+            <div className="space-y-4">
+              {/* Filters and Controls */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                    <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Bộ lọc:</span>
+                      </div>
+                      <Select value={filterPart} onValueChange={setFilterPart}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Part" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tất cả Part</SelectItem>
+                          <SelectItem value="1">Part 1</SelectItem>
+                          <SelectItem value="2">Part 2</SelectItem>
+                          <SelectItem value="3">Part 3</SelectItem>
+                          <SelectItem value="4">Part 4</SelectItem>
+                          <SelectItem value="5">Part 5</SelectItem>
+                          <SelectItem value="6">Part 6</SelectItem>
+                          <SelectItem value="7">Part 7</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Độ khó" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tất cả độ khó</SelectItem>
+                          <SelectItem value="easy">Dễ</SelectItem>
+                          <SelectItem value="medium">Trung bình</SelectItem>
+                          <SelectItem value="hard">Khó</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Sắp xếp" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="order">Thứ tự đề thi</SelectItem>
+                          <SelectItem value="part">Theo Part</SelectItem>
+                          <SelectItem value="difficulty">Theo độ khó</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredAndSortedQuestions.length)} trong {filteredAndSortedQuestions.length} câu hỏi</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Questions List */}
+              <div className="space-y-2">
+                {currentQuestions.map((examQuestion, index) => (
+                  <Card key={examQuestion.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {startIndex + index + 1}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {(examQuestion.question as any)?.prompt_text || 'Câu hỏi không có nội dung'}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Badge variant="secondary" className="text-xs">
+                                Part {(examQuestion.question as any)?.part || ''}
                               </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {getDifficultyLabel((examQuestion.question as any)?.difficulty || '')}
+                              </Badge>
+                              {(examQuestion.question as any)?.audio_url && (
+                                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                  <Volume2 className="h-3 w-3 mr-1" />
+                                  Audio
+                                </Badge>
+                              )}
+                            </div>
+                            {/* Show first choice as preview */}
+                            {(examQuestion.question as any)?.choices && (
+                              <p className="text-sm text-muted-foreground mt-2">
+                                A. {(examQuestion.question as any).choices.A || ''}
+                                {(examQuestion.question as any).choices.B && ` ... (+3 lựa chọn khác)`}
+                              </p>
                             )}
                           </div>
-                          {/* Show first choice as preview */}
-                          {(examQuestion.question as any)?.choices && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              A. {(examQuestion.question as any).choices.A || ''}
-                              {(examQuestion.question as any).choices.B && ` ... (+3 lựa chọn khác)`}
-                            </p>
-                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setViewingQuestion(examQuestion.question!)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setEditingQuestion(examQuestion.question!)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => removeQuestionFromExam(examQuestion.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          size="sm" 
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Trang {currentPage} / {totalPages}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
                           variant="outline"
-                          onClick={() => setViewingQuestion(examQuestion.question!)}
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
                         >
-                          <Eye className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4" />
+                          Trước
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+                            
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(pageNum)}
+                                className="w-8 h-8 p-0"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Button
                           variant="outline"
-                          onClick={() => setEditingQuestion(examQuestion.question!)}
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
                         >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => removeQuestionFromExam(examQuestion.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                          Sau
+                          <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
           )}
         </TabsContent>

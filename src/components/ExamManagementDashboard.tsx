@@ -206,8 +206,8 @@ const ExamManagementDashboard = () => {
   };
 
   const filteredExamSets = examSets.filter(examSet => {
-    const matchesSearch = examSet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         examSet.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (examSet.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (examSet.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || examSet.status === filterStatus;
     const matchesType = filterType === 'all' || examSet.type === filterType;
     

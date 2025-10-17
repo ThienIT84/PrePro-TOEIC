@@ -18,21 +18,35 @@ import {
   History,
   Trophy,
   Sparkles,
-  Play
+  Play,
+  GraduationCap,
+  UserCheck
 } from 'lucide-react';
 import { t, getLanguage, setLanguage } from '@/lib/i18n';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import NavigationDropdown from '@/components/NavigationDropdown';
 
 interface LayoutProps {
   children: ReactNode;
 }
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+}
+
+interface DropdownNavigationItem {
+  type: 'dropdown';
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+  items: NavigationItem[];
+}
+
+type NavigationItemType = NavigationItem | DropdownNavigationItem;
 
 const Layout = ({ children }: LayoutProps) => {
   const { user, profile, loading, signOut } = useAuth();
@@ -41,7 +55,7 @@ const Layout = ({ children }: LayoutProps) => {
   const currentLang = getLanguage();
   const [signingOut, setSigningOut] = useState(false);
 
-  const navigation = [
+  const navigation: NavigationItemType[] = [
     { 
       name: t('nav.dashboard'), 
       href: '/dashboard', 
@@ -68,42 +82,64 @@ const Layout = ({ children }: LayoutProps) => {
       icon: BarChart3,
       active: location.pathname === '/analytics'
     },
-    // Teacher-only navigation items
-    ...(permissions.canCreateQuestions ? [{
-      name: 'Quản lý câu hỏi', 
-      href: '/questions', 
-      icon: Plus,
-      active: location.pathname === '/questions'
-    }] : []),
-    ...(permissions.canCreateQuestions ? [{
-      name: 'Tạo câu hỏi AI', 
-      href: '/question-generator', 
-      icon: Sparkles,
-      active: location.pathname === '/question-generator'
-    }] : []),
-    ...(permissions.canCreateExamSets ? [{
-      name: 'Bộ đề thi', 
-      href: '/exam-sets', 
+    // Exam Management Dropdown
+    ...(permissions.canCreateQuestions || permissions.canCreateExamSets ? [{
+      type: 'dropdown',
+      title: 'Quản lý đề thi',
       icon: FileText,
-      active: location.pathname === '/exam-sets' || location.pathname.startsWith('/exam-sets/')
+      active: location.pathname === '/questions' || 
+              location.pathname === '/question-generator' || 
+              location.pathname === '/exam-sets' || 
+              location.pathname.startsWith('/exam-sets/'),
+      items: [
+        ...(permissions.canCreateExamSets ? [{
+          name: 'Bộ đề thi', 
+          href: '/exam-sets', 
+          icon: FileText,
+          active: location.pathname === '/exam-sets' || location.pathname.startsWith('/exam-sets/')
+        }] : []),
+        ...(permissions.canCreateQuestions ? [{
+          name: 'Quản lý câu hỏi', 
+          href: '/questions', 
+          icon: Plus,
+          active: location.pathname === '/questions'
+        }] : []),
+        ...(permissions.canCreateQuestions ? [{
+          name: 'Tạo câu hỏi AI', 
+          href: '/question-generator', 
+          icon: Sparkles,
+          active: location.pathname === '/question-generator'
+        }] : [])
+      ]
     }] : []),
+    // Student Management Dropdown
     ...(permissions.canManageStudents ? [{
-      name: 'Quản lý quyền', 
-      href: '/role-management', 
-      icon: Shield,
-      active: location.pathname === '/role-management'
-    }] : []),
-    ...(permissions.canManageStudents ? [{
-      name: 'Học viên của tôi', 
-      href: '/students', 
+      type: 'dropdown',
+      title: 'Quản lý học viên',
       icon: Users,
-      active: location.pathname === '/students'
-    }] : []),
-    ...(permissions.canManageStudents ? [{
-      name: 'Kết quả thi học sinh', 
-      href: '/student-exam-results', 
-      icon: Trophy,
-      active: location.pathname === '/student-exam-results'
+      active: location.pathname === '/role-management' || 
+              location.pathname === '/students' || 
+              location.pathname === '/student-exam-results',
+      items: [
+        {
+          name: 'Học viên của tôi', 
+          href: '/students', 
+          icon: Users,
+          active: location.pathname === '/students'
+        },
+        {
+          name: 'Kết quả thi học sinh', 
+          href: '/student-exam-results', 
+          icon: Trophy,
+          active: location.pathname === '/student-exam-results'
+        },
+        {
+          name: 'Quản lý quyền', 
+          href: '/role-management', 
+          icon: Shield,
+          active: location.pathname === '/role-management'
+        }
+      ]
     }] : []),
     { 
       name: 'Lịch sử bài thi', 
@@ -181,20 +217,36 @@ const Layout = ({ children }: LayoutProps) => {
               ))}
             </div>
           ) : (
-            navigation.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  item.active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.name}
-              </Link>
-            ))
+            navigation.map((item) => {
+              // Handle dropdown navigation items
+              if ('type' in item && item.type === 'dropdown') {
+                return (
+                  <NavigationDropdown
+                    key={item.title}
+                    title={item.title}
+                    icon={item.icon}
+                    items={item.items}
+                    isActive={item.active}
+                  />
+                );
+              }
+              
+              // Handle regular navigation items
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    item.active
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.name}
+                </Link>
+              );
+            })
           )}
         </nav>
 
