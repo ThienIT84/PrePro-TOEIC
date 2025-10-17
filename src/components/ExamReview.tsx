@@ -330,30 +330,33 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                       <div className="mb-4">
                         <SimpleAudioPlayer 
                           audioUrl={(currentQuestion as any).passages.audio_url} 
-                          transcript={(currentQuestion as any).passages.texts?.content || ''} 
+                          transcript={(currentQuestion.part === 3 || currentQuestion.part === 4) ? '' : (currentQuestion as any).passages.texts?.content || ''} 
                         />
                       </div>
                     )}
 
-                    {/* Passage Images */}
-                    {(() => {
+                    {/* Passage Images - Skip for Part 6 as PassageDisplay handles it */}
+                    {currentQuestion.part !== 6 && (() => {
                       const passage = (currentQuestion as any).passages;
                       if (!passage) return null;
 
                       const images = [];
                       
-                      // Add main image
-                      if (passage.image_url) {
-                        images.push(passage.image_url);
-                      }
+                      // Add images from new structure
+                      if (passage.texts?.img_url) images.push(passage.texts.img_url);
+                      if (passage.texts?.img_url2) images.push(passage.texts.img_url2);
+                      if (passage.texts?.img_url3) images.push(passage.texts.img_url3);
                       
-                      // Add additional images from texts.additional
-                      if (passage.texts?.additional) {
-                        const additionalImages = passage.texts.additional
-                          .split('|')
-                          .map((url: string) => url.trim())
-                          .filter((url: string) => url && url.startsWith('http'));
-                        images.push(...additionalImages);
+                      // Backward compatibility: fallback to old structure
+                      if (images.length === 0) {
+                        if (passage.image_url) images.push(passage.image_url);
+                        if (passage.texts?.additional) {
+                          const additionalImages = passage.texts.additional
+                            .split('|')
+                            .map((url: string) => url.trim())
+                            .filter((url: string) => url && url.startsWith('http'));
+                          images.push(...additionalImages);
+                        }
                       }
 
                       if (images.length === 0) return null;
@@ -395,7 +398,11 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                         passage={{
                           content: (currentQuestion as any).passages.texts.content,
                           title: (currentQuestion as any).passages.texts.title || `Passage ${currentQuestionIndex + 1}`,
-                          additional: (currentQuestion as any).passages.texts.additional
+                          content2: (currentQuestion as any).passages.texts.content2,
+                          content3: (currentQuestion as any).passages.texts.content3,
+                          img_url: (currentQuestion as any).passages?.texts?.img_url,
+                          img_url2: currentQuestion.part === 6 ? undefined : (currentQuestion as any).passages?.texts?.img_url2,
+                          img_url3: currentQuestion.part === 6 ? undefined : (currentQuestion as any).passages?.texts?.img_url3
                         }}
                         translationVi={(currentQuestion as any).passages?.translation_vi}
                         translationEn={(currentQuestion as any).passages?.translation_en}
@@ -440,7 +447,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                 <div className="space-y-6">
                   {(() => {
                     // Get all questions for this passage
-                    const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id);
+                    const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part);
                     return passageQuestions.map((question, index) => {
                       const questionAnswer = userAnswers[question.id];
                       const isCorrect = questionAnswer === question.correct_choice;
@@ -475,7 +482,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
 
                             {/* Choices */}
                             <div className="space-y-3">
-                              {['A', 'B', 'C', 'D'].map((choice) => {
+                              {(question.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choice) => {
                                 const choices = question.choices as unknown;
                                 const choiceText = choices?.[choice] || '';
                                 const isUserAnswer = questionAnswer === choice;
@@ -564,7 +571,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                     {/* Choices */}
                     <div className="space-y-3">
                       <h4 className="font-medium text-lg">Các lựa chọn:</h4>
-                      {['A', 'B', 'C', 'D'].map((choice) => {
+                      {(currentQuestion.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choice) => {
                         const choices = currentQuestion.choices as unknown;
                         const choiceText = choices?.[choice] || '';
                         const isUserAnswer = currentAnswer === choice;

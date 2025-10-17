@@ -54,6 +54,29 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
   const selectedParts: number[] | undefined = (location.state as any)?.parts;
   const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
   const { toast } = useToast();
+
+  // Calculate correct TOEIC question number based on part
+  const getTOEICQuestionNumber = (questionIndex: number) => {
+    const question = questions[questionIndex];
+    if (!question) return questionIndex + 1;
+    
+    const part = question.part;
+    const partStartNumbers = {
+      1: 1,   // Part 1: 1-6
+      2: 7,   // Part 2: 7-31
+      3: 32,  // Part 3: 32-70
+      4: 71,  // Part 4: 71-100
+      5: 101, // Part 5: 101-130
+      6: 131, // Part 6: 131-146
+      7: 147  // Part 7: 147-200
+    };
+    
+    // Count questions in the same part before this question
+    const questionsInSamePart = questions.slice(0, questionIndex + 1).filter(q => q.part === part);
+    const questionInPartIndex = questionsInSamePart.length - 1;
+    
+    return partStartNumbers[part] + questionInPartIndex;
+  };
   
   const [examSet, setExamSet] = useState<ExamSet | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -318,12 +341,80 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
       console.log('Questions data:', questionsData);
       
       // Order questions by part and question number
-      const orderedQuestions = (questionsData as any[] || []).sort((a, b) => {
+      let orderedQuestions = (questionsData as any[] || []).sort((a, b) => {
         if (a.part !== b.part) {
           return a.part - b.part;
         }
         return a.question_number - b.question_number;
       });
+
+      // Ensure passage integrity for Part 6 when specific parts are selected
+      if (selectedParts && selectedParts.includes(6)) {
+        const part6Questions = orderedQuestions.filter(q => q.part === 6);
+        const otherPartQuestions = orderedQuestions.filter(q => q.part !== 6);
+        
+        // Group Part 6 questions by passage_id and sort by order_index
+        const passageGroups: Record<string, any[]> = {};
+        part6Questions.forEach(q => {
+          if (q.passage_id) {
+            if (!passageGroups[q.passage_id]) {
+              passageGroups[q.passage_id] = [];
+            }
+            passageGroups[q.passage_id].push(q);
+          }
+        });
+        
+        // Sort questions within each passage by blank_index (for Part 6)
+        Object.keys(passageGroups).forEach(passageId => {
+          passageGroups[passageId].sort((a, b) => {
+            // For Part 6, sort by blank_index first, then by order_index as fallback
+            const aBlankIndex = a.blank_index || 0;
+            const bBlankIndex = b.blank_index || 0;
+            if (aBlankIndex !== bBlankIndex) {
+              return aBlankIndex - bBlankIndex;
+            }
+            // Fallback to order_index if blank_index is the same
+            const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+            const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+            return aOrder - bOrder;
+          });
+        });
+        
+        // Only include complete passages (all questions from same passage)
+        const validPart6Questions: any[] = [];
+        Object.values(passageGroups).forEach(passageQuestions => {
+          // Check if this passage has all its questions in the fetched data
+          const passageId = passageQuestions[0].passage_id;
+          const allPassageQuestions = orderedQuestions.filter(q => q.passage_id === passageId);
+          
+          // Only include if we have all questions from this passage
+          if (passageQuestions.length === allPassageQuestions.length) {
+            validPart6Questions.push(...passageQuestions);
+          }
+        });
+        
+        // Sort passages by the first question's order_index, but maintain passage integrity
+        validPart6Questions.sort((a, b) => {
+          // Group by passage_id first, then sort passages by their first question's order_index
+          const aPassageId = a.passage_id;
+          const bPassageId = b.passage_id;
+          
+          if (aPassageId !== bPassageId) {
+            // Different passages - sort by the first question's order_index in each passage
+            const aFirstOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+            const bFirstOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+            return aFirstOrder - bFirstOrder;
+          }
+          
+          // Same passage - sort by blank_index
+          const aBlankIndex = a.blank_index || 0;
+          const bBlankIndex = b.blank_index || 0;
+          return aBlankIndex - bBlankIndex;
+        });
+        
+        orderedQuestions = [...otherPartQuestions, ...validPart6Questions];
+        console.log(`Part 6 passage integrity: ${validPart6Questions.length} questions from ${Object.keys(passageGroups).length} passages`);
+      }
 
       setQuestions(orderedQuestions);
 
@@ -340,19 +431,23 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
       });
       setPassageMap(passageMap);
 
-      // Calculate time limit
-      console.log('Time calculation:', { timeMode, selectedParts, examSetTimeLimit: examSetData.time_limit });
+      // Calculate time limit based on actual question count
+      console.log('Time calculation:', { 
+        timeMode, 
+        selectedParts, 
+        examSetTimeLimit: examSetData.time_limit,
+        examSetQuestionCount: examSetData.question_count,
+        actualQuestionCount: orderedQuestions.length
+      });
       
       if (timeMode === 'unlimited') {
         setTimeLeft(-1);
         console.log('Set unlimited time');
       } else if (selectedParts && selectedParts.length > 0) {
-        const totalMinutes = selectedParts.reduce((sum, p) => {
-          const cfg = toeicQuestionGenerator.getPartConfig(p);
-          console.log(`Part ${p}: ${cfg ? cfg.timeLimit : 0} minutes`);
-          return sum + (cfg ? cfg.timeLimit : 0);
-        }, 0);
-        console.log('Total minutes for selected parts:', totalMinutes);
+        // Calculate time based on actual question count in selected parts
+        const timePerQuestion = examSetData.time_limit / examSetData.question_count;
+        const totalMinutes = Math.round(orderedQuestions.length * timePerQuestion);
+        console.log(`Calculated time: ${orderedQuestions.length} questions × ${timePerQuestion.toFixed(2)} min/question = ${totalMinutes} minutes`);
         setTimeLeft(Math.max(1, totalMinutes) * 60);
       } else {
         console.log('Using exam set time limit:', examSetData.time_limit);
@@ -422,15 +517,14 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
       const correctAnswers = Array.from(finalAnswers.values()).filter(a => a.isCorrect).length;
       const score = Math.round((correctAnswers / totalQuestions) * 100);
       
-      // Calculate actual time spent based on selected parts or exam set
+      // Calculate actual time spent based on actual question count
       let timeSpent = 0;
       if (timeMode === 'unlimited') {
         timeSpent = 0;
-      } else if (selectedParts && selectedParts.length > 0) {
-        const totalMinutes = selectedParts.reduce((sum, p) => {
-          const cfg = toeicQuestionGenerator.getPartConfig(p);
-          return sum + (cfg ? cfg.timeLimit : 0);
-        }, 0);
+      } else if (selectedParts && selectedParts.length > 0 && examSet) {
+        // Calculate time spent based on actual question count
+        const timePerQuestion = examSet.time_limit / examSet.question_count;
+        const totalMinutes = Math.round(questions.length * timePerQuestion);
         const totalSeconds = totalMinutes * 60;
         timeSpent = Math.max(0, totalSeconds - timeLeft);
       } else {
@@ -738,7 +832,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
                   {/* Choices */}
                   <div className="space-y-3">
                     <h4 className="font-medium text-lg">Các lựa chọn:</h4>
-                    {['A', 'B', 'C', 'D'].map((choice) => {
+                    {(currentQuestion.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choice) => {
                       const choices = currentQuestion.choices as unknown;
                       const choiceText = choices?.[choice] || '';
                       const isSelected = currentAnswer?.answer === choice;
@@ -848,7 +942,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                         }`}
                       >
-                        {index + 1}
+                        {getTOEICQuestionNumber(index)}
                       </button>
                     );
                   })}

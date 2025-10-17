@@ -9,13 +9,21 @@ interface PassageDisplayProps {
   passage: {
     title?: string;
     content: string;
-    additional?: string;
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
   };
   translationVi?: {
     content: string;
+    content2?: string;
+    content3?: string;
   };
   translationEn?: {
     content: string;
+    content2?: string;
+    content3?: string;
   };
   showTranslation?: boolean;
   className?: string;
@@ -32,6 +40,65 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
   const [activeTab, setActiveTab] = useState('original');
 
   const hasTranslations = translationVi || translationEn;
+
+  // Helper function to render passage content
+  const renderPassageContent = (content: string, content2?: string, content3?: string) => {
+    const contents = [content, content2, content3].filter(Boolean);
+    
+    return (
+      <div className="space-y-4">
+        {contents.map((text, index) => (
+          <div key={index} className="space-y-3">
+            {contents.length > 1 && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  Đoạn {index + 1}
+                </Badge>
+              </div>
+            )}
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Helper function to render images
+  const renderImages = () => {
+    const imageUrls = [passage.img_url, passage.img_url2, passage.img_url3].filter(Boolean);
+    if (imageUrls.length === 0) return null;
+
+    return (
+      <div className="space-y-4 mb-6">
+        {imageUrls.map((url, index) => (
+          <div key={index} className="text-center">
+            {imageUrls.length > 1 && (
+              <div className="mb-2">
+                <Badge variant="outline" className="text-xs">
+                  Ảnh {index + 1}
+                </Badge>
+              </div>
+            )}
+            <img 
+              src={url} 
+              alt={`Passage image ${index + 1}`} 
+              className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
+              style={{ maxHeight: '500px' }}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div className="hidden text-sm text-red-500 mt-2">
+              Không thể tải ảnh
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card className={`w-full ${className}`}>
@@ -57,6 +124,10 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Render images first */}
+        {renderImages()}
+
+        {/* Render passage content */}
         {hasTranslations && showTranslations ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -81,21 +152,18 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
                 {passage.title && (
                   <h3 className="text-lg font-semibold text-gray-900">{passage.title}</h3>
                 )}
-                <div className="prose prose-sm max-w-none">
-                  <p className="whitespace-pre-wrap leading-relaxed">{passage.content}</p>
-                  {passage.additional && (
-                    <p className="whitespace-pre-wrap leading-relaxed mt-3">{passage.additional}</p>
-                  )}
-                </div>
+                {renderPassageContent(passage.content, passage.content2, passage.content3)}
               </div>
             </TabsContent>
 
             {translationVi && (
               <TabsContent value="vietnamese" className="mt-4">
                 <div className="space-y-3">
-                  <div className="prose prose-sm max-w-none">
-                    <p className="whitespace-pre-wrap leading-relaxed">{translationVi.content}</p>
-                  </div>
+                  {renderPassageContent(
+                    translationVi.content, 
+                    translationVi.content2, 
+                    translationVi.content3
+                  )}
                 </div>
               </TabsContent>
             )}
@@ -103,9 +171,11 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
             {translationEn && (
               <TabsContent value="english" className="mt-4">
                 <div className="space-y-3">
-                  <div className="prose prose-sm max-w-none">
-                    <p className="whitespace-pre-wrap leading-relaxed">{translationEn.content}</p>
-                  </div>
+                  {renderPassageContent(
+                    translationEn.content, 
+                    translationEn.content2, 
+                    translationEn.content3
+                  )}
                 </div>
               </TabsContent>
             )}
@@ -115,12 +185,7 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
             {passage.title && (
               <h3 className="text-lg font-semibold text-gray-900">{passage.title}</h3>
             )}
-            <div className="prose prose-sm max-w-none">
-              <p className="whitespace-pre-wrap leading-relaxed">{passage.content}</p>
-              {passage.additional && (
-                <p className="whitespace-pre-wrap leading-relaxed mt-3">{passage.additional}</p>
-              )}
-            </div>
+            {renderPassageContent(passage.content, passage.content2, passage.content3)}
           </div>
         )}
 

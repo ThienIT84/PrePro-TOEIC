@@ -39,8 +39,17 @@ interface ExamAnswer {
 
 type PassageLite = {
   id: string;
-  texts: { title?: string; content?: string; additional?: string } | null;
-  image_url: string | null;
+  texts: { 
+    title?: string; 
+    content?: string; 
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
+    additional?: string; // Backward compatibility
+  } | null;
+  image_url: string | null; // Backward compatibility
   audio_url: string | null;
 };
 
@@ -70,73 +79,8 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   useEffect(() => {
     fetchExamData();
     checkIfCompleted();
-    checkForSavedProgress();
   }, [examSetId]);
 
-  // Check for saved progress from localStorage
-  const checkForSavedProgress = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Check for in-progress sessions in database
-      const { data: sessions } = await supabase
-        .from('exam_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('exam_set_id', examSetId)
-        .eq('status', 'in_progress')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (sessions && sessions.length > 0) {
-        const session = sessions[0];
-        const savedProgress = localStorage.getItem(`exam_progress_${session.id}`);
-        
-        if (savedProgress) {
-          const progressData = JSON.parse(savedProgress);
-          
-          // Show resume dialog
-          const shouldResume = window.confirm(
-            `Bạn có một bài thi đang làm dở cho "${examSet?.title || 'Bài thi này'}". ` +
-            `Tiến độ: ${progressData.currentIndex + 1}/${questions.length} câu hỏi. ` +
-            `Bạn có muốn tiếp tục không?`
-          );
-
-          if (shouldResume) {
-            // Resume session
-            setSessionId(session.id);
-            setCurrentIndex(progressData.currentIndex);
-            setTimeLeft(progressData.timeLeft);
-            setIsStarted(true);
-            
-            // Restore answers
-            const restoredAnswers = new Map(progressData.answers as [string, ExamAnswer][]);
-            setAnswers(restoredAnswers);
-            
-            toast({
-              title: "Đã khôi phục bài thi",
-              description: "Tiếp tục từ nơi bạn đã dừng lại.",
-            });
-            
-            return true;
-          } else {
-            // Cancel old session
-            await supabase
-              .from('exam_sessions')
-              .update({ status: 'cancelled' })
-              .eq('id', session.id);
-            
-            localStorage.removeItem(`exam_progress_${session.id}`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking saved progress:', error);
-    }
-    
-    return false;
-  }, [examSetId, examSet, questions.length, toast]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -329,9 +273,92 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         .map(r => idToQuestion[r.question_id])
         .filter(Boolean) as Question[];
 
+      // Sort questions by order_index to ensure correct order
+      orderedQuestions.sort((a, b) => {
+        const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+        const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+        return aOrder - bOrder;
+      });
+
       // If user chose specific parts within this exam set, filter accordingly
       if (selectedParts && selectedParts.length > 0) {
-        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
+        // For Part 6, ensure passage integrity (all questions from same passage)
+        if (selectedParts.includes(6)) {
+          const part6Questions = orderedQuestions.filter(q => q.part === 6);
+          const otherPartQuestions = orderedQuestions.filter(q => q.part !== 6 && selectedParts.includes(q.part as number));
+          
+          // Group Part 6 questions by passage_id and sort by order_index
+          const passageGroups: Record<string, Question[]> = {};
+          part6Questions.forEach(q => {
+            if (q.passage_id) {
+              if (!passageGroups[q.passage_id]) {
+                passageGroups[q.passage_id] = [];
+              }
+              passageGroups[q.passage_id].push(q);
+            }
+          });
+          
+          // Sort questions within each passage by blank_index (for Part 6)
+          Object.keys(passageGroups).forEach(passageId => {
+            passageGroups[passageId].sort((a, b) => {
+              // For Part 6, sort by blank_index first, then by order_index as fallback
+              const aBlankIndex = a.blank_index || 0;
+              const bBlankIndex = b.blank_index || 0;
+              if (aBlankIndex !== bBlankIndex) {
+                return aBlankIndex - bBlankIndex;
+              }
+              // Fallback to order_index if blank_index is the same
+              const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+              const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+              console.log(`Passage ${passageId}: Question ${a.id.substring(0,8)} blank_index ${aBlankIndex} order ${aOrder}, Question ${b.id.substring(0,8)} blank_index ${bBlankIndex} order ${bOrder}`);
+              return aOrder - bOrder;
+            });
+          });
+          
+          // Only include complete passages (all questions from same passage)
+          const validPart6Questions: Question[] = [];
+          Object.values(passageGroups).forEach(passageQuestions => {
+            // Check if this passage has all its questions in the exam set
+            const passageId = passageQuestions[0].passage_id;
+            const allPassageQuestions = orderedQuestions.filter(q => q.passage_id === passageId);
+            
+            // Only include if we have all questions from this passage
+            if (passageQuestions.length === allPassageQuestions.length) {
+              validPart6Questions.push(...passageQuestions);
+            }
+          });
+          
+          // Sort passages by the first question's order_index, but maintain passage integrity
+          validPart6Questions.sort((a, b) => {
+            // Group by passage_id first, then sort passages by their first question's order_index
+            const aPassageId = a.passage_id;
+            const bPassageId = b.passage_id;
+            
+            if (aPassageId !== bPassageId) {
+              // Different passages - sort by the first question's order_index in each passage
+              const aFirstOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+              const bFirstOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+              return aFirstOrder - bFirstOrder;
+            }
+            
+            // Same passage - sort by blank_index
+            const aBlankIndex = a.blank_index || 0;
+            const bBlankIndex = b.blank_index || 0;
+            return aBlankIndex - bBlankIndex;
+          });
+          
+          orderedQuestions = [...otherPartQuestions, ...validPart6Questions];
+          console.log(`Part 6 passage integrity: ${validPart6Questions.length} questions from ${Object.keys(passageGroups).length} passages`);
+          console.log('Final Part 6 questions order:', validPart6Questions.map(q => ({
+            id: q.id.substring(0,8),
+            passage_id: q.passage_id,
+            blank_index: q.blank_index,
+            order: examQRows.find(r => r.question_id === q.id)?.order_index
+          })));
+        } else {
+          // For other parts, simple filtering
+          orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
+        }
       }
 
       // Load passages for questions that need them (3,4,6,7)
@@ -367,21 +394,36 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         ...examSetData,
         type: examSetData.type as DrillType
       } as ExamSet);
+      console.log('🔍 Final ordered questions:', orderedQuestions.map((q, index) => ({
+        index,
+        id: q.id.substring(0,8),
+        part: q.part,
+        passage_id: q.passage_id,
+        blank_index: q.blank_index,
+        order_index: examQRows.find(r => r.question_id === q.id)?.order_index,
+        prompt_text: q.prompt_text?.substring(0,30) + '...'
+      })));
+
       setQuestions(orderedQuestions);
 
       // Time limit: full exam uses exam set time; selected parts sum their part times
-      console.log('Time calculation:', { timeMode, selectedParts, examSetTimeLimit: examSetData.time_limit });
+      // Calculate time limit based on actual question count
+      console.log('Time calculation:', { 
+        timeMode, 
+        selectedParts, 
+        examSetTimeLimit: examSetData.time_limit,
+        examSetQuestionCount: examSetData.question_count,
+        actualQuestionCount: orderedQuestions.length
+      });
       
       if (timeMode === 'unlimited') {
         setTimeLeft(-1); // -1 indicates unlimited time
         console.log('Set unlimited time');
       } else if (selectedParts && selectedParts.length > 0) {
-        const totalMinutes = selectedParts.reduce((sum, p) => {
-          const cfg = toeicQuestionGenerator.getPartConfig(p);
-          console.log(`Part ${p}: ${cfg ? cfg.timeLimit : 0} minutes`);
-          return sum + (cfg ? cfg.timeLimit : 0);
-        }, 0);
-        console.log('Total minutes for selected parts:', totalMinutes);
+        // Calculate time based on actual question count in selected parts
+        const timePerQuestion = examSetData.time_limit / examSetData.question_count;
+        const totalMinutes = Math.round(orderedQuestions.length * timePerQuestion);
+        console.log(`Calculated time: ${orderedQuestions.length} questions × ${timePerQuestion.toFixed(2)} min/question = ${totalMinutes} minutes`);
         setTimeLeft(Math.max(1, totalMinutes) * 60);
       } else {
         console.log('Using exam set time limit:', examSetData.time_limit);
@@ -536,16 +578,14 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       const correctAnswers = Array.from(finalAnswers.values()).filter(a => a.isCorrect).length;
       const score = Math.round((correctAnswers / totalQuestions) * 100);
       
-      // Calculate actual time spent based on selected parts or exam set
+      // Calculate actual time spent based on actual question count
       let timeSpent = 0;
       if (timeMode === 'unlimited') {
         timeSpent = 0; // No time tracking for unlimited mode
-      } else if (selectedParts && selectedParts.length > 0) {
-        // Calculate time spent for selected parts
-        const totalMinutes = selectedParts.reduce((sum, p) => {
-          const cfg = toeicQuestionGenerator.getPartConfig(p);
-          return sum + (cfg ? cfg.timeLimit : 0);
-        }, 0);
+      } else if (selectedParts && selectedParts.length > 0 && examSet) {
+        // Calculate time spent based on actual question count
+        const timePerQuestion = examSet.time_limit / examSet.question_count;
+        const totalMinutes = Math.round(questions.length * timePerQuestion);
         const totalSeconds = totalMinutes * 60;
         timeSpent = Math.max(0, totalSeconds - timeLeft);
       } else {
@@ -922,7 +962,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
                 Câu {currentIndex + 1} / {questions.length} • Part {currentQuestion.part}
                 {currentQuestion.passage_id && (
                   <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    Passage {questions.findIndex(q => q.passage_id === currentQuestion.passage_id) + 1}-{questions.filter(q => q.passage_id === currentQuestion.passage_id).length}
+                    Passage {questions.findIndex(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part) + 1}-{questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part).length}
                   </span>
                 )}
               </p>
@@ -1024,15 +1064,43 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               </div>
             )}
 
+            {/* Part 6 Passage Text Content */}
+            {currentQuestion.part === 6 && currentQuestion.passage_id && passageMap[currentQuestion.passage_id]?.texts?.content && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
+                <h4 className="text-lg font-semibold text-blue-900 mb-3">
+                  📖 Nội dung Passage này
+                </h4>
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-900">
+                    {passageMap[currentQuestion.passage_id].texts.content}
+                  </pre>
+                </div>
+              </div>
+            )}
+
             {/* Part 6,7 Passage Images (from passages) */}
             {(currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.passage_id && passageMap[currentQuestion.passage_id] && (
               (() => {
                 const p = passageMap[currentQuestion.passage_id];
-                const extra = (p.texts?.additional || '')
-                  .split('|')
-                  .map(s => s.trim())
-                  .filter(Boolean);
-                const images = [p.image_url, ...extra].filter(Boolean) as string[];
+                const images = [];
+                
+                // Add images from new structure
+                if (p.texts?.img_url) images.push(p.texts.img_url);
+                if (p.texts?.img_url2) images.push(p.texts.img_url2);
+                if (p.texts?.img_url3) images.push(p.texts.img_url3);
+                
+                // Backward compatibility: fallback to old structure
+                if (images.length === 0) {
+                  if (p.image_url) images.push(p.image_url);
+                  if (p.texts?.additional) {
+                    const extra = p.texts.additional
+                      .split('|')
+                      .map(s => s.trim())
+                      .filter(Boolean);
+                    images.push(...extra);
+                  }
+                }
+                
                 if (images.length === 0) return null;
                 
                 // For Part 7, always display images in a single column for better readability
@@ -1132,7 +1200,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
                     {currentQuestion.part === 7 && 'Đọc đoạn văn và trả lời câu hỏi.'}
                   </p>
                   <div className="mt-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full inline-block">
-                    📖 Passage này có {questions.filter(q => q.passage_id === currentQuestion.passage_id).length} câu hỏi
+                    📖 Passage này có {questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part).length} câu hỏi
                   </div>
                 </div>
               </div>
@@ -1223,7 +1291,22 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
                 })()}
                 
                 {(() => {
-                  const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id);
+                  // Show all questions in passage for all parts (3,4,6,7)
+                  const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part);
+                  
+                  console.log('🔍 DEBUG Passage Questions:', {
+                    currentQuestionId: currentQuestion.id.substring(0,8),
+                    currentPassageId: currentQuestion.passage_id,
+                    currentPart: currentQuestion.part,
+                    passageQuestionsCount: passageQuestions.length,
+                    passageQuestions: passageQuestions.map(q => ({
+                      id: q.id.substring(0,8),
+                      part: q.part,
+                      passage_id: q.passage_id,
+                      prompt_text: q.prompt_text?.substring(0,50) + '...'
+                    }))
+                  });
+                  
                   return passageQuestions.map((question, questionIndex) => {
                     const globalIndex = questions.findIndex(q => q.id === question.id);
                     const questionAnswer = answers.get(question.id);

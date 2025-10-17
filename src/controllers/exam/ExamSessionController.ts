@@ -15,8 +15,17 @@ export interface ExamAnswer {
 
 export interface PassageLite {
   id: string;
-  texts: { title?: string; content?: string; additional?: string } | null;
-  image_url: string | null;
+  texts: { 
+    title?: string; 
+    content?: string; 
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
+    additional?: string; // Backward compatibility
+  } | null;
+  image_url: string | null; // Backward compatibility
   audio_url: string | null;
 }
 

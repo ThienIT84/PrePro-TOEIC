@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { TimeMode } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
 import ExamHistoryTable from '@/components/ExamHistoryTable';
+import { supabase } from '@/integrations/supabase/client';
 
 const PART_DETAILS: Record<number, { title: string; defaultCount: number; items: { name: string; count: number }[] }> = {
   1: { title: 'Part 1 - Photos', defaultCount: 6, items: [
@@ -54,6 +55,55 @@ const ExamCustomize = () => {
   const [selectedParts, setSelectedParts] = useState<number[]>([]);
   const [timeMode, setTimeMode] = useState<TimeMode>((location.state as any)?.timeMode || 'standard');
   const [showHistory, setShowHistory] = useState(true);
+  const [examSet, setExamSet] = useState<any>(null);
+  const [partQuestionCounts, setPartQuestionCounts] = useState<Record<number, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  // Fetch exam set data and question counts by part
+  useEffect(() => {
+    const fetchExamData = async () => {
+      if (!examSetId) return;
+      
+      try {
+        // Fetch exam set info
+        const { data: examSetData, error: examSetError } = await supabase
+          .from('exam_sets')
+          .select('*')
+          .eq('id', examSetId)
+          .single();
+        
+        if (examSetError) throw examSetError;
+        setExamSet(examSetData);
+
+        // Fetch question counts by part
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('exam_questions')
+          .select(`
+            question:questions(part)
+          `)
+          .eq('exam_set_id', examSetId);
+
+        if (questionsError) throw questionsError;
+
+        // Count questions by part
+        const counts: Record<number, number> = {};
+        questionsData.forEach((item: any) => {
+          const part = item.question?.part;
+          if (part) {
+            counts[part] = (counts[part] || 0) + 1;
+          }
+        });
+        
+        setPartQuestionCounts(counts);
+      } catch (error) {
+        console.error('Error fetching exam data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExamData();
+  }, [examSetId]);
 
   const timeModeConfigs = [
     {
@@ -72,12 +122,17 @@ const ExamCustomize = () => {
 
   const totalMinutes = useMemo(() => {
     if (timeMode === 'unlimited') return 'Không giới hạn';
-    return (selectedParts.length === 0 ? 0 : selectedParts.reduce((sum, p) => sum + (toeicQuestionGenerator.getPartConfig(p)?.timeLimit || 0), 0));
-  }, [selectedParts, timeMode]);
+    if (!examSet) return 0;
+    
+    // Calculate time based on actual question count in exam set
+    const totalQuestionsInSelectedParts = selectedParts.reduce((sum, p) => sum + (partQuestionCounts[p] || 0), 0);
+    const timePerQuestion = examSet.time_limit / examSet.question_count;
+    return Math.round(totalQuestionsInSelectedParts * timePerQuestion);
+  }, [selectedParts, timeMode, examSet, partQuestionCounts]);
 
   const totalQuestions = useMemo(() => {
-    return (selectedParts.length === 0 ? 0 : selectedParts.reduce((sum, p) => sum + (PART_DETAILS[p]?.defaultCount || 0), 0));
-  }, [selectedParts]);
+    return selectedParts.reduce((sum, p) => sum + (partQuestionCounts[p] || 0), 0);
+  }, [selectedParts, partQuestionCounts]);
 
   const togglePart = (p: number) => {
     setSelectedParts(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
@@ -92,6 +147,30 @@ const ExamCustomize = () => {
     navigate(`/exam-result/${sessionId}`);
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!examSet) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="text-center py-8">
+          <h2 className="text-xl font-semibold mb-2">Không tìm thấy đề thi</h2>
+          <Button onClick={() => navigate('/exam-sets')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Quay lại danh sách
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="mb-6 flex items-center justify-between">
@@ -99,7 +178,12 @@ const ExamCustomize = () => {
           <Button variant="outline" onClick={() => navigate(`/exam-sets/${examSetId}`)}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Quay lại đề thi
           </Button>
-          <h1 className="text-2xl font-bold">Chọn Part trong đề</h1>
+          <div>
+            <h1 className="text-2xl font-bold">{examSet.title}</h1>
+            <p className="text-muted-foreground">
+              {examSet.question_count} câu • {examSet.time_limit} phút • {examSet.difficulty}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Button 
@@ -215,29 +299,51 @@ const ExamCustomize = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1,2,3,4,5,6,7].map(p => (
-          <Card key={p} className={selectedParts.includes(p) ? 'border-primary' : ''}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{PART_DETAILS[p].title}</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{PART_DETAILS[p].defaultCount} câu</Badge>
-                  <Badge variant="outline">
-                    {timeMode === 'unlimited' ? 'Không giới hạn' : `${toeicQuestionGenerator.getPartConfig(p)?.timeLimit} phút`}
-                  </Badge>
-                  <Checkbox checked={selectedParts.includes(p)} onCheckedChange={() => togglePart(p)} />
+        {[1,2,3,4,5,6,7].map(p => {
+          const actualCount = partQuestionCounts[p] || 0;
+          const hasQuestions = actualCount > 0;
+          const estimatedTime = timeMode === 'unlimited' ? 'Không giới hạn' : 
+            examSet ? Math.round(actualCount * (examSet.time_limit / examSet.question_count)) : 0;
+          
+          return (
+            <Card 
+              key={p} 
+              className={`${selectedParts.includes(p) ? 'border-primary' : ''} ${!hasQuestions ? 'opacity-50' : ''}`}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{PART_DETAILS[p].title}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={hasQuestions ? "outline" : "secondary"}>
+                      {actualCount} câu
+                    </Badge>
+                    <Badge variant="outline">
+                      {typeof estimatedTime === 'string' ? estimatedTime : `${estimatedTime} phút`}
+                    </Badge>
+                    <Checkbox 
+                      checked={selectedParts.includes(p)} 
+                      onCheckedChange={() => togglePart(p)}
+                      disabled={!hasQuestions}
+                    />
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm list-disc pl-5 space-y-1">
-                {PART_DETAILS[p].items.map((it, idx) => (
-                  <li key={idx}>{it.name} — khoảng {it.count} câu</li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent>
+                {hasQuestions ? (
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    {PART_DETAILS[p].items.map((it, idx) => (
+                      <li key={idx}>{it.name} — khoảng {it.count} câu</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Không có câu hỏi trong đề này
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

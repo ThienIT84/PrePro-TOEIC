@@ -46,6 +46,7 @@ interface QuestionResult {
   explain_en: string;
   tags: string;
   transcript: string;
+  part: number;
   choices?: { A: string; B: string; C: string; D: string } | null;
   audio_url?: string | null;
   image_url?: string | null;
@@ -684,7 +685,10 @@ const ExamResult = () => {
                       {/* Audio replay + Transcript */}
                       {(question.audio_url || question.transcript) && (
                         <div className="mt-3">
-                          <SimpleAudioPlayer audioUrl={question.audio_url || ''} transcript={question.transcript} />
+                          <SimpleAudioPlayer 
+                            audioUrl={question.audio_url || ''} 
+                            transcript={(question.part === 3 || question.part === 4) ? '' : question.transcript} 
+                          />
                         </div>
                       )}
                     </div>
@@ -765,7 +769,10 @@ const ExamResult = () => {
                       {/* Audio replay + Transcript */}
                       {(question.audio_url || question.transcript) && (
                         <div className="mt-3">
-                          <SimpleAudioPlayer audioUrl={question.audio_url || ''} transcript={question.transcript} />
+                          <SimpleAudioPlayer 
+                            audioUrl={question.audio_url || ''} 
+                            transcript={(question.part === 3 || question.part === 4) ? '' : question.transcript} 
+                          />
                         </div>
                       )}
                     </div>
@@ -810,17 +817,37 @@ const ExamResult = () => {
                                 📖 Passage (Câu {questions[0].originalIndex + 1}-{questions[questions.length - 1].originalIndex + 1})
                               </h3>
                               
-                              {/* Passage Image */}
-                              {questions[0].passage_image_url && (
-                                <div className="mb-4">
-                                  <img 
-                                    src={questions[0].passage_image_url} 
-                                    alt="Passage Image" 
-                                    className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
-                                    style={{ maxHeight: '400px' }}
-                                  />
-                                </div>
-                              )}
+                              {/* Passage Images - Skip for Part 6 as PassageDisplay handles it */}
+                              {questions[0].part !== 6 && (() => {
+                                const images = [];
+                                
+                                // Add images from new structure
+                                if ((questions[0] as any).passage_img_url) images.push((questions[0] as any).passage_img_url);
+                                if ((questions[0] as any).passage_img_url2) images.push((questions[0] as any).passage_img_url2);
+                                if ((questions[0] as any).passage_img_url3) images.push((questions[0] as any).passage_img_url3);
+                                
+                                // Backward compatibility: fallback to old structure
+                                if (images.length === 0 && questions[0].passage_image_url) {
+                                  images.push(questions[0].passage_image_url);
+                                }
+                                
+                                if (images.length === 0) return null;
+                                
+                                return (
+                                  <div className="mb-4 space-y-4">
+                                    {images.map((src, index) => (
+                                      <div key={index}>
+                                        <img 
+                                          src={src} 
+                                          alt={`Passage Image ${index + 1}`} 
+                                          className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                                          style={{ maxHeight: '400px' }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                               
                               {/* Passage Audio */}
                               {questions[0].passage_audio_url && (
@@ -844,7 +871,12 @@ const ExamResult = () => {
                                 <PassageDisplay
                                   passage={{
                                     content: questions[0].passage_transcript || '',
-                                    title: `Passage ${questions[0].originalIndex + 1}-${questions[questions.length - 1].originalIndex + 1}`
+                                    title: `Passage ${questions[0].originalIndex + 1}-${questions[questions.length - 1].originalIndex + 1}`,
+                                    content2: (questions[0] as any).passage_content2,
+                                    content3: (questions[0] as any).passage_content3,
+                                    img_url: questions[0].passage_image_url,
+                                    img_url2: questions[0].part === 6 ? undefined : (questions[0] as any).passage_img_url2,
+                                    img_url3: questions[0].part === 6 ? undefined : (questions[0] as any).passage_img_url3
                                   }}
                                   translationVi={questions[0].passage_translation_vi}
                                   translationEn={questions[0].passage_translation_en}
@@ -892,11 +924,46 @@ const ExamResult = () => {
                                   </div>
                                 )}
                                 {question.choices && (
-                                  <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div><strong>A.</strong> {question.choices.A}</div>
-                                    <div><strong>B.</strong> {question.choices.B}</div>
-                                    <div><strong>C.</strong> {question.choices.C}</div>
-                                    <div><strong>D.</strong> {question.choices.D}</div>
+                                  <div className="space-y-2">
+                                    {(question.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choice) => {
+                                      const choiceText = question.choices[choice];
+                                      const isCorrectAnswer = question.correct_answer === choice;
+                                      const isUserAnswer = question.user_answer === choice;
+                                      
+                                      return (
+                                        <div
+                                          key={choice}
+                                          className={`p-3 rounded-lg border-2 ${
+                                            isCorrectAnswer
+                                              ? 'border-green-500 bg-green-50'
+                                              : isUserAnswer && !isCorrectAnswer
+                                              ? 'border-red-500 bg-red-50'
+                                              : 'border-gray-200 bg-white'
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div
+                                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                                isCorrectAnswer
+                                                  ? 'bg-green-500 text-white'
+                                                  : isUserAnswer && !isCorrectAnswer
+                                                  ? 'bg-red-500 text-white'
+                                                  : 'bg-gray-200 text-gray-700'
+                                              }`}
+                                            >
+                                              {choice}
+                                            </div>
+                                            <span className="flex-1">{choiceText}</span>
+                                            {isCorrectAnswer && (
+                                              <CheckCircle className="h-5 w-5 text-green-600" />
+                                            )}
+                                            {isUserAnswer && !isCorrectAnswer && (
+                                              <XCircle className="h-5 w-5 text-red-600" />
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -935,7 +1002,10 @@ const ExamResult = () => {
                               {/* Question Audio + Transcript */}
                               {(question.audio_url || question.transcript) && (
                                 <div className="mt-3">
-                                  <SimpleAudioPlayer audioUrl={question.audio_url || ''} transcript={question.transcript} />
+                                  <SimpleAudioPlayer 
+                            audioUrl={question.audio_url || ''} 
+                            transcript={(question.part === 3 || question.part === 4) ? '' : question.transcript} 
+                          />
                                 </div>
                               )}
                             </div>

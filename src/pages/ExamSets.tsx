@@ -21,12 +21,19 @@ import {
   BookOpen,
   FileText,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Star,
+  TrendingUp,
+  Award,
+  Zap,
+  Brain,
+  GraduationCap,
+  BarChart3
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import EnhancedExamSetCreator from '@/components/EnhancedExamSetCreator';
+import WizardExamSetCreator from '@/components/WizardExamSetCreator';
 import { useNavigate } from 'react-router-dom';
 
 interface ExamSet {
@@ -113,7 +120,21 @@ const ExamSets = () => {
   const filteredExamSets = examSets.filter(examSet => {
     const matchesSearch = examSet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (examSet.description && examSet.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesType = filterType === 'all' || examSet.type === filterType;
+    
+    // Enhanced type filtering based on question count
+    let matchesType = true;
+    if (filterType === 'full') {
+      matchesType = examSet.question_count >= 200;
+    } else if (filterType === 'practice') {
+      matchesType = examSet.question_count >= 100 && examSet.question_count < 200;
+    } else if (filterType === 'mini') {
+      matchesType = examSet.question_count >= 50 && examSet.question_count < 100;
+    } else if (filterType === 'custom') {
+      matchesType = examSet.question_count < 50;
+    } else if (filterType !== 'all') {
+      matchesType = examSet.type === filterType;
+    }
+    
     const matchesActive = filterActive === 'all' || 
                          (filterActive === 'active' && examSet.is_active) ||
                          (filterActive === 'inactive' && !examSet.is_active);
@@ -134,190 +155,330 @@ const ExamSets = () => {
     }
   };
 
+  // Calculate statistics
+  const totalExamSets = examSets.length;
+  const activeExamSets = examSets.filter(es => es.is_active).length;
+  const totalQuestions = examSets.reduce((sum, es) => sum + es.question_count, 0);
+  
+  // Calculate average time per question for better time estimation
+  const totalTime = examSets.reduce((sum, es) => sum + es.time_limit, 0);
+  const totalQuestionsForTime = examSets.reduce((sum, es) => sum + es.question_count, 0);
+  const avgTimePerQuestion = totalQuestionsForTime > 0 ? totalTime / totalQuestionsForTime : 0;
+  
+  // Estimate time based on question count (more realistic for mini-tests)
+  const estimatedTimeFor50Questions = Math.round(avgTimePerQuestion * 50);
+  const avgTimeLimit = examSets.length > 0 ? Math.round(totalTime / examSets.length) : 0;
+
   return (
-    <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Exam Sets</h1>
-        <p className="text-muted-foreground">
-          Quản lý và thi các đề thi TOEIC
-        </p>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="manage" className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Quản lý đề thi
-          </TabsTrigger>
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Tạo đề thi
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Lịch sử thi
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="manage" className="mt-6 space-y-4">
-          {/* Search and Filters */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search exam sets..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="full">Full TOEIC</SelectItem>
-                    <SelectItem value="mini">Mini TOEIC</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filterActive} onValueChange={setFilterActive}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Exam Sets List */}
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-2 text-muted-foreground">Loading exam sets...</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Enhanced Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
+              <Brain className="h-8 w-8 text-white" />
             </div>
-          ) : filteredExamSets.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  {examSets.length === 0 ? 'No exam sets found' : 'No exam sets match your filters'}
-                </p>
-                <Button onClick={() => setActiveTab('create')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Exam Set
-                </Button>
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Exam Sets
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Quản lý và thi các đề thi TOEIC chuyên nghiệp
+              </p>
+            </div>
+          </div>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm font-medium">Total Exam Sets</p>
+                    <p className="text-2xl font-bold">{totalExamSets}</p>
+                  </div>
+                  <BookOpen className="h-8 w-8 text-blue-200" />
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid gap-4">
-              {filteredExamSets.map((examSet) => (
-                <Card key={examSet.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          {getTypeIcon(examSet.type)}
-                          <h3 className="text-lg font-semibold">{examSet.title}</h3>
-                          <Badge className={getStatusColor(examSet.is_active)}>
-                            {examSet.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-muted-foreground mb-4">{examSet.description}</p>
-                        
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Target className="h-4 w-4" />
-                            {examSet.question_count} questions
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {examSet.time_limit} minutes
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
-                            {examSet.difficulty}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2 ml-4">
-                        {examSet.is_active && (
-                          <Button 
-                            onClick={() => handleStartExam(examSet.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                            title="Bắt đầu làm bài thi"
-                          >
-                            <Play className="mr-2 h-4 w-4" />
-                            Start Exam
-                          </Button>
-                        )}
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => navigate(`/exam-selection/${examSet.id}`)}
-                          title="Xem chi tiết đề thi"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => navigate(`/exam-sets/${examSet.id}/questions`)}
-                          title="Quản lý câu hỏi"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDeleteExamSet(examSet.id)}
-                          className="text-red-600 hover:text-red-700"
-                          title="Xóa đề thi"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+
+            <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm font-medium">Active Sets</p>
+                    <p className="text-2xl font-bold">{activeExamSets}</p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-200" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-sm font-medium">Total Questions</p>
+                    <p className="text-2xl font-bold">{totalQuestions}</p>
+                  </div>
+                  <Target className="h-8 w-8 text-purple-200" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium">Avg. Duration</p>
+                    <p className="text-2xl font-bold">{avgTimeLimit}m</p>
+                    <p className="text-orange-200 text-xs mt-1">
+                      ~{Math.round(avgTimePerQuestion * 60)}s/câu
+                    </p>
+                  </div>
+                  <Clock className="h-8 w-8 text-orange-200" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-white shadow-sm border">
+            <TabsTrigger value="manage" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <BookOpen className="h-4 w-4" />
+              Quản lý đề thi
+            </TabsTrigger>
+            <TabsTrigger value="create" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white">
+              <Plus className="h-4 w-4" />
+              Tạo đề thi
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white">
+              <Calendar className="h-4 w-4" />
+              Lịch sử thi
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="manage" className="mt-6 space-y-6">
+            {/* Enhanced Search and Filters */}
+            <Card className="bg-white shadow-lg border-0">
+              <CardContent className="p-6">
+                <div className="flex flex-col lg:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        placeholder="Tìm kiếm đề thi..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-12 h-12 text-base border-2 focus:border-blue-500 transition-colors"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                  </div>
+                  <div className="flex gap-3">
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="w-40 h-12 border-2 focus:border-blue-500">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả loại</SelectItem>
+                        <SelectItem value="full">Full TOEIC (200+ câu)</SelectItem>
+                        <SelectItem value="practice">Practice Test (100-199 câu)</SelectItem>
+                        <SelectItem value="mini">Mini Test (50-99 câu)</SelectItem>
+                        <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterActive} onValueChange={setFilterActive}>
+                      <SelectTrigger className="w-40 h-12 border-2 focus:border-blue-500">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                        <SelectItem value="active">Đang hoạt động</SelectItem>
+                        <SelectItem value="inactive">Tạm dừng</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <TabsContent value="create" className="mt-6">
-          <EnhancedExamSetCreator />
-        </TabsContent>
-
-        <TabsContent value="history" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Exam History</CardTitle>
-              <CardDescription>
-                View your past exam attempts and results
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No exam history yet. Take an exam to see your results here.</p>
+            {/* Enhanced Exam Sets List */}
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-4 text-muted-foreground text-lg">Đang tải đề thi...</p>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            ) : filteredExamSets.length === 0 ? (
+              <Card className="bg-white shadow-lg border-0">
+                <CardContent className="text-center py-12">
+                  <div className="p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                    <BookOpen className="h-10 w-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    {examSets.length === 0 ? 'Chưa có đề thi nào' : 'Không tìm thấy đề thi phù hợp'}
+                  </h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    {examSets.length === 0 
+                      ? 'Hãy tạo đề thi đầu tiên để bắt đầu quá trình học tập TOEIC'
+                      : 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
+                    }
+                  </p>
+                  <Button 
+                    onClick={() => setActiveTab('create')}
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-8 py-3 text-lg"
+                  >
+                    <Plus className="mr-2 h-5 w-5" />
+                    Tạo đề thi đầu tiên
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6">
+                {filteredExamSets.map((examSet) => (
+                  <Card key={examSet.id} className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+                              {getTypeIcon(examSet.type)}
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900">{examSet.title}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className={`${examSet.is_active ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'} px-3 py-1`}>
+                                  {examSet.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
+                                </Badge>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`px-3 py-1 ${
+                                    examSet.question_count >= 200 
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                                      : examSet.question_count >= 100
+                                      ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                      : 'bg-green-50 text-green-700 border-green-200'
+                                  }`}
+                                >
+                                  {examSet.question_count >= 200 
+                                    ? 'Full TOEIC' 
+                                    : examSet.question_count >= 100
+                                    ? 'Practice Test'
+                                    : 'Mini Test'
+                                  }
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <p className="text-gray-600 mb-4 text-base leading-relaxed">{examSet.description}</p>
+                          
+                          <div className="flex items-center gap-6 text-sm">
+                            <div className="flex items-center gap-2 text-blue-600">
+                              <Target className="h-5 w-5" />
+                              <span className="font-semibold">{examSet.question_count} câu hỏi</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-green-600">
+                              <Clock className="h-5 w-5" />
+                              <span className="font-semibold">
+                                {examSet.time_limit} phút
+                                <span className="text-xs text-gray-500 ml-1">
+                                  (~{Math.round(examSet.time_limit * 60 / examSet.question_count)}s/câu)
+                                </span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-purple-600">
+                              <Users className="h-5 w-5" />
+                              <span className="font-semibold capitalize">{examSet.difficulty}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-3 ml-6">
+                          {examSet.is_active && (
+                            <Button 
+                              onClick={() => handleStartExam(examSet.id)}
+                              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+                              title="Bắt đầu làm bài thi"
+                            >
+                              <Play className="mr-2 h-5 w-5" />
+                              Bắt đầu thi
+                            </Button>
+                          )}
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/exam-selection/${examSet.id}`)}
+                              className="h-10 w-10 border-2 hover:border-blue-500 hover:text-blue-500 transition-colors"
+                              title="Xem chi tiết đề thi"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/exam-sets/${examSet.id}/questions`)}
+                              className="h-10 w-10 border-2 hover:border-purple-500 hover:text-purple-500 transition-colors"
+                              title="Quản lý câu hỏi"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteExamSet(examSet.id)}
+                              className="h-10 w-10 border-2 hover:border-red-500 hover:text-red-500 transition-colors"
+                              title="Xóa đề thi"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="create" className="mt-6">
+            <WizardExamSetCreator />
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6">
+            <Card className="bg-white shadow-lg border-0">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl font-bold text-gray-900">Lịch sử thi</CardTitle>
+                <CardDescription className="text-base">
+                  Xem lại các bài thi đã làm và kết quả của bạn
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <div className="p-4 bg-gradient-to-r from-orange-100 to-red-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                    <Calendar className="h-10 w-10 text-orange-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Chưa có lịch sử thi</h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Hãy làm bài thi để xem kết quả và tiến độ học tập của bạn tại đây
+                  </p>
+                  <Button 
+                    onClick={() => setActiveTab('manage')}
+                    className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-3 text-lg"
+                  >
+                    <Play className="mr-2 h-5 w-5" />
+                    Bắt đầu làm bài thi
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

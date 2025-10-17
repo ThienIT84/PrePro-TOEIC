@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { t } from '@/lib/i18n';
-import { Clock, BookOpen, RotateCcw, Calendar, Headphones, FileText, Play, Pause } from 'lucide-react';
+import { Clock, BookOpen, RotateCcw, Calendar, Headphones, FileText, Play, Pause, CheckCircle, XCircle } from 'lucide-react';
 import SimpleAudioPlayer from '@/components/SimpleAudioPlayer';
 import { updateReview, getReviewStats } from '@/utils/reviewUtils';
 import type { Question, Review as ReviewType } from '@/types';
@@ -198,7 +198,7 @@ const Review = () => {
                 <div className="mb-4">
                   <SimpleAudioPlayer 
                     audioUrl={currentReview.item.audio_url} 
-                    transcript={currentReview.item.transcript || ''} 
+                    transcript={(currentReview.item.part === 3 || currentReview.item.part === 4) ? '' : currentReview.item.transcript || ''} 
                   />
                 </div>
               )}
@@ -217,7 +217,7 @@ const Review = () => {
 
               <h3 className="text-lg font-semibold">{currentReview.item.prompt_text}</h3>
               
-              {currentReview.item.transcript && !currentReview.item.audio_url && (
+              {currentReview.item.transcript && !currentReview.item.audio_url && currentReview.item.part !== 3 && currentReview.item.part !== 4 && (
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground italic">
                     "{currentReview.item.transcript}"
@@ -229,7 +229,7 @@ const Review = () => {
             {/* Choices */}
             {currentReview.item.choices && typeof currentReview.item.choices === 'object' && (
               <div className="space-y-3">
-                {['A', 'B', 'C', 'D'].map((letter) => {
+                {(currentReview.item.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((letter) => {
                   const choices = currentReview.item.choices as unknown;
                   const choiceText = choices?.[letter] || '';
                   if (!choiceText) return null;
@@ -260,7 +260,13 @@ const Review = () => {
                         }`}>
                           {letter}
                         </span>
-                        <span>{choiceText}</span>
+                        <span className="flex-1">{choiceText}</span>
+                        {isCorrectAnswer && (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        )}
+                        {isSelected && !isCorrectAnswer && (
+                          <XCircle className="h-5 w-5 text-red-600" />
+                        )}
                       </div>
                     </button>
                   );

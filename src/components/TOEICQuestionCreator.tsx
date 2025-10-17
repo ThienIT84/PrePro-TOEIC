@@ -54,6 +54,8 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
     part: 3 as TOEICPart,
     passage_type: 'single' as PassageType,
     texts: { title: '', content: '', additional: '' },
+    translation_vi: { content: '' },
+    translation_en: { content: '' },
     audio_url: '',
     assets: { images: [] as string[], charts: [] as string[] },
     meta: { word_count: 0, reading_time: 0, topic: '' },
@@ -129,6 +131,15 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
     }));
   };
 
+  const handleTranslationChange = (language: 'vi' | 'en', value: string) => {
+    setPassageData(prev => ({
+      ...prev,
+      [`translation_${language}`]: {
+        content: value
+      }
+    }));
+  };
+
   const addTag = () => {
     if (newTag.trim() && !questionData.tags.includes(newTag.trim())) {
       setQuestionData(prev => ({
@@ -164,6 +175,8 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
           part: passageData.part,
           passage_type: passageData.passage_type,
           texts: passageData.texts,
+          translation_vi: passageData.translation_vi.content ? passageData.translation_vi : null,
+          translation_en: passageData.translation_en.content ? passageData.translation_en : null,
           audio_url: passageData.audio_url || null,
           assets: passageData.assets,
           meta: passageData.meta,
@@ -184,6 +197,8 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
         part: 3 as TOEICPart,
         passage_type: 'single' as PassageType,
         texts: { title: '', content: '', additional: '' },
+        translation_vi: { content: '' },
+        translation_en: { content: '' },
         audio_url: '',
         assets: { images: [], charts: [] },
         meta: { word_count: 0, reading_time: 0, topic: '' },
@@ -812,6 +827,28 @@ const TOEICQuestionCreator: React.FC<TOEICQuestionCreatorProps> = ({ onSuccess }
                     />
                   </div>
                 )}
+
+                {/* Translation Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Bản dịch tiếng Việt (tùy chọn)</Label>
+                    <Textarea
+                      value={passageData.translation_vi.content}
+                      onChange={(e) => handleTranslationChange('vi', e.target.value)}
+                      placeholder="Nhập bản dịch tiếng Việt..."
+                      rows={6}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bản dịch tiếng Anh (tùy chọn)</Label>
+                    <Textarea
+                      value={passageData.translation_en.content}
+                      onChange={(e) => handleTranslationChange('en', e.target.value)}
+                      placeholder="Enter English translation..."
+                      rows={6}
+                    />
+                  </div>
+                </div>
 
                 <div className="space-y-2">
                   <Label>Audio URL (tùy chọn)</Label>

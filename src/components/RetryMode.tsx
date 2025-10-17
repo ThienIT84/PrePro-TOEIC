@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PassageDisplay } from '@/components/PassageDisplay';
 import { 
   CheckCircle, 
   XCircle, 
@@ -364,15 +365,29 @@ const RetryMode: React.FC<RetryModeProps> = ({
                 </div>
               )}
 
-              {/* Part 6,7 Passage Images (from passages) */}
-              {currentQuestion && (currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.question.passage_id && passageMap[currentQuestion.question.passage_id] && (
+              {/* Part 7 Passage Images (from passages) - Skip Part 6 as PassageDisplay handles it */}
+              {currentQuestion && currentQuestion.part === 7 && currentQuestion.question.passage_id && passageMap[currentQuestion.question.passage_id] && (
                 (() => {
                   const p = passageMap[currentQuestion.question.passage_id];
-                  const extra = (p.texts?.additional || '')
-                    .split('|')
-                    .map(s => s.trim())
-                    .filter(Boolean);
-                  const images = [p.image_url, ...extra].filter(Boolean) as string[];
+                  const images = [];
+                  
+                  // Add images from new structure
+                  if (p.texts?.img_url) images.push(p.texts.img_url);
+                  if (p.texts?.img_url2) images.push(p.texts.img_url2);
+                  if (p.texts?.img_url3) images.push(p.texts.img_url3);
+                  
+                  // Backward compatibility: fallback to old structure
+                  if (images.length === 0) {
+                    if (p.image_url) images.push(p.image_url);
+                    if (p.texts?.additional) {
+                      const extra = p.texts.additional
+                        .split('|')
+                        .map(s => s.trim())
+                        .filter(Boolean);
+                      images.push(...extra);
+                    }
+                  }
+                  
                   if (images.length === 0) return null;
                   
                   return (
@@ -396,6 +411,26 @@ const RetryMode: React.FC<RetryModeProps> = ({
                     </div>
                   );
                 })()
+              )}
+
+              {/* Passage Content for Part 3, 4, 6, 7 */}
+              {currentQuestion && (currentQuestion.part === 3 || currentQuestion.part === 4 || currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.question.passage_id && (
+                <div className="mb-6">
+                  <PassageDisplay
+                    passage={{
+                      content: passageMap[currentQuestion.question.passage_id]?.texts?.content || '',
+                      title: passageMap[currentQuestion.question.passage_id]?.texts?.title || `Passage ${currentQuestionIndex + 1}`,
+                      content2: passageMap[currentQuestion.question.passage_id]?.texts?.content2,
+                      content3: passageMap[currentQuestion.question.passage_id]?.texts?.content3,
+                      img_url: passageMap[currentQuestion.question.passage_id]?.texts?.img_url,
+                      img_url2: currentQuestion.part === 6 ? undefined : passageMap[currentQuestion.question.passage_id]?.texts?.img_url2,
+                      img_url3: currentQuestion.part === 6 ? undefined : passageMap[currentQuestion.question.passage_id]?.texts?.img_url3
+                    }}
+                    translationVi={passageMap[currentQuestion.question.passage_id]?.translation_vi}
+                    translationEn={passageMap[currentQuestion.question.passage_id]?.translation_en}
+                    showTranslation={true}
+                  />
+                </div>
               )}
 
               {/* Part 6,7 Passage Text - Hidden for Part 6,7, only show images */}
@@ -692,7 +727,7 @@ const RetryMode: React.FC<RetryModeProps> = ({
                       
                       // If no choices data, show default A, B, C, D
                       if (choiceKeys.length === 0) {
-                        return ['A', 'B', 'C', 'D'].map((choiceLetter) => {
+                        return (currentQuestion?.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choiceLetter) => {
                           const isSelected = currentQuestion?.userAnswer === choiceLetter;
                           const isCorrect = currentQuestion?.correctAnswer === choiceLetter;
                           

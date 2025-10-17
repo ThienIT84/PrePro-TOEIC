@@ -71,11 +71,16 @@ interface PassageLite {
   title: string;
   content: string;
   audio_url?: string;
-  image_url?: string;
+  image_url?: string; // Backward compatibility
   texts?: {
     title?: string;
     content?: string;
-    additional?: string;
+    content2?: string;
+    content3?: string;
+    img_url?: string;
+    img_url2?: string;
+    img_url3?: string;
+    additional?: string; // Backward compatibility
   };
 }
 import ExamSessionView from './ExamSessionView';
@@ -278,7 +283,82 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
 
       // Filter by selected parts if provided
       if (selectedParts && selectedParts.length > 0) {
-        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
+        // For Part 6, ensure passage integrity (all questions from same passage)
+        if (selectedParts.includes(6)) {
+          const part6Questions = orderedQuestions.filter(q => q.part === 6);
+          const otherPartQuestions = orderedQuestions.filter(q => q.part !== 6 && selectedParts.includes(q.part as number));
+          
+          // Group Part 6 questions by passage_id and sort by blank_index
+          const passageGroups: Record<string, Question[]> = {};
+          part6Questions.forEach(q => {
+            if (q.passage_id) {
+              if (!passageGroups[q.passage_id]) {
+                passageGroups[q.passage_id] = [];
+              }
+              passageGroups[q.passage_id].push(q);
+            }
+          });
+          
+          // Sort questions within each passage by blank_index (for Part 6)
+          Object.keys(passageGroups).forEach(passageId => {
+            passageGroups[passageId].sort((a, b) => {
+              // For Part 6, sort by blank_index first, then by order_index as fallback
+              const aBlankIndex = a.blank_index || 0;
+              const bBlankIndex = b.blank_index || 0;
+              if (aBlankIndex !== bBlankIndex) {
+                return aBlankIndex - bBlankIndex;
+              }
+              // Fallback to order_index if blank_index is the same
+              const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+              const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+              return aOrder - bOrder;
+            });
+          });
+          
+          // Only include complete passages (all questions from same passage)
+          const validPart6Questions: Question[] = [];
+          Object.values(passageGroups).forEach(passageQuestions => {
+            // Check if this passage has all its questions in the exam set
+            const passageId = passageQuestions[0].passage_id;
+            const allPassageQuestions = orderedQuestions.filter(q => q.passage_id === passageId);
+            
+            // Only include if we have all questions from this passage
+            if (passageQuestions.length === allPassageQuestions.length) {
+              validPart6Questions.push(...passageQuestions);
+            }
+          });
+          
+          // Sort passages by the first question's order_index, but maintain passage integrity
+          validPart6Questions.sort((a, b) => {
+            // Group by passage_id first, then sort passages by their first question's order_index
+            const aPassageId = a.passage_id;
+            const bPassageId = b.passage_id;
+            
+            if (aPassageId !== bPassageId) {
+              // Different passages - sort by the first question's order_index in each passage
+              const aFirstOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
+              const bFirstOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
+              return aFirstOrder - bFirstOrder;
+            }
+            
+            // Same passage - sort by blank_index
+            const aBlankIndex = a.blank_index || 0;
+            const bBlankIndex = b.blank_index || 0;
+            return aBlankIndex - bBlankIndex;
+          });
+          
+          orderedQuestions = [...otherPartQuestions, ...validPart6Questions];
+          console.log(`Part 6 passage integrity: ${validPart6Questions.length} questions from ${Object.keys(passageGroups).length} passages`);
+          console.log('Final Part 6 questions order:', validPart6Questions.map(q => ({
+            id: q.id.substring(0,8),
+            passage_id: q.passage_id,
+            blank_index: q.blank_index,
+            order: examQRows.find(r => r.question_id === q.id)?.order_index
+          })));
+        } else {
+          // For other parts, simple filtering
+          orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
+        }
       }
 
       // Load passages for questions that need them
