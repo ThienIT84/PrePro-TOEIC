@@ -94,6 +94,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
   const [passageMap, setPassageMap] = useState<Record<string, PassageLite>>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [autoSaveInterval, setAutoSaveInterval] = useState<NodeJS.Timeout | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Auto-save functionality
   const autoSave = useCallback(async () => {
@@ -219,6 +220,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
   useEffect(() => {
     fetchExamData();
     checkIfCompleted();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examSetId]);
 
   useEffect(() => {
@@ -237,6 +239,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
     }
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStarted, isPaused, timeLeft, timeMode]);
 
   // Start auto-save when exam starts
@@ -324,7 +327,8 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
         .select(`
           *,
           passages (*)
-        `);
+        `)
+        .eq('status', 'published'); // Only get published questions
 
       if (selectedParts && selectedParts.length > 0) {
         questionsQuery = questionsQuery.in('part', selectedParts);
@@ -335,7 +339,16 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
 
       if (questionsError) {
         console.error('Questions error:', questionsError);
-        throw questionsError;
+        setError('Không thể tải câu hỏi: ' + questionsError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!questionsData || questionsData.length === 0) {
+        console.error('No questions found');
+        setError('Không tìm thấy câu hỏi nào cho bài thi này');
+        setLoading(false);
+        return;
       }
 
       console.log('Questions data:', questionsData);
@@ -373,10 +386,8 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
             if (aBlankIndex !== bBlankIndex) {
               return aBlankIndex - bBlankIndex;
             }
-            // Fallback to order_index if blank_index is the same
-            const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
-            const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
-            return aOrder - bOrder;
+            // Fallback to question_number if blank_index is the same
+            return (a.question_number || 0) - (b.question_number || 0);
           });
         });
         
@@ -400,10 +411,8 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
           const bPassageId = b.passage_id;
           
           if (aPassageId !== bPassageId) {
-            // Different passages - sort by the first question's order_index in each passage
-            const aFirstOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
-            const bFirstOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
-            return aFirstOrder - bFirstOrder;
+            // Different passages - sort by the first question's question_number in each passage
+            return (a.question_number || 0) - (b.question_number || 0);
           }
           
           // Same passage - sort by blank_index

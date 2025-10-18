@@ -19,6 +19,18 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 })
 
+// Global error handler for invalid refresh tokens
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('✅ Token refreshed successfully')
+  }
+  
+  if (event === 'SIGNED_OUT') {
+    console.log('🚪 User signed out - clearing local data')
+    localStorage.clear()
+  }
+})
+
 // Export types for use in other files
 export type { Database } from './types'
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
