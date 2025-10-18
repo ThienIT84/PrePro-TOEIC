@@ -30,7 +30,17 @@ import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import { useParams } from "react-router-dom";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
+      gcTime: 30 * 60 * 1000, // Keep unused data in cache for 30 minutes
+      retry: 2, // Retry failed requests 2 times
+      refetchOnWindowFocus: false, // Don't refetch when window regains focus
+      refetchOnReconnect: 'always', // Refetch when internet reconnects
+    },
+  },
+});
 
 const ExamSessionWrapper = () => {
   const { examSetId } = useParams<{ examSetId: string }>();

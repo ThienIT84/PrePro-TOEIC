@@ -23,6 +23,14 @@ export const useAuth = () => {
       async (event, session) => {
         const startTime = performance.now();
         
+        // Handle token refresh errors
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed successfully');
+        } else if (event === 'SIGNED_OUT') {
+          // Clear cache on sign out
+          localStorage.removeItem('cached_profile');
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         
