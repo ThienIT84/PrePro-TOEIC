@@ -961,3 +961,4 @@ CREATE TYPE drill_type AS ENUM ('vocab', 'grammar', 'listening', 'reading', 'mix
 **Version:** 1.0.0  
 **Database:** Supabase PostgreSQL 13+  
 
+
