@@ -1,12 +1,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, ArrowRight, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface WizardStepProps {
   currentStep: number;
   totalSteps: number;
   isValid: boolean;
+  validationErrors?: string[];
   onNext: () => void;
   onPrevious: () => void;
   onComplete: () => void;
@@ -20,6 +23,7 @@ const WizardStep: React.FC<WizardStepProps> = ({
   currentStep,
   totalSteps,
   isValid,
+  validationErrors = [],
   onNext,
   onPrevious,
   onComplete,
@@ -38,6 +42,21 @@ const WizardStep: React.FC<WizardStepProps> = ({
           {children}
         </div>
 
+        {/* Validation Errors */}
+        {!isValid && validationErrors.length > 0 && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="font-semibold mb-2">Vui lòng sửa các lỗi sau:</div>
+              <ul className="list-disc list-inside space-y-1">
+                {validationErrors.map((error, index) => (
+                  <li key={index} className="text-sm">{error}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Navigation */}
         <div className="flex items-center justify-between pt-6 border-t">
           <div className="flex items-center gap-2">
@@ -49,7 +68,7 @@ const WizardStep: React.FC<WizardStepProps> = ({
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Previous
+                {t('wizard.buttons.previous')}
               </Button>
             )}
           </div>
@@ -61,7 +80,7 @@ const WizardStep: React.FC<WizardStepProps> = ({
                 disabled={!isValid || loading}
                 className="flex items-center gap-2"
               >
-                Next
+                {t('wizard.buttons.next')}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
@@ -78,7 +97,7 @@ const WizardStep: React.FC<WizardStepProps> = ({
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    Create Exam Set
+                    {t('wizard.buttons.create')}
                   </>
                 )}
               </Button>
@@ -96,6 +115,7 @@ const WizardStep: React.FC<WizardStepProps> = ({
 };
 
 export default WizardStep;
+
 
 
 

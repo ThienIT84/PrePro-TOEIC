@@ -6,6 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   Plus, 
   Play, 
@@ -32,6 +42,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import WizardExamSetCreator from '@/components/WizardExamSetCreator';
 import { useNavigate } from 'react-router-dom';
@@ -40,7 +51,7 @@ interface ExamSet {
   id: string;
   title: string;
   description: string | null;
-  type: 'full' | 'mini' | 'custom' | 'vocab' | 'grammar' | 'listening' | 'reading' | 'mix';
+  type: 'vocab' | 'grammar' | 'listening' | 'reading' | 'mix';
   difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
   question_count: number;
   time_limit: number;
@@ -52,8 +63,42 @@ interface ExamSet {
   max_attempts?: number;
 }
 
+// Helper to extract exam format from description metadata
+const getExamFormat = (examSet: ExamSet): 'full' | 'mini' | 'custom' => {
+  const match = examSet.description?.match(/\[exam_format:(full|mini|custom)\]/);
+  if (match) {
+    return match[1] as 'full' | 'mini' | 'custom';
+  }
+  // Fallback to inferring from question count
+  if (examSet.question_count >= 200) return 'full';
+  if (examSet.question_count >= 50 && examSet.question_count < 200) return 'mini';
+  return 'custom';
+};
+
+// Helper to get clean description without metadata
+const getCleanDescription = (description: string | null): string => {
+  if (!description) return '';
+  return description.replace(/\[exam_format:(full|mini|custom)\]/, '').trim();
+};
+
+// Helper to get/set status in description metadata
+const getStatusFromDescription = (description: string | null): 'active' | 'draft' | 'inactive' => {
+  const match = description?.match(/\[status:(active|draft|inactive)\]/);
+  if (match) return match[1] as any;
+  return 'active';
+};
+
+const setStatusInDescription = (description: string | null, status: 'active' | 'draft' | 'inactive'): string => {
+  const base = description || '';
+  if (base.match(/\[status:(active|draft|inactive)\]/)) {
+    return base.replace(/\[status:(active|draft|inactive)\]/, `[status:${status}]`);
+  }
+  return `${base}\n[status:${status}]`;
+};
+
 const ExamSets = () => {
   const { user } = useAuth();
+  const { permissions, getUserRole } = usePermissions();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('manage');
   const [examSets, setExamSets] = useState<ExamSet[]>([]);
@@ -61,6 +106,8 @@ const ExamSets = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterActive, setFilterActive] = useState<string>('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<ExamSet | null>(null);
 
   useEffect(() => {
     fetchExamSets();
@@ -88,27 +135,37 @@ const ExamSets = () => {
     }
   };
 
-  const handleDeleteExamSet = async (id: string) => {
+  const handleDeleteClick = (examSet: ExamSet) => {
+    setExamToDelete(examSet);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!examToDelete) return;
+
     try {
       const { error } = await supabase
         .from('exam_sets')
         .delete()
-        .eq('id', id);
+        .eq('id', examToDelete.id);
 
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Exam set deleted successfully.'
+        title: 'Thành công',
+        description: `Đã xóa đề thi "${examToDelete.title}"`
       });
 
       fetchExamSets();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to delete exam set.',
+        title: 'Lỗi',
+        description: 'Không thể xóa đề thi. Vui lòng thử lại.',
         variant: 'destructive'
       });
+    } finally {
+      setDeleteDialogOpen(false);
+      setExamToDelete(null);
     }
   };
 
@@ -121,19 +178,28 @@ const ExamSets = () => {
     const matchesSearch = examSet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (examSet.description && examSet.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Enhanced type filtering based on question count
+    // Enhanced type filtering using exam format and database type
     let matchesType = true;
+    const format = getExamFormat(examSet);
+    
     if (filterType === 'full') {
-      matchesType = examSet.question_count >= 200;
-    } else if (filterType === 'practice') {
-      matchesType = examSet.question_count >= 100 && examSet.question_count < 200;
+      matchesType = format === 'full';
     } else if (filterType === 'mini') {
-      matchesType = examSet.question_count >= 50 && examSet.question_count < 100;
+      matchesType = format === 'mini';
     } else if (filterType === 'custom') {
-      matchesType = examSet.question_count < 50;
-    } else if (filterType !== 'all') {
-      matchesType = examSet.type === filterType;
+      matchesType = format === 'custom';
+    } else if (filterType === 'listening') {
+      matchesType = examSet.type === 'listening';
+    } else if (filterType === 'reading') {
+      matchesType = examSet.type === 'reading';
+    } else if (filterType === 'vocab') {
+      matchesType = examSet.type === 'vocab';
+    } else if (filterType === 'grammar') {
+      matchesType = examSet.type === 'grammar';
+    } else if (filterType === 'mix') {
+      matchesType = examSet.type === 'mix';
     }
+    // 'all' means no filter
     
     const matchesActive = filterActive === 'all' || 
                          (filterActive === 'active' && examSet.is_active) ||
@@ -283,10 +349,14 @@ const ExamSets = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả loại</SelectItem>
-                        <SelectItem value="full">Full TOEIC (200+ câu)</SelectItem>
-                        <SelectItem value="practice">Practice Test (100-199 câu)</SelectItem>
-                        <SelectItem value="mini">Mini Test (50-99 câu)</SelectItem>
+                        <SelectItem value="full">Full TOEIC</SelectItem>
+                        <SelectItem value="mini">Mini Test</SelectItem>
                         <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                        <SelectItem value="listening">Listening Only</SelectItem>
+                        <SelectItem value="reading">Reading Only</SelectItem>
+                        <SelectItem value="vocab">Vocabulary</SelectItem>
+                        <SelectItem value="grammar">Grammar</SelectItem>
+                        <SelectItem value="mix">Mix</SelectItem>
                       </SelectContent>
                     </Select>
                     <Select value={filterActive} onValueChange={setFilterActive}>
@@ -307,9 +377,33 @@ const ExamSets = () => {
 
             {/* Enhanced Exam Sets List */}
             {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-4 text-muted-foreground text-lg">Đang tải đề thi...</p>
+              <div className="grid gap-6">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="bg-white shadow-lg border-0 animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="w-12 h-12 bg-gray-200 rounded-lg" />
+                            <div className="flex-1">
+                              <div className="h-6 bg-gray-200 rounded w-1/3 mb-2" />
+                              <div className="flex gap-2">
+                                <div className="h-6 w-24 bg-gray-200 rounded" />
+                                <div className="h-6 w-20 bg-gray-200 rounded" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+                          <div className="h-4 bg-gray-200 rounded w-1/2" />
+                        </div>
+                        <div className="flex gap-3 ml-6">
+                          <div className="w-32 h-12 bg-gray-200 rounded" />
+                          <div className="w-10 h-10 bg-gray-200 rounded" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             ) : filteredExamSets.length === 0 ? (
               <Card className="bg-white shadow-lg border-0">
@@ -355,25 +449,25 @@ const ExamSets = () => {
                                 <Badge 
                                   variant="outline" 
                                   className={`px-3 py-1 ${
-                                    examSet.question_count >= 200 
+                                    getExamFormat(examSet) === 'full'
                                       ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                                      : examSet.question_count >= 100
-                                      ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                                      : 'bg-green-50 text-green-700 border-green-200'
+                                      : getExamFormat(examSet) === 'mini'
+                                      ? 'bg-green-50 text-green-700 border-green-200'
+                                      : 'bg-purple-50 text-purple-700 border-purple-200'
                                   }`}
                                 >
-                                  {examSet.question_count >= 200 
+                                  {getExamFormat(examSet) === 'full'
                                     ? 'Full TOEIC' 
-                                    : examSet.question_count >= 100
-                                    ? 'Practice Test'
-                                    : 'Mini Test'
+                                    : getExamFormat(examSet) === 'mini'
+                                    ? 'Mini Test'
+                                    : 'Custom'
                                   }
                                 </Badge>
                               </div>
                             </div>
                           </div>
                           
-                          <p className="text-gray-600 mb-4 text-base leading-relaxed">{examSet.description}</p>
+                          <p className="text-gray-600 mb-4 text-base leading-relaxed">{getCleanDescription(examSet.description)}</p>
                           
                           <div className="flex items-center gap-6 text-sm">
                             <div className="flex items-center gap-2 text-blue-600">
@@ -408,6 +502,47 @@ const ExamSets = () => {
                             </Button>
                           )}
                           <div className="flex gap-2">
+                            {/* Status Dropdown - teacher only */}
+                            {permissions?.canCreateExamSets && (
+                              <Select
+                                onValueChange={async (value) => {
+                                  const newStatus = value as 'active' | 'draft' | 'inactive';
+                                  // Block activating if incomplete
+                                  if (newStatus === 'active' && examSet.question_count <= 0) {
+                                    toast({
+                                      title: 'Không thể kích hoạt',
+                                      description: 'Đề thi chưa có câu hỏi. Vui lòng gán câu hỏi trước.',
+                                      variant: 'destructive'
+                                    });
+                                    return;
+                                  }
+                                  try {
+                                    const newDescription = setStatusInDescription(examSet.description, newStatus);
+                                    const { error } = await supabase
+                                      .from('exam_sets')
+                                      .update({
+                                        description: newDescription,
+                                        is_active: newStatus === 'active'
+                                      })
+                                      .eq('id', examSet.id);
+                                    if (error) throw error;
+                                    toast({ title: 'Đã cập nhật trạng thái' });
+                                    fetchExamSets();
+                                  } catch (e) {
+                                    toast({ title: 'Lỗi', description: 'Không thể cập nhật trạng thái', variant: 'destructive' });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-10 w-40">
+                                  <SelectValue placeholder={getStatusFromDescription(examSet.description)} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Kích hoạt</SelectItem>
+                                  <SelectItem value="draft">Nháp</SelectItem>
+                                  <SelectItem value="inactive">Tạm dừng</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -429,7 +564,7 @@ const ExamSets = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleDeleteExamSet(examSet.id)}
+                              onClick={() => handleDeleteClick(examSet)}
                               className="h-10 w-10 border-2 hover:border-red-500 hover:text-red-500 transition-colors"
                               title="Xóa đề thi"
                             >
@@ -446,7 +581,12 @@ const ExamSets = () => {
           </TabsContent>
 
           <TabsContent value="create" className="mt-6">
-            <WizardExamSetCreator />
+            <WizardExamSetCreator 
+              onExamCreated={() => {
+                fetchExamSets();
+                setActiveTab('manage');
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">
@@ -479,6 +619,49 @@ const ExamSets = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Xác nhận xóa đề thi
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>Bạn có chắc chắn muốn xóa đề thi này không?</p>
+              {examToDelete && (
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2 border border-gray-200">
+                  <div className="font-semibold text-gray-900">{examToDelete.title}</div>
+                  <div className="text-sm text-gray-600">{getCleanDescription(examToDelete.description)}</div>
+                  <div className="flex gap-4 text-sm text-gray-500 pt-2 border-t border-gray-200">
+                    <span className="flex items-center gap-1">
+                      <Target className="h-4 w-4" />
+                      {examToDelete.question_count} câu hỏi
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      {examToDelete.time_limit} phút
+                    </span>
+                  </div>
+                </div>
+              )}
+              <p className="text-red-600 font-medium">
+                ⚠️ Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Xóa đề thi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
