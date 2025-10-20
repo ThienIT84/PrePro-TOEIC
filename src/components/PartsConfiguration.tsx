@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@/lib/i18n';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -141,9 +142,9 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
       {/* Header with Statistics */}
       <Card>
         <CardHeader>
-          <CardTitle>Parts Configuration</CardTitle>
+          <CardTitle>{t('wizard.step.parts')}</CardTitle>
           <CardDescription>
-            Configure which TOEIC parts to include and their settings
+            {t('wizard.step.parts_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,22 +152,22 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
             <div className="text-center p-4 border rounded-lg">
               <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
               <div className="text-2xl font-bold">{getTotalQuestions()}</div>
-              <div className="text-sm text-muted-foreground">Total Questions</div>
+              <div className="text-sm text-muted-foreground">{t('wizard.common.questions').charAt(0).toUpperCase() + t('wizard.common.questions').slice(1)}</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <Clock className="h-8 w-8 mx-auto mb-2 text-primary" />
               <div className="text-2xl font-bold">{getTotalTime()}</div>
-              <div className="text-sm text-muted-foreground">Minutes</div>
+              <div className="text-sm text-muted-foreground">{t('wizard.common.minutes').charAt(0).toUpperCase() + t('wizard.common.minutes').slice(1)}</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <Headphones className="h-8 w-8 mx-auto mb-2 text-blue-600" />
               <div className="text-2xl font-bold">{getListeningQuestions()}</div>
-              <div className="text-sm text-muted-foreground">Listening</div>
+              <div className="text-sm text-muted-foreground">Nghe</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <FileText className="h-8 w-8 mx-auto mb-2 text-green-600" />
               <div className="text-2xl font-bold">{getReadingQuestions()}</div>
-              <div className="text-sm text-muted-foreground">Reading</div>
+              <div className="text-sm text-muted-foreground">Đọc</div>
             </div>
           </div>
 
@@ -178,7 +179,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
               className="flex items-center gap-2"
             >
               <Target className="h-4 w-4" />
-              Apply Full TOEIC Template
+              Áp dụng mẫu Full TOEIC
             </Button>
             <Button
               variant="outline"
@@ -186,7 +187,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
               className="flex items-center gap-2"
             >
               <BookOpen className="h-4 w-4" />
-              Apply Mini TOEIC Template
+              Áp dụng mẫu Mini TOEIC
             </Button>
           </div>
         </CardContent>
@@ -195,9 +196,9 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
       {/* Visual Timeline */}
       <Card>
         <CardHeader>
-          <CardTitle>TOEIC Parts Timeline</CardTitle>
+          <CardTitle>Dòng thời gian các phần TOEIC</CardTitle>
           <CardDescription>
-            Visual representation of the exam structure
+            Sơ đồ trực quan cấu trúc đề thi
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -206,9 +207,9 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Headphones className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-blue-600">Listening Section (Parts 1-4)</h3>
+                <h3 className="font-semibold text-blue-600">Khối Nghe (Parts 1-4)</h3>
                 <Badge variant="outline" className="text-blue-600">
-                  {getListeningQuestions()} questions
+                  {getListeningQuestions()} {t('wizard.common.questions')}
                 </Badge>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -239,7 +240,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <Label htmlFor={`questions-${part.part}`} className="text-xs">
-                                Questions
+                                Câu hỏi
                               </Label>
                               <Input
                                 id={`questions-${part.part}`}
@@ -251,7 +252,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
                             </div>
                             <div>
                               <Label htmlFor={`time-${part.part}`} className="text-xs">
-                                Time (min)
+                                Thời gian (phút)
                               </Label>
                               <Input
                                 id={`time-${part.part}`}
@@ -277,9 +278,9 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-green-600">Reading Section (Parts 5-7)</h3>
+                <h3 className="font-semibold text-green-600">Khối Đọc (Parts 5-7)</h3>
                 <Badge variant="outline" className="text-green-600">
-                  {getReadingQuestions()} questions
+                  {getReadingQuestions()} {t('wizard.common.questions')}
                 </Badge>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -310,7 +311,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <Label htmlFor={`questions-${part.part}`} className="text-xs">
-                                Questions
+                                Câu hỏi
                               </Label>
                               <Input
                                 id={`questions-${part.part}`}
@@ -322,7 +323,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
                             </div>
                             <div>
                               <Label htmlFor={`time-${part.part}`} className="text-xs">
-                                Time (min)
+                                Thời gian (phút)
                               </Label>
                               <Input
                                 id={`time-${part.part}`}
@@ -352,7 +353,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Please enable at least one part and configure the number of questions.
+            Vui lòng bật ít nhất một phần và thiết lập số câu hỏi.
           </AlertDescription>
         </Alert>
       )}
@@ -361,6 +362,7 @@ const PartsConfiguration: React.FC<PartsConfigurationProps> = ({
 };
 
 export default PartsConfiguration;
+
 
 
 

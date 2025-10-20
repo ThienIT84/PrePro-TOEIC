@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -30,6 +31,7 @@ import {
   Users,
   Calendar
 } from 'lucide-react';
+import { t } from '@/lib/i18n';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,8 +78,13 @@ interface ExamTemplate {
   totalTime: number;
 }
 
-const WizardExamSetCreator: React.FC = () => {
+interface WizardExamSetCreatorProps {
+  onExamCreated?: () => void;
+}
+
+const WizardExamSetCreator: React.FC<WizardExamSetCreatorProps> = ({ onExamCreated }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -210,16 +217,19 @@ const WizardExamSetCreator: React.FC = () => {
   ]);
 
   const steps = [
-    { id: 1, title: 'Basic Information', description: 'Exam details and settings', icon: Settings },
-    { id: 2, title: 'Parts Configuration', description: 'Configure TOEIC parts', icon: Target },
-    { id: 3, title: 'Question Assignment', description: 'Assign questions to parts', icon: Database },
-    { id: 4, title: 'Review & Preview', description: 'Review and preview exam', icon: Eye },
-    { id: 5, title: 'Complete', description: 'Save and activate exam', icon: CheckCircle }
+    { id: 1, title: t('wizard.step.basic'), description: t('wizard.step.basic_desc'), icon: Settings },
+    { id: 2, title: t('wizard.step.parts'), description: t('wizard.step.parts_desc'), icon: Target },
+    { id: 3, title: t('wizard.step.assign'), description: t('wizard.step.assign_desc'), icon: Database },
+    { id: 4, title: t('wizard.step.review'), description: t('wizard.step.review_desc'), icon: Eye },
+    { id: 5, title: t('wizard.step.complete'), description: t('wizard.step.complete_desc'), icon: CheckCircle }
   ];
 
   useEffect(() => {
-    fetchQuestionBank();
-  }, []);
+    // Lazy load question bank only when needed (step 3)
+    if (currentStep >= 3 && questionBank.length === 0) {
+      fetchQuestionBank();
+    }
+  }, [currentStep]);
 
   const fetchQuestionBank = async () => {
     setLoading(true);
@@ -286,35 +296,39 @@ const WizardExamSetCreator: React.FC = () => {
   };
 
   const handleAutoAssignQuestions = () => {
-    // TEMPORARY: Force assign ALL available questions regardless of difficulty
-    console.log('🚀 FORCE ASSIGNMENT MODE - Taking ALL available questions');
+    const targetDifficulty = formData.difficulty;
+    let warnings: string[] = [];
     
     const updatedParts = examParts.map(part => {
-      console.log(`\n=== Processing Part ${part.part} ===`);
-      
-      // Get ALL questions for this part (no difficulty filter)
+      if (!part.enabled) return part;
+
+      // Get questions for this part
       const allQuestionsForPart = questionBank.filter(q => q.part === part.part);
-      console.log(`Total questions for Part ${part.part}:`, allQuestionsForPart.length);
       
-      // Show difficulty breakdown
-      const difficultyBreakdown = allQuestionsForPart.reduce((acc, q) => {
-        acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log(`Difficulty breakdown for Part ${part.part}:`, difficultyBreakdown);
+      // Filter by difficulty if not 'mixed'
+      let availableQuestions = allQuestionsForPart;
+      if (targetDifficulty !== 'mixed') {
+        availableQuestions = allQuestionsForPart.filter(q => q.difficulty === targetDifficulty);
+        
+        // If not enough matching difficulty, fall back to all
+        if (availableQuestions.length < part.questionCount) {
+          warnings.push(
+            `Part ${part.part}: Chỉ có ${availableQuestions.length}/${part.questionCount} câu độ khó "${targetDifficulty}". Sẽ dùng thêm câu khác độ khó.`
+          );
+          availableQuestions = allQuestionsForPart;
+        }
+      }
       
-      // Take ALL available questions up to the required count
-      const shuffled = [...allQuestionsForPart].sort(() => 0.5 - Math.random());
+      // Check if enough questions available
+      if (availableQuestions.length < part.questionCount) {
+        warnings.push(
+          `Part ${part.part}: Thiếu ${part.questionCount - availableQuestions.length} câu (có ${availableQuestions.length}/${part.questionCount})`
+        );
+      }
+      
+      // Shuffle and select
+      const shuffled = [...availableQuestions].sort(() => 0.5 - Math.random());
       const selectedQuestions = shuffled.slice(0, part.questionCount);
-      
-      console.log(`Selected ${selectedQuestions.length}/${part.questionCount} questions for Part ${part.part}`);
-      
-      // Show final selection breakdown
-      const finalBreakdown = selectedQuestions.reduce((acc, q) => {
-        acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log(`Final selection breakdown:`, finalBreakdown);
       
       return { ...part, questions: selectedQuestions };
     });
@@ -322,25 +336,31 @@ const WizardExamSetCreator: React.FC = () => {
     setExamParts(updatedParts);
     
     // Show summary
-    const totalAssigned = updatedParts.reduce((sum, part) => sum + part.questions.length, 0);
-    const totalNeeded = updatedParts.reduce((sum, part) => sum + part.questionCount, 0);
+    const totalAssigned = updatedParts.filter(p => p.enabled).reduce((sum, part) => sum + part.questions.length, 0);
+    const totalNeeded = updatedParts.filter(p => p.enabled).reduce((sum, part) => sum + part.questionCount, 0);
     
-    console.log(`\n=== FORCE ASSIGNMENT SUMMARY ===`);
-    console.log(`Total assigned: ${totalAssigned}/${totalNeeded}`);
-    console.log(`Question bank size: ${questionBank.length}`);
-    
-    // Check if we filled all parts
-    const unfilledParts = updatedParts.filter(part => part.questions.length < part.questionCount);
-    if (unfilledParts.length > 0) {
-      console.warn('⚠️ Some parts still not filled:', unfilledParts.map(p => `Part ${p.part}: ${p.questions.length}/${p.questionCount}`));
+    if (warnings.length > 0) {
+      toast({
+        title: '⚠️ Gán câu hỏi hoàn tất với cảnh báo',
+        description: (
+          <div className="space-y-1">
+            <div>Đã gán {totalAssigned}/{totalNeeded} câu hỏi.</div>
+            <ul className="list-disc list-inside text-sm mt-2">
+              {warnings.slice(0, 3).map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+              {warnings.length > 3 && <li>...và {warnings.length - 3} cảnh báo khác</li>}
+            </ul>
+          </div>
+        ),
+        variant: 'destructive'
+      });
     } else {
-      console.log('✅ All parts filled successfully!');
+      toast({
+        title: '✅ Gán câu hỏi thành công',
+        description: `Đã gán ${totalAssigned}/${totalNeeded} câu hỏi theo độ khó "${targetDifficulty}".`
+      });
     }
-    
-    toast({
-      title: 'Force Assignment Complete',
-      description: `Assigned ${totalAssigned}/${totalNeeded} questions. All available questions used.`
-    });
   };
 
   const mapExamTypeToDatabaseType = (type: 'full' | 'mini' | 'custom') => {
@@ -351,7 +371,19 @@ const WizardExamSetCreator: React.FC = () => {
       case 'mini':
         return 'mix'; // Mini TOEIC also covers multiple parts
       case 'custom':
-        return 'mix'; // Custom can be any combination
+        // Determine type based on enabled parts
+        const enabledParts = examParts.filter(p => p.enabled);
+        const hasListening = enabledParts.some(p => p.part <= 4);
+        const hasReading = enabledParts.some(p => p.part >= 5);
+        
+        if (hasListening && hasReading) {
+          return 'mix';
+        } else if (hasListening) {
+          return 'listening';
+        } else if (hasReading) {
+          return 'reading';
+        }
+        return 'mix'; // Default fallback
       default:
         return 'mix';
     }
@@ -363,11 +395,14 @@ const WizardExamSetCreator: React.FC = () => {
       const totalQuestions = examParts.reduce((sum, part) => sum + part.questions.length, 0);
       const totalTime = examParts.reduce((sum, part) => sum + part.timeLimit, 0);
 
+      // Store exam_format in description metadata for display purposes
+      const descriptionWithMeta = `${formData.description}\n[exam_format:${formData.type}]`;
+
       const { data, error } = await supabase
         .from('exam_sets')
         .insert({
           title: formData.title,
-          description: formData.description,
+          description: descriptionWithMeta,
           type: mapExamTypeToDatabaseType(formData.type),
           difficulty: formData.difficulty,
           question_count: totalQuestions,
@@ -401,8 +436,8 @@ const WizardExamSetCreator: React.FC = () => {
       }
 
       toast({
-        title: 'Success',
-        description: 'Exam set created successfully!'
+        title: 'Thành công! 🎉',
+        description: `Đã tạo đề thi "${formData.title}" với ${examQuestions.length} câu hỏi.`
       });
 
       // Reset form
@@ -417,11 +452,21 @@ const WizardExamSetCreator: React.FC = () => {
       });
       setCurrentStep(1);
 
+      // Notify parent to refresh list
+      if (onExamCreated) {
+        onExamCreated();
+      }
+
+      // Navigate to exam questions management after short delay
+      setTimeout(() => {
+        navigate(`/exam-sets/${data.id}/questions`);
+      }, 1000);
+
     } catch (error) {
       console.error('Error creating exam set:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to create exam set.',
+        title: 'Lỗi',
+        description: 'Không thể tạo đề thi. Vui lòng thử lại.',
         variant: 'destructive'
       });
     } finally {
@@ -449,21 +494,59 @@ const WizardExamSetCreator: React.FC = () => {
     };
   };
 
-  const isStepValid = (step: number) => {
+  const getValidationErrors = (step: number): string[] => {
+    const errors: string[] = [];
+    
     switch (step) {
       case 1:
-        return formData.title.trim() !== '' && formData.description.trim() !== '';
+        if (!formData.title.trim()) {
+          errors.push('Tiêu đề đề thi là bắt buộc');
+        }
+        if (!formData.description.trim()) {
+          errors.push('Mô tả đề thi là bắt buộc');
+        }
+        if (formData.allow_multiple_attempts && formData.max_attempts !== '' && formData.max_attempts < 1) {
+          errors.push('Số lần làm tối đa phải ≥ 1 hoặc để trống');
+        }
+        break;
+      
       case 2:
-        return examParts.some(part => part.enabled);
+        const enabledParts = examParts.filter(p => p.enabled);
+        if (enabledParts.length === 0) {
+          errors.push('Phải chọn ít nhất 1 part cho đề thi');
+        }
+        break;
+      
       case 3:
-        return examParts.some(part => part.enabled && part.questions.length > 0);
+        const partsWithoutEnoughQuestions = examParts
+          .filter(p => p.enabled && p.questions.length < p.questionCount);
+        
+        if (partsWithoutEnoughQuestions.length > 0) {
+          partsWithoutEnoughQuestions.forEach(part => {
+            errors.push(
+              `Part ${part.part} (${part.name}): thiếu ${part.questionCount - part.questions.length}/${part.questionCount} câu`
+            );
+          });
+        }
+        break;
+      
       case 4:
-        return true; // Review step is always valid
       case 5:
-        return true; // Complete step is always valid
-      default:
-        return false;
+        // Final validation before create
+        const totalNeeded = examParts.filter(p => p.enabled).reduce((sum, p) => sum + p.questionCount, 0);
+        const totalAssigned = examParts.filter(p => p.enabled).reduce((sum, p) => sum + p.questions.length, 0);
+        
+        if (totalAssigned < totalNeeded) {
+          errors.push(`Chưa đủ câu hỏi: ${totalAssigned}/${totalNeeded} câu`);
+        }
+        break;
     }
+    
+    return errors;
+  };
+
+  const isStepValid = (step: number) => {
+    return getValidationErrors(step).length === 0;
   };
 
   const renderStepContent = () => {
@@ -473,24 +556,24 @@ const WizardExamSetCreator: React.FC = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
+                <CardTitle>{t('wizard.basic.title')}</CardTitle>
                 <CardDescription>
-                  Provide basic details about your exam set
+                  {t('wizard.basic.subtitle')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="title">Exam Title *</Label>
+                    <Label htmlFor="title">{t('wizard.field.title')} *</Label>
                     <Input
                       id="title"
                       value={formData.title}
                       onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="e.g., TOEIC Practice Test #1"
+                      placeholder={t('wizard.field.title_ph')}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="type">Exam Type</Label>
+                    <Label htmlFor="type">{t('wizard.field.type')}</Label>
                     <Select 
                       value={formData.type} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as 'full' | 'mini' | 'custom' }))}
@@ -499,28 +582,28 @@ const WizardExamSetCreator: React.FC = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="full">Full TOEIC (200 questions)</SelectItem>
-                        <SelectItem value="mini">Mini TOEIC (50 questions)</SelectItem>
-                        <SelectItem value="custom">Custom Exam</SelectItem>
+                        <SelectItem value="full">{t('wizard.template.full')}</SelectItem>
+                        <SelectItem value="mini">{t('wizard.template.mini')}</SelectItem>
+                        <SelectItem value="custom">Tùy chỉnh</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description *</Label>
+                  <Label htmlFor="description">{t('wizard.field.description')} *</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe the purpose and content of this exam..."
+                    placeholder={t('wizard.field.description_ph')}
                     rows={3}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="difficulty">Difficulty Level</Label>
+                    <Label htmlFor="difficulty">{t('wizard.field.difficulty')}</Label>
                     <Select 
                       value={formData.difficulty} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty: value as 'easy' | 'medium' | 'hard' | 'mixed' }))}
@@ -529,15 +612,15 @@ const WizardExamSetCreator: React.FC = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                        <SelectItem value="mixed">Mixed</SelectItem>
+                        <SelectItem value="easy">{t('difficulty.easy')}</SelectItem>
+                        <SelectItem value="medium">{t('difficulty.medium')}</SelectItem>
+                        <SelectItem value="hard">{t('difficulty.hard')}</SelectItem>
+                        <SelectItem value="mixed">Hỗn hợp</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="status">Status</Label>
+                    <Label htmlFor="status">{t('wizard.field.status')}</Label>
                     <Select 
                       value={formData.status} 
                       onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'draft' | 'active' | 'inactive' }))}
@@ -546,9 +629,9 @@ const WizardExamSetCreator: React.FC = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="draft">Nháp</SelectItem>
+                        <SelectItem value="active">Kích hoạt</SelectItem>
+                        <SelectItem value="inactive">Tạm dừng</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -561,19 +644,24 @@ const WizardExamSetCreator: React.FC = () => {
                       checked={formData.allow_multiple_attempts}
                       onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allow_multiple_attempts: checked as boolean }))}
                     />
-                    <Label htmlFor="allow_multiple_attempts">Allow multiple attempts</Label>
+                    <Label htmlFor="allow_multiple_attempts">{t('wizard.field.allow_multi')}</Label>
                   </div>
 
                   {formData.allow_multiple_attempts && (
                     <div>
-                      <Label htmlFor="max_attempts">Maximum Attempts</Label>
+                      <Label htmlFor="max_attempts">{t('wizard.field.max_attempts')}</Label>
                       <Input
                         id="max_attempts"
                         type="number"
+                        min="1"
                         value={formData.max_attempts}
                         onChange={(e) => setFormData(prev => ({ ...prev, max_attempts: e.target.value ? parseInt(e.target.value) : '' }))}
-                        placeholder="Leave empty for unlimited"
+                        placeholder={t('wizard.field.max_attempts_ph')}
+                        className={formData.max_attempts !== '' && formData.max_attempts < 1 ? 'border-red-500' : ''}
                       />
+                      {formData.max_attempts !== '' && formData.max_attempts < 1 && (
+                        <p className="text-sm text-red-500 mt-1">Số lần làm phải ≥ 1</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -583,9 +671,9 @@ const WizardExamSetCreator: React.FC = () => {
             {/* Templates */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Templates</CardTitle>
+                <CardTitle>{t('wizard.templates.title')}</CardTitle>
                 <CardDescription>
-                  Choose a template to get started quickly
+                  {t('wizard.templates.subtitle')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -601,12 +689,12 @@ const WizardExamSetCreator: React.FC = () => {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-2">
                           {template.type === 'full' ? <Target className="h-5 w-5" /> : <BookOpen className="h-5 w-5" />}
-                          <h3 className="font-semibold">{template.name}</h3>
+                          <h3 className="font-semibold">{template.type === 'full' ? t('wizard.template.full') : t('wizard.template.mini')}</h3>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">{template.description}</p>
                         <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>{template.totalQuestions} questions</span>
-                          <span>{template.totalTime} minutes</span>
+                          <span>{template.totalQuestions} {t('wizard.common.questions')}</span>
+                          <span>{template.totalTime} {t('wizard.common.minutes')}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -627,6 +715,21 @@ const WizardExamSetCreator: React.FC = () => {
         );
 
       case 3:
+        if (loading && questionBank.length === 0) {
+          return (
+            <Card>
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">Đang tải ngân hàng câu hỏi...</h3>
+                    <p className="text-sm text-muted-foreground">Vui lòng đợi trong giây lát</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        }
         return (
           <QuestionAssignment
             examParts={examParts}
@@ -705,21 +808,35 @@ const WizardExamSetCreator: React.FC = () => {
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Create New Exam Set</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('wizard.title')}</h1>
         <p className="text-muted-foreground">
-          Use this wizard to create a comprehensive TOEIC exam set
+          {t('wizard.subtitle')}
         </p>
       </div>
 
       {/* Progress Bar */}
       <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm font-medium text-gray-700">
+            Bước {currentStep} / {steps.length}
+          </div>
+          <div className="text-sm font-medium text-blue-600">
+            {Math.round(((currentStep - 1) / (steps.length - 1)) * 100)}% Hoàn thành
+          </div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div 
+            className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+          />
+        </div>
         <div className="flex items-center justify-between mb-4">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
                 currentStep >= step.id 
-                  ? 'bg-primary border-primary text-primary-foreground' 
-                  : 'border-muted-foreground text-muted-foreground'
+                  ? 'bg-primary border-primary text-primary-foreground shadow-lg' 
+                  : 'border-gray-300 text-gray-400 bg-white'
               }`}>
                 {currentStep > step.id ? (
                   <CheckCircle className="h-5 w-5" />
@@ -728,8 +845,8 @@ const WizardExamSetCreator: React.FC = () => {
                 )}
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-16 h-0.5 mx-2 ${
-                  currentStep > step.id ? 'bg-primary' : 'bg-muted-foreground'
+                <div className={`w-16 h-0.5 mx-2 transition-all ${
+                  currentStep > step.id ? 'bg-primary' : 'bg-gray-300'
                 }`} />
               )}
             </div>
@@ -738,7 +855,9 @@ const WizardExamSetCreator: React.FC = () => {
         <div className="flex justify-between text-sm text-muted-foreground">
           {steps.map((step) => (
             <div key={step.id} className="text-center max-w-20">
-              <div className="font-medium">{step.title}</div>
+              <div className={`font-medium ${currentStep === step.id ? 'text-primary' : ''}`}>
+                {step.title}
+              </div>
               <div className="text-xs">{step.description}</div>
             </div>
           ))}
@@ -750,6 +869,7 @@ const WizardExamSetCreator: React.FC = () => {
         currentStep={currentStep}
         totalSteps={steps.length}
         isValid={isStepValid(currentStep)}
+        validationErrors={getValidationErrors(currentStep)}
         onNext={handleNext}
         onPrevious={handlePrevious}
         onComplete={handleCreateExamSet}

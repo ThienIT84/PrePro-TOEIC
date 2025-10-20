@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import type { Question } from '@/types';
+import { t } from '@/lib/i18n';
 
 interface ExamPart {
   part: number;
@@ -59,19 +60,68 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+  const [filterPart, setFilterPart] = useState<string>('all');
+  const [filterMedia, setFilterMedia] = useState<string>('all');
+  const [filterTags, setFilterTags] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<string>('newest');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
+
+  // Debounce search term
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim().toLowerCase()), 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('manual');
 
   const filteredQuestions = useMemo(() => {
-    return questionBank.filter(question => {
-      const matchesSearch = (question.prompt_text?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                           (question.tags?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-      const matchesType = filterType === 'all' || question.type === filterType;
-      const matchesDifficulty = filterDifficulty === 'all' || question.difficulty === filterDifficulty;
-      
-      return matchesSearch && matchesType && matchesDifficulty;
-    });
-  }, [questionBank, searchTerm, filterType, filterDifficulty]);
+    const tagsQuery = filterTags
+      .split(',')
+      .map(t => t.trim().toLowerCase())
+      .filter(Boolean);
+
+    const list = questionBank
+      .filter(q => {
+        // Search by prompt or tags
+        const text = (q.prompt_text || '').toLowerCase();
+        const tagsText = (typeof q.tags === 'string' ? q.tags : Array.isArray(q.tags) ? q.tags.join(',') : '').toLowerCase();
+        const matchesSearch = !debouncedSearchTerm || text.includes(debouncedSearchTerm) || tagsText.includes(debouncedSearchTerm);
+
+        // Type + Difficulty
+        const matchesType = filterType === 'all' || q.type === filterType;
+        const matchesDifficulty = filterDifficulty === 'all' || q.difficulty === filterDifficulty;
+
+        // Part
+        const matchesPart = filterPart === 'all' || String(q.part) === filterPart;
+
+        // Media
+        const hasAudio = Boolean((q as any).audio_url);
+        const hasImage = Boolean((q as any).image_url);
+        const hasPassage = Boolean((q as any).passage_id);
+        const matchesMedia =
+          filterMedia === 'all' ||
+          (filterMedia === 'audio' && hasAudio) ||
+          (filterMedia === 'image' && hasImage) ||
+          (filterMedia === 'passage' && hasPassage) ||
+          (filterMedia === 'nomedia' && !hasAudio && !hasImage && !hasPassage);
+
+        // Tags include any
+        const qTags: string[] = typeof q.tags === 'string' ? q.tags.split(',').map((t: string) => t.trim().toLowerCase()) : Array.isArray(q.tags) ? q.tags.map((t: any) => String(t).toLowerCase()) : [];
+        const matchesTags = tagsQuery.length === 0 || tagsQuery.some(tg => qTags.includes(tg));
+
+        return matchesSearch && matchesType && matchesDifficulty && matchesPart && matchesMedia && matchesTags;
+      })
+      .sort((a: any, b: any) => {
+        if (sortOrder === 'newest') return (b.created_at ? Date.parse(b.created_at) : 0) - (a.created_at ? Date.parse(a.created_at) : 0);
+        if (sortOrder === 'oldest') return (a.created_at ? Date.parse(a.created_at) : 0) - (b.created_at ? Date.parse(b.created_at) : 0);
+        // fallback: by prompt length (as proxy for complexity)
+        if (sortOrder === 'shortest') return (a.prompt_text || '').length - (b.prompt_text || '').length;
+        if (sortOrder === 'longest') return (b.prompt_text || '').length - (a.prompt_text || '').length;
+        return 0;
+      });
+
+    return list;
+  }, [questionBank, debouncedSearchTerm, filterType, filterDifficulty, filterPart, filterMedia, filterTags, sortOrder]);
 
   const getQuestionBankStats = () => {
     const stats = {
@@ -180,10 +230,10 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Question Assignment Progress
+            {t('qa.progress_title')}
           </CardTitle>
           <CardDescription>
-            Assign questions to each part of your exam
+            {t('qa.progress_subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -191,22 +241,22 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
             <div className="text-center p-4 border rounded-lg">
               <Database className="h-8 w-8 mx-auto mb-2 text-primary" />
               <div className="text-2xl font-bold">{stats.totalAssigned}</div>
-              <div className="text-sm text-muted-foreground">Assigned</div>
+              <div className="text-sm text-muted-foreground">{t('qa.assigned')}</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
               <div className="text-2xl font-bold">{stats.totalNeeded}</div>
-              <div className="text-sm text-muted-foreground">Needed</div>
+              <div className="text-sm text-muted-foreground">{t('qa.needed')}</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <AlertCircle className="h-8 w-8 mx-auto mb-2 text-orange-600" />
               <div className="text-2xl font-bold">{stats.totalRemaining}</div>
-              <div className="text-sm text-muted-foreground">Remaining</div>
+              <div className="text-sm text-muted-foreground">{t('qa.remaining')}</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
               <div className="text-2xl font-bold">{Math.round(stats.completion)}%</div>
-              <div className="text-sm text-muted-foreground">Complete</div>
+              <div className="text-sm text-muted-foreground">{t('qa.complete')}</div>
             </div>
           </div>
 
@@ -214,43 +264,16 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
           <div className="flex gap-2 flex-wrap">
             <Button
               onClick={onAutoAssignQuestions}
-              disabled={loading}
+              disabled={loading || stats.totalRemaining === 0}
               className="flex items-center gap-2"
+              title={t('qa.auto_assign_tooltip')}
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Zap className="h-4 w-4" />
               )}
-              Auto Assign (Force All)
-            </Button>
-            <Button
-              onClick={() => {
-                // Force mixed difficulty assignment
-                const updatedParts = examParts.map(part => {
-                  const allQuestionsForPart = questionBank.filter(q => q.part === part.part);
-                  const shuffled = [...allQuestionsForPart].sort(() => 0.5 - Math.random());
-                  const selectedQuestions = shuffled.slice(0, part.questionCount);
-                  return { ...part, questions: selectedQuestions };
-                });
-                
-                // Update parent component
-                examParts.forEach((part, index) => {
-                  if (updatedParts[index].questions.length > 0) {
-                    onAddQuestionsToPart(part.part, updatedParts[index].questions.map(q => q.id));
-                  }
-                });
-                
-                toast({
-                  title: 'Force Mixed Assignment Complete',
-                  description: 'Assigned questions from all difficulties'
-                });
-              }}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Target className="h-4 w-4" />
-              Force Mixed Difficulty
+              {t('qa.auto_assign')}
             </Button>
             <Button
               variant="outline"
@@ -258,130 +281,37 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
               className="flex items-center gap-2"
             >
               <Users className="h-4 w-4" />
-              Manual Assignment
+              {t('qa.manual_assignment')}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Debug Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Database className="h-4 w-4" />
-            Question Bank Analysis
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Detailed breakdown of available questions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Total Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              <div className="text-center p-2 border rounded">
-                <div className="font-bold">{getQuestionBankStats().total}</div>
-                <div className="text-muted-foreground">Total Questions</div>
-              </div>
-              <div className="text-center p-2 border rounded">
-                <div className="font-bold">{Object.keys(getQuestionBankStats().byDifficulty).length}</div>
-                <div className="text-muted-foreground">Difficulties</div>
-              </div>
-              <div className="text-center p-2 border rounded">
-                <div className="font-bold">{Object.keys(getQuestionBankStats().byPart).length}</div>
-                <div className="text-muted-foreground">Parts</div>
-              </div>
-              <div className="text-center p-2 border rounded">
-                <div className="font-bold">{stats.totalNeeded}</div>
-                <div className="text-muted-foreground">Needed</div>
-              </div>
-            </div>
-
-            {/* By Part */}
-            <div>
-              <h4 className="font-medium text-sm mb-2">Questions by Part:</h4>
-              <div className="grid grid-cols-7 gap-1 text-xs">
-                {[1,2,3,4,5,6,7].map(part => (
-                  <div key={part} className="text-center p-2 border rounded">
-                    <div className="font-bold">Part {part}</div>
-                    <div className="text-muted-foreground">{getQuestionBankStats().byPart[part] || 0}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* By Difficulty */}
-            <div>
-              <h4 className="font-medium text-sm mb-2">Questions by Difficulty:</h4>
-              <div className="flex gap-2 text-xs">
-                {Object.entries(getQuestionBankStats().byDifficulty).map(([difficulty, count]) => (
-                  <div key={difficulty} className="text-center p-2 border rounded">
-                    <div className="font-bold">{difficulty}</div>
-                    <div className="text-muted-foreground">{count}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Detailed Breakdown */}
-            <div>
-              <h4 className="font-medium text-sm mb-2">Part × Difficulty Matrix:</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-1">Part</th>
-                      {Object.keys(getQuestionBankStats().byDifficulty).map(diff => (
-                        <th key={diff} className="text-center p-1">{diff}</th>
-                      ))}
-                      <th className="text-center p-1">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[1,2,3,4,5,6,7].map(part => (
-                      <tr key={part} className="border-b">
-                        <td className="p-1 font-medium">Part {part}</td>
-                        {Object.keys(getQuestionBankStats().byDifficulty).map(diff => (
-                          <td key={diff} className="text-center p-1">
-                            {getQuestionBankStats().byPartAndDifficulty[part]?.[diff] || 0}
-                          </td>
-                        ))}
-                        <td className="text-center p-1 font-medium">
-                          {getQuestionBankStats().byPart[part] || 0}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Question Bank Analysis removed as requested */}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="manual">Manual Assignment</TabsTrigger>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="manual">{t('qa.manual_assignment')}</TabsTrigger>
+          <TabsTrigger value="overview">{t('qa.overview')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manual" className="space-y-6">
           {/* Question Bank */}
           <Card>
             <CardHeader>
-              <CardTitle>Question Bank</CardTitle>
+              <CardTitle>{t('qa.question_bank')}</CardTitle>
               <CardDescription>
-                Select questions to assign to exam parts
+                {t('qa.select_questions_hint')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {/* Search and Filters */}
-              <div className="flex gap-4 mb-4">
+              <div className="flex gap-4 mb-4 flex-wrap">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search questions..."
+                      placeholder={t('qa.search_questions_placeholder')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -393,11 +323,11 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="listening">Listening</SelectItem>
-                    <SelectItem value="reading">Reading</SelectItem>
-                    <SelectItem value="vocab">Vocabulary</SelectItem>
-                    <SelectItem value="grammar">Grammar</SelectItem>
+                    <SelectItem value="all">{t('qa.all_types')}</SelectItem>
+                    <SelectItem value="listening">{t('drill.listening')}</SelectItem>
+                    <SelectItem value="reading">{t('drill.reading')}</SelectItem>
+                    <SelectItem value="vocab">{t('drill.vocabulary')}</SelectItem>
+                    <SelectItem value="grammar">{t('drill.grammar')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
@@ -405,10 +335,50 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="all">{t('qa.all_levels')}</SelectItem>
+                    <SelectItem value="easy">{t('difficulty.easy')}</SelectItem>
+                    <SelectItem value="medium">{t('difficulty.medium')}</SelectItem>
+                    <SelectItem value="hard">{t('difficulty.hard')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterPart} onValueChange={setFilterPart}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Part" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả Part</SelectItem>
+                    {[1,2,3,4,5,6,7].map(p => (
+                      <SelectItem key={p} value={String(p)}>Part {p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterMedia} onValueChange={setFilterMedia}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Media" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả media</SelectItem>
+                    <SelectItem value="audio">Có audio</SelectItem>
+                    <SelectItem value="image">Có ảnh</SelectItem>
+                    <SelectItem value="passage">Có đoạn văn</SelectItem>
+                    <SelectItem value="nomedia">Không media</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Tags (phân tách bằng dấu phẩy)"
+                  value={filterTags}
+                  onChange={(e) => setFilterTags(e.target.value)}
+                  className="w-64"
+                />
+                <Select value={sortOrder} onValueChange={setSortOrder}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="Sắp xếp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Mới nhất</SelectItem>
+                    <SelectItem value="oldest">Cũ nhất</SelectItem>
+                    <SelectItem value="shortest">Câu ngắn</SelectItem>
+                    <SelectItem value="longest">Câu dài</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -499,7 +469,7 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
                     {/* Progress Bar */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Progress</span>
+                        <span>{t('qa.progress')}</span>
                         <span>{Math.round(partStat?.completion || 0)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -512,7 +482,7 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
 
                     {/* Assigned Questions */}
                     <div className="space-y-2">
-                      <h4 className="font-medium text-sm">Assigned Questions ({part.questions.length})</h4>
+                      <h4 className="font-medium text-sm">{t('qa.assigned_questions')} ({part.questions.length})</h4>
                       <div className="max-h-32 overflow-y-auto space-y-1">
                         {part.questions.map((question, index) => (
                           <div
@@ -543,7 +513,7 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
                       size="sm"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Selected Questions ({selectedQuestions.length})
+                      {t('qa.add_selected')} ({selectedQuestions.length})
                     </Button>
                   </CardContent>
                 </Card>
@@ -586,7 +556,7 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
                       />
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {part.remaining > 0 ? `${part.remaining} questions needed` : 'Complete'}
+                      {part.remaining > 0 ? `${part.remaining} ${t('qa.questions_needed')}` : t('qa.complete')}
                     </div>
                   </div>
                 </CardContent>
@@ -605,25 +575,25 @@ const QuestionAssignment: React.FC<QuestionAssignmentProps> = ({
                   <div className="text-2xl font-bold text-green-600">
                     {partStats.filter(p => p.remaining === 0).length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Complete Parts</div>
+              <div className="text-sm text-muted-foreground">{t('qa.complete_parts')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-orange-600">
                     {partStats.filter(p => p.remaining > 0).length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Incomplete Parts</div>
+              <div className="text-sm text-muted-foreground">{t('qa.incomplete_parts')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
                     {stats.totalAssigned}
                   </div>
-                  <div className="text-sm text-muted-foreground">Total Assigned</div>
+                  <div className="text-sm text-muted-foreground">{t('qa.total_assigned')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-red-600">
                     {stats.totalRemaining}
                   </div>
-                  <div className="text-sm text-muted-foreground">Still Needed</div>
+                  <div className="text-sm text-muted-foreground">{t('qa.still_needed')}</div>
                 </div>
               </div>
             </CardContent>

@@ -12,10 +12,10 @@ import {
   Users,
   BookOpen,
   BarChart3,
-  Play,
   Eye,
   Settings
 } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface ExamPart {
   part: number;
@@ -118,10 +118,10 @@ const ExamPreview: React.FC<ExamPreviewProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
-            Exam Preview
+            {t('wizard.step.review')}
           </CardTitle>
           <CardDescription>
-            Review your exam configuration before creating
+            {t('wizard.step.review_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -172,7 +172,7 @@ const ExamPreview: React.FC<ExamPreviewProps> = ({
                 <div className="text-center p-3 border rounded-lg">
                   <Clock className="h-6 w-6 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold">{statistics.totalTime}</div>
-                  <div className="text-xs text-muted-foreground">Minutes</div>
+                  <div className="text-xs text-muted-foreground">{t('wizard.common.minutes')}</div>
                 </div>
                 <div className="text-center p-3 border rounded-lg">
                   <Headphones className="h-6 w-6 mx-auto mb-1 text-blue-600" />
@@ -357,56 +357,7 @@ const ExamPreview: React.FC<ExamPreviewProps> = ({
         </Alert>
       )}
 
-      {/* Sample Question Preview */}
-      {enabledParts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="h-5 w-5" />
-              Sample Questions Preview
-            </CardTitle>
-            <CardDescription>
-              Preview of questions from each part
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {enabledParts.slice(0, 3).map((part) => (
-                <div key={part.part} className="border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">{getPartIcon(part.part)}</span>
-                    <span className="font-semibold">Part {part.part}: {part.name}</span>
-                    <Badge variant="outline">{part.questions.length} questions</Badge>
-                  </div>
-                  
-                  {part.questions.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Sample Question:</div>
-                      <div className="p-3 bg-muted/50 rounded text-sm">
-                        {part.questions[0].prompt_text || part.questions[0].question || 'No question text'}
-                      </div>
-                      {part.questions[0].choices && (
-                        <div className="text-xs text-muted-foreground">
-                          Choices: {typeof part.questions[0].choices === 'object' 
-                            ? Object.values(part.questions[0].choices).join(', ')
-                            : Array.isArray(part.questions[0].choices) 
-                              ? part.questions[0].choices.join(', ')
-                              : String(part.questions[0].choices)
-                          }
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground italic">
-                      No questions assigned yet
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Sample Questions Preview removed as requested */}
     </div>
   );
 };
