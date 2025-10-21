@@ -238,13 +238,63 @@ class AlertsService {
       }
 
       console.log(`Generating alerts for ${students.length} students with ${enabledRules.length} rules`);
-      console.log('Sample student data:', students[0]);
+
+      // OPTIMIZATION: Batch fetch all existing alerts at once
+      const studentIds = students.map(s => s.id || s.user_id || s.student_id).filter(Boolean);
+      const { data: existingAlerts } = await supabase
+        .from('alerts')
+        .select('id, student_id, title')
+        .eq('teacher_id', teacherId)
+        .in('student_id', studentIds)
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      // Create a map for quick lookup: "studentId:title" -> exists
+      const alertsMap = new Set<string>();
+      (existingAlerts || []).forEach(alert => {
+        alertsMap.add(`${alert.student_id}:${alert.title}`);
+      });
+
+      // Collect alerts to insert in batch
+      const alertsToInsert: any[] = [];
 
       for (const student of students) {
-        console.log(`Processing student: ${student.name}, ID: ${student.id || student.user_id || student.student_id}`);
+        const studentId = student.id || student.user_id || student.student_id;
+        if (!studentId) continue;
+
         for (const rule of enabledRules) {
-          await this.checkRuleAndCreateAlert(teacherId, student, rule);
+          const alertData = this.checkRule(student, rule);
+          if (alertData) {
+            const alertKey = `${studentId}:${alertData.title}`;
+            // Check if alert already exists
+            if (!alertsMap.has(alertKey)) {
+              alertsToInsert.push({
+                teacher_id: teacherId,
+                student_id: studentId,
+                type: rule.type,
+                title: alertData.title,
+                message: alertData.message,
+                is_read: false
+              });
+              // Add to set to prevent duplicates in current batch
+              alertsMap.add(alertKey);
+            }
+          }
         }
+      }
+
+      // Batch insert all alerts at once
+      if (alertsToInsert.length > 0) {
+        const { error } = await supabase
+          .from('alerts')
+          .insert(alertsToInsert);
+
+        if (error) {
+          console.error('Error batch creating alerts:', error);
+        } else {
+          console.log(`✅ Created ${alertsToInsert.length} alerts in batch`);
+        }
+      } else {
+        console.log('No new alerts to create');
       }
     } catch (error) {
       console.error('Error generating alerts:', error);
@@ -252,7 +302,69 @@ class AlertsService {
   }
 
   /**
-   * Check rule and create alert if condition is met
+   * Check rule and return alert data if condition is met (no DB call)
+   */
+  private checkRule(student: any, rule: AlertRule): { title: string; message: string } | null {
+    const studentName = student.name || 'Unknown';
+    
+    switch (rule.condition) {
+      case 'inactive_days': {
+        const lastActivity = new Date(student.last_activity);
+        const daysSinceActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceActivity > rule.threshold) {
+          return {
+            title: 'Học viên không hoạt động',
+            message: `${studentName} đã không hoạt động trong ${daysSinceActivity} ngày`
+          };
+        }
+        break;
+      }
+
+      case 'score_below':
+        if (student.avg_score < rule.threshold) {
+          return {
+            title: 'Điểm số thấp',
+            message: `${studentName} đạt ${student.avg_score.toFixed(1)}% trong các hoạt động gần đây`
+          };
+        }
+        break;
+
+      case 'score_above':
+        if (student.avg_score > rule.threshold) {
+          return {
+            title: 'Điểm số xuất sắc!',
+            message: `${studentName} đạt ${student.avg_score.toFixed(1)}% - Làm tốt lắm!`
+          };
+        }
+        break;
+
+      case 'completion_low':
+        if (student.completion_rate < rule.threshold) {
+          return {
+            title: 'Tỷ lệ hoàn thành thấp',
+            message: `${studentName} chỉ có ${student.completion_rate.toFixed(1)}% tỷ lệ hoàn thành`
+          };
+        }
+        break;
+
+      case 'streak_low':
+        if (student.streak_days < rule.threshold) {
+          return {
+            title: 'Chuỗi hoạt động thấp',
+            message: `${studentName} chỉ có ${student.streak_days} ngày liên tiếp hoạt động`
+          };
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check rule and create alert if condition is met (DEPRECATED - keeping for backwards compatibility)
    */
   private async checkRuleAndCreateAlert(teacherId: string, student: any, rule: AlertRule): Promise<void> {
     try {
@@ -277,8 +389,8 @@ class AlertsService {
           console.log(`Inactive days check: ${daysSinceActivity} days since last activity, threshold: ${rule.threshold}`);
           if (daysSinceActivity > rule.threshold) {
             shouldCreateAlert = true;
-            alertTitle = 'Student Inactive';
-            alertMessage = `${student.name} hasn't been active for ${daysSinceActivity} days`;
+            alertTitle = 'Học viên không hoạt động';
+            alertMessage = `${student.name} đã không hoạt động trong ${daysSinceActivity} ngày`;
             console.log(`✅ Inactive alert triggered: ${daysSinceActivity} > ${rule.threshold}`);
           }
           break;
@@ -288,8 +400,8 @@ class AlertsService {
           console.log(`Score below check: ${student.avg_score} < ${rule.threshold}?`);
           if (student.avg_score < rule.threshold) {
             shouldCreateAlert = true;
-            alertTitle = 'Low Score Alert';
-            alertMessage = `${student.name} scored ${student.avg_score.toFixed(1)}% on recent activities`;
+            alertTitle = 'Điểm số thấp';
+            alertMessage = `${student.name} đạt ${student.avg_score.toFixed(1)}% trong các hoạt động gần đây`;
             console.log(`✅ Low score alert triggered: ${student.avg_score} < ${rule.threshold}`);
           }
           break;
@@ -298,8 +410,8 @@ class AlertsService {
           console.log(`Score above check: ${student.avg_score} > ${rule.threshold}?`);
           if (student.avg_score > rule.threshold) {
             shouldCreateAlert = true;
-            alertTitle = 'Excellent Score!';
-            alertMessage = `${student.name} achieved ${student.avg_score.toFixed(1)}% - Great job!`;
+            alertTitle = 'Điểm số xuất sắc!';
+            alertMessage = `${student.name} đạt ${student.avg_score.toFixed(1)}% - Làm tốt lắm!`;
             console.log(`✅ High score alert triggered: ${student.avg_score} > ${rule.threshold}`);
           }
           break;
@@ -308,8 +420,8 @@ class AlertsService {
           console.log(`Completion low check: ${student.completion_rate} < ${rule.threshold}?`);
           if (student.completion_rate < rule.threshold) {
             shouldCreateAlert = true;
-            alertTitle = 'Low Completion Rate';
-            alertMessage = `${student.name} has only ${student.completion_rate.toFixed(1)}% completion rate`;
+            alertTitle = 'Tỷ lệ hoàn thành thấp';
+            alertMessage = `${student.name} chỉ có ${student.completion_rate.toFixed(1)}% tỷ lệ hoàn thành`;
             console.log(`✅ Low completion alert triggered: ${student.completion_rate} < ${rule.threshold}`);
           }
           break;
@@ -318,8 +430,8 @@ class AlertsService {
           console.log(`Streak low check: ${student.streak_days} < ${rule.threshold}?`);
           if (student.streak_days < rule.threshold) {
             shouldCreateAlert = true;
-            alertTitle = 'Low Activity Streak';
-            alertMessage = `${student.name} has only ${student.streak_days} days streak`;
+            alertTitle = 'Chuỗi hoạt động thấp';
+            alertMessage = `${student.name} chỉ có ${student.streak_days} ngày liên tiếp hoạt động`;
             console.log(`✅ Low streak alert triggered: ${student.streak_days} < ${rule.threshold}`);
           }
           break;
@@ -395,8 +507,8 @@ class AlertsService {
       const defaultRules = [
         {
           teacher_id: teacherId,
-          name: 'Inactive Student Alert',
-          description: 'Alert when student is inactive for more than 7 days',
+          name: 'Cảnh báo học viên không hoạt động',
+          description: 'Cảnh báo khi học viên không hoạt động hơn 7 ngày',
           type: 'warning' as const,
           condition: 'inactive_days',
           threshold: 7,
@@ -405,8 +517,8 @@ class AlertsService {
         },
         {
           teacher_id: teacherId,
-          name: 'Low Score Alert',
-          description: 'Alert when student scores below 50%',
+          name: 'Cảnh báo điểm số thấp',
+          description: 'Cảnh báo khi học viên đạt điểm dưới 50%',
           type: 'danger' as const,
           condition: 'score_below',
           threshold: 50,
@@ -415,8 +527,8 @@ class AlertsService {
         },
         {
           teacher_id: teacherId,
-          name: 'Excellent Score Alert',
-          description: 'Alert when student scores above 90%',
+          name: 'Cảnh báo điểm số xuất sắc',
+          description: 'Cảnh báo khi học viên đạt điểm trên 90%',
           type: 'success' as const,
           condition: 'score_above',
           threshold: 90,
@@ -425,8 +537,8 @@ class AlertsService {
         },
         {
           teacher_id: teacherId,
-          name: 'Low Completion Rate Alert',
-          description: 'Alert when student completion rate is below 30%',
+          name: 'Cảnh báo tỷ lệ hoàn thành thấp',
+          description: 'Cảnh báo khi tỷ lệ hoàn thành của học viên dưới 30%',
           type: 'warning' as const,
           condition: 'completion_low',
           threshold: 30,

@@ -20,6 +20,7 @@ import StudentExamResults from "./components/StudentExamResults";
 import ExamSession from "./components/ExamSession";
 // Removed debug page: ExamSessionDebug
 import ExamSessionPage from "./pages/ExamSession";
+import ExamSessionMVC from "./views/components/ExamSessionMVC";
 import ExamSets from "./pages/ExamSets";
 import ExamSelection from "./pages/ExamSelection";
 import ExamCustomize from "./pages/ExamCustomize";

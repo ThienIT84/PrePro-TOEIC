@@ -821,10 +821,13 @@ const ExamResult = () => {
                               {questions[0].part !== 6 && (() => {
                                 const images = [];
                                 
-                                // Add images from new structure
+                                // Add images from new structure - Only first image for Part 7
                                 if ((questions[0] as any).passage_img_url) images.push((questions[0] as any).passage_img_url);
-                                if ((questions[0] as any).passage_img_url2) images.push((questions[0] as any).passage_img_url2);
-                                if ((questions[0] as any).passage_img_url3) images.push((questions[0] as any).passage_img_url3);
+                                // Only add additional images for Part 7 (not Part 6)
+                                if (questions[0].part === 7) {
+                                  if ((questions[0] as any).passage_img_url2) images.push((questions[0] as any).passage_img_url2);
+                                  if ((questions[0] as any).passage_img_url3) images.push((questions[0] as any).passage_img_url3);
+                                }
                                 
                                 // Backward compatibility: fallback to old structure
                                 if (images.length === 0 && questions[0].passage_image_url) {

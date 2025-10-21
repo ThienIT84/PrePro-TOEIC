@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Languages, Eye, EyeOff } from 'lucide-react';
+import { Languages, Eye, EyeOff, Globe } from 'lucide-react';
 
 interface PassageDisplayProps {
   passage: {
@@ -14,6 +14,7 @@ interface PassageDisplayProps {
     img_url?: string;
     img_url2?: string;
     img_url3?: string;
+    additional?: string;
   };
   translationVi?: {
     content: string;
@@ -26,6 +27,7 @@ interface PassageDisplayProps {
     content3?: string;
   };
   showTranslation?: boolean;
+  hideOriginalContent?: boolean;
   className?: string;
 }
 
@@ -34,12 +36,31 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
   translationVi,
   translationEn,
   showTranslation = true,
+  hideOriginalContent = false,
   className = ''
 }) => {
   const [showTranslations, setShowTranslations] = useState(showTranslation);
-  const [activeTab, setActiveTab] = useState('original');
+  const [activeTab, setActiveTab] = useState(
+    translationVi ? 'vietnamese' : translationEn ? 'english' : 'original'
+  );
+
+  // Update local state when prop changes
+  useEffect(() => {
+    setShowTranslations(showTranslation);
+  }, [showTranslation]);
 
   const hasTranslations = translationVi || translationEn;
+  
+  // Debug logging
+  console.log('🔍 PassageDisplay Debug:', {
+    hasTranslations,
+    translationVi,
+    translationEn,
+    showTranslations,
+    translationViContent: translationVi?.content,
+    translationViContent2: translationVi?.content2,
+    translationViContent3: translationVi?.content3
+  });
 
   // Helper function to render passage content
   const renderPassageContent = (content: string, content2?: string, content3?: string) => {
@@ -67,7 +88,21 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
 
   // Helper function to render images
   const renderImages = () => {
-    const imageUrls = [passage.img_url, passage.img_url2, passage.img_url3].filter(Boolean);
+    // Parse additional field first (priority)
+    let imageUrls: string[] = [];
+    
+    if (passage.additional && passage.additional.trim() !== '') {
+      imageUrls = passage.additional
+        .split('|')
+        .map((url: string) => url.trim())
+        .filter((url: string) => url.length > 0 && url.startsWith('http'));
+    }
+    
+    // Fallback to individual img_url fields if additional is empty
+    if (imageUrls.length === 0) {
+      imageUrls = [passage.img_url, passage.img_url2, passage.img_url3].filter(Boolean);
+    }
+    
     if (imageUrls.length === 0) return null;
 
     return (
@@ -103,24 +138,9 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
   return (
     <Card className={`w-full ${className}`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">
-            📖 Passage Reading
-          </CardTitle>
-          {hasTranslations && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTranslations(!showTranslations)}
-                className="flex items-center gap-2"
-              >
-                {showTranslations ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {showTranslations ? 'Ẩn bản dịch' : 'Hiện bản dịch'}
-              </Button>
-            </div>
-          )}
-        </div>
+        <CardTitle className="text-lg font-semibold">
+          📖 Passage Reading
+        </CardTitle>
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -128,59 +148,7 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
         {renderImages()}
 
         {/* Render passage content */}
-        {hasTranslations && showTranslations ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="original" className="flex items-center gap-2">
-                <Languages className="h-4 w-4" />
-                Bản gốc
-              </TabsTrigger>
-              {translationVi && (
-                <TabsTrigger value="vietnamese" className="flex items-center gap-2">
-                  🇻🇳 Tiếng Việt
-                </TabsTrigger>
-              )}
-              {translationEn && (
-                <TabsTrigger value="english" className="flex items-center gap-2">
-                  🇺🇸 English
-                </TabsTrigger>
-              )}
-            </TabsList>
-
-            <TabsContent value="original" className="mt-4">
-              <div className="space-y-3">
-                {passage.title && (
-                  <h3 className="text-lg font-semibold text-gray-900">{passage.title}</h3>
-                )}
-                {renderPassageContent(passage.content, passage.content2, passage.content3)}
-              </div>
-            </TabsContent>
-
-            {translationVi && (
-              <TabsContent value="vietnamese" className="mt-4">
-                <div className="space-y-3">
-                  {renderPassageContent(
-                    translationVi.content, 
-                    translationVi.content2, 
-                    translationVi.content3
-                  )}
-                </div>
-              </TabsContent>
-            )}
-
-            {translationEn && (
-              <TabsContent value="english" className="mt-4">
-                <div className="space-y-3">
-                  {renderPassageContent(
-                    translationEn.content, 
-                    translationEn.content2, 
-                    translationEn.content3
-                  )}
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
-        ) : (
+        {!hideOriginalContent && (
           <div className="space-y-3">
             {passage.title && (
               <h3 className="text-lg font-semibold text-gray-900">{passage.title}</h3>
@@ -189,22 +157,79 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
           </div>
         )}
 
-        {/* Translation indicators */}
+        {/* Render translations if available and enabled */}
+        {hasTranslations && showTranslations && (
+          <div className="mt-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                {translationVi && (
+                  <TabsTrigger value="vietnamese" className="flex items-center gap-2">
+                    🇻🇳 Tiếng Việt
+                  </TabsTrigger>
+                )}
+                {translationEn && (
+                  <TabsTrigger value="english" className="flex items-center gap-2">
+                    🇺🇸 English
+                  </TabsTrigger>
+                )}
+              </TabsList>
+
+              {translationVi && (
+                <TabsContent value="vietnamese" className="mt-4">
+                  <div className="space-y-3">
+                    {renderPassageContent(
+                      translationVi.content, 
+                      translationVi.content2, 
+                      translationVi.content3
+                    )}
+                  </div>
+                </TabsContent>
+              )}
+
+              {translationEn && (
+                <TabsContent value="english" className="mt-4">
+                  <div className="space-y-3">
+                    {renderPassageContent(
+                      translationEn.content, 
+                      translationEn.content2, 
+                      translationEn.content3
+                    )}
+                  </div>
+                </TabsContent>
+              )}
+            </Tabs>
+          </div>
+        )}
+
+        {/* Translation toggle and indicators */}
         {hasTranslations && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            <Badge variant="outline" className="text-xs">
-              📖 Bản gốc có sẵn
-            </Badge>
-            {translationVi && (
-              <Badge variant="outline" className="text-xs">
-                🇻🇳 Có bản dịch tiếng Việt
-              </Badge>
-            )}
-            {translationEn && (
-              <Badge variant="outline" className="text-xs">
-                🇺🇸 Có bản dịch tiếng Anh
-              </Badge>
-            )}
+          <div className="pt-4 border-t space-y-3">
+            {/* Toggle button */}
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTranslations(!showTranslations)}
+                className="flex items-center gap-2"
+              >
+                {showTranslations ? <EyeOff className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+                {showTranslations ? 'Ẩn bản dịch' : 'Hiện bản dịch'}
+              </Button>
+            </div>
+            
+            {/* Translation indicators */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              {translationVi && (
+                <Badge variant="outline" className="text-xs">
+                  🇻🇳 Có bản dịch tiếng Việt
+                </Badge>
+              )}
+              {translationEn && (
+                <Badge variant="outline" className="text-xs">
+                  🇺🇸 Có bản dịch tiếng Anh
+                </Badge>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

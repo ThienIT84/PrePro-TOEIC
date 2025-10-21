@@ -30,8 +30,12 @@ import {
   FileImage,
   CheckSquare,
   Square,
-  Trash
+  Trash,
+  ChevronDown,
+  ChevronUp,
+  MessageSquarePlus
 } from 'lucide-react';
+import AddQuestionToPassage from './AddQuestionToPassage';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -123,6 +127,8 @@ const PassageManager: React.FC = () => {
   const [importProgress, setImportProgress] = useState(0);
   const [selectedPassages, setSelectedPassages] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [expandedPassages, setExpandedPassages] = useState<Set<string>>(new Set());
+  const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
 
   // Form data for creating/editing passages
   const [formData, setFormData] = useState<PassageFormData>({
@@ -172,7 +178,7 @@ const PassageManager: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPassages((data || []).map((item: any) => ({
+      const passagesData = (data || []).map((item: any) => ({
         ...item,
         texts: {
           title: item.texts?.title || '',
@@ -193,7 +199,14 @@ const PassageManager: React.FC = () => {
           content2: item.translation_en?.content2 || '',
           content3: item.translation_en?.content3 || ''
         }
-      })) as Passage[]);
+      })) as Passage[];
+      
+      setPassages(passagesData);
+      
+      // Fetch question counts for all passages
+      if (passagesData.length > 0) {
+        await fetchQuestionCounts(passagesData.map(p => p.id));
+      }
     } catch (error) {
       console.error('Error fetching passages:', error);
       toast({
@@ -204,6 +217,38 @@ const PassageManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchQuestionCounts = async (passageIds: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('passage_id')
+        .in('passage_id', passageIds);
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      (data || []).forEach(q => {
+        counts[q.passage_id] = (counts[q.passage_id] || 0) + 1;
+      });
+      
+      setQuestionCounts(counts);
+    } catch (error) {
+      console.error('Error fetching question counts:', error);
+    }
+  };
+
+  const toggleExpandPassage = (passageId: string) => {
+    setExpandedPassages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(passageId)) {
+        newSet.delete(passageId);
+      } else {
+        newSet.add(passageId);
+      }
+      return newSet;
+    });
   };
 
   const handleFormChange = (field: string, value: unknown) => {
@@ -865,11 +910,37 @@ const PassageManager: React.FC = () => {
                                   Có ảnh
                                 </div>
                               )}
+                              {passage.part === 6 && (
+                                <div className="flex items-center gap-1">
+                                  <MessageSquarePlus className="h-4 w-4" />
+                                  <span className="font-semibold">
+                                    {questionCounts[passage.id] || 0}/4 câu
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             </div>
                           </div>
                           
                           <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleExpandPassage(passage.id)}
+                              title="Thêm câu hỏi"
+                            >
+                              {expandedPassages.has(passage.id) ? (
+                                <>
+                                  <ChevronUp className="h-4 w-4 mr-1" />
+                                  Thu gọn
+                                </>
+                              ) : (
+                                <>
+                                  <MessageSquarePlus className="h-4 w-4 mr-1" />
+                                  Thêm câu hỏi
+                                </>
+                              )}
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -887,6 +958,24 @@ const PassageManager: React.FC = () => {
                             </Button>
                           </div>
                         </div>
+
+                        {/* Expanded form to add questions */}
+                        {expandedPassages.has(passage.id) && (
+                          <div className="mt-4 pt-4 border-t">
+                            <AddQuestionToPassage
+                              passageId={passage.id}
+                              passagePart={passage.part}
+                              onSuccess={() => {
+                                fetchQuestionCounts([passage.id]);
+                                toast({
+                                  title: 'Thành công!',
+                                  description: 'Đã thêm câu hỏi vào passage'
+                                });
+                              }}
+                              onCancel={() => toggleExpandPassage(passage.id)}
+                            />
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

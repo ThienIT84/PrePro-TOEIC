@@ -46,20 +46,33 @@ const TeacherAnalytics = () => {
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number>(0);
+  
+  // Cache duration: 2 minutes
+  const CACHE_DURATION = 2 * 60 * 1000;
 
   useEffect(() => {
     if (user) {
       fetchAnalyticsData();
     }
-  }, [user]);
+  }, [user?.id]); // Only re-run when user ID changes, not when user object changes
 
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = async (forceRefresh: boolean = false) => {
     if (!user) return;
+    
+    // Check cache - don't reload if data is fresh
+    const now = Date.now();
+    if (!forceRefresh && analyticsData && (now - cacheTimestamp) < CACHE_DURATION) {
+      console.log('📦 Using cached analytics data');
+      return;
+    }
     
     setLoading(true);
     try {
       const data = await teacherAnalyticsService.getAnalyticsData(user.id);
       setAnalyticsData(data);
+      setCacheTimestamp(Date.now());
+      console.log('✅ Analytics data loaded and cached');
     } catch (error) {
       console.error('Error fetching analytics:', error);
       // Set empty data to prevent white screen

@@ -256,6 +256,25 @@ const AdvancedAlertsSystem = () => {
     }
   };
 
+  const getRuleTypeLabel = (type: string) => {
+    switch (type) {
+      case 'warning': return 'Cảnh báo';
+      case 'danger': return 'Nguy hiểm';
+      case 'success': return 'Thành công';
+      case 'info': return 'Thông tin';
+      default: return type;
+    }
+  };
+
+  const getNotificationTypeLabel = (type: string) => {
+    switch (type) {
+      case 'both': return 'Cả hai';
+      case 'in_app': return 'Trong ứng dụng';
+      case 'email': return 'Email';
+      default: return type;
+    }
+  };
+
   const filteredAlerts = alerts.filter(alert => {
     if (filter.type !== 'all' && alert.type !== filter.type) return false;
     if (filter.status !== 'all') {
@@ -444,17 +463,17 @@ const AdvancedAlertsSystem = () => {
                           <Badge variant={rule.type === 'warning' ? 'secondary' : 
                                          rule.type === 'danger' ? 'destructive' :
                                          rule.type === 'success' ? 'default' : 'outline'}>
-                            {rule.type}
+                            {getRuleTypeLabel(rule.type)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            Threshold: {rule.threshold}
+                            Ngưỡng: {rule.threshold}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right text-xs text-muted-foreground">
-                        <div>{rule.notification_type}</div>
+                        <div>{getNotificationTypeLabel(rule.notification_type)}</div>
                         <div>{rule.is_enabled ? 'Bật' : 'Tắt'}</div>
                       </div>
                       <Switch

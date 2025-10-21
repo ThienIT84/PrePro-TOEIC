@@ -43,9 +43,25 @@ interface ExamAnswer {
 }
 
 type PassageLite = {
-  texts: { title?: string; content?: string; additional?: string } | null;
+  passage_type?: 'single' | 'double' | 'triple'; // From DB
+  texts: { 
+    title?: string; 
+    content?: string;      // Passage 1
+    content2?: string;     // Passage 2 (double)
+    content3?: string;     // Passage 3 (triple)
+    img_url?: string;      // Image for passage 1
+    img_url2?: string;     // Image for passage 2 (double)
+    img_url3?: string;     // Image for passage 3 (triple)
+    additional?: string;
+  } | null;
   image_url: string | null;
   audio_url: string | null;
+  meta?: {
+    topic?: string;
+    word_count?: number;
+    reading_time?: number;
+    start_question_number?: number | string;
+  } | null;
 };
 
 const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
@@ -61,7 +77,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
     if (!question) return questionIndex + 1;
     
     const part = question.part;
-    const partStartNumbers = {
+    const partStartNumbers: Record<number, number> = {
       1: 1,   // Part 1: 1-6
       2: 7,   // Part 2: 7-31
       3: 32,  // Part 3: 32-70
@@ -71,7 +87,16 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
       7: 147  // Part 7: 147-200
     };
     
-    // Count questions in the same part before this question
+    // For Part 6: Use start_question_number from passage metadata + blank_index
+    if (part === 6 && question.passage_id && question.blank_index) {
+      const passage = passageMap[question.passage_id];
+      if (passage && passage.meta && (passage.meta as any).start_question_number) {
+        const startNum = parseInt((passage.meta as any).start_question_number);
+        return startNum + question.blank_index - 1;
+      }
+    }
+    
+    // For other parts: Count questions in the same part before this question
     const questionsInSamePart = questions.slice(0, questionIndex + 1).filter(q => q.part === part);
     const questionInPartIndex = questionsInSamePart.length - 1;
     
@@ -123,8 +148,8 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
           results: {
             current_index: currentIndex,
             time_left: timeLeft,
-            answers: Array.from(answers.entries())
-          }
+            answers: Array.from(answers.entries()).map(([key, value]) => [key, { ...value }])
+          } as any
         })
         .eq('id', sessionId);
 
@@ -190,7 +215,7 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
             setIsStarted(true);
             
             // Restore answers
-            const restoredAnswers = new Map(progressData.answers);
+            const restoredAnswers = new Map<string, ExamAnswer>(progressData.answers);
             setAnswers(restoredAnswers);
             
             toast({
@@ -361,14 +386,31 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
         return a.question_number - b.question_number;
       });
 
-      // Ensure passage integrity for Part 6 when specific parts are selected
-      if (selectedParts && selectedParts.includes(6)) {
-        const part6Questions = orderedQuestions.filter(q => q.part === 6);
-        const otherPartQuestions = orderedQuestions.filter(q => q.part !== 6);
-        
-        // Group Part 6 questions by passage_id and sort by order_index
+      // Build passage map first (needed for sorting)
+      const tempPassageMap: Record<string, PassageLite> = {};
+      orderedQuestions.forEach(question => {
+        if (question.passage_id && question.passages) {
+          tempPassageMap[question.passage_id] = {
+            passage_type: question.passages.passage_type || undefined,
+            texts: question.passages.texts,
+            image_url: question.passages.image_url,
+            audio_url: question.passages.audio_url,
+            meta: question.passages.meta || null
+          };
+        }
+      });
+
+      // CRITICAL FIX: Always ensure Part 3, 4, 6 & 7 passage integrity (regardless of filtering)
+      const part3Questions = orderedQuestions.filter(q => q.part === 3);
+      const part4Questions = orderedQuestions.filter(q => q.part === 4);
+      const part6Questions = orderedQuestions.filter(q => q.part === 6);
+      const part7Questions = orderedQuestions.filter(q => q.part === 7);
+      const otherQuestions = orderedQuestions.filter(q => q.part !== 3 && q.part !== 4 && q.part !== 6 && q.part !== 7);
+
+      // Function to sort passage-based questions (Part 3, 4, 6 & 7)
+      const sortPassageQuestions = (questions: any[], sortByBlankIndex: boolean = false) => {
         const passageGroups: Record<string, any[]> = {};
-        part6Questions.forEach(q => {
+        questions.forEach(q => {
           if (q.passage_id) {
             if (!passageGroups[q.passage_id]) {
               passageGroups[q.passage_id] = [];
@@ -376,69 +418,99 @@ const ExamSessionWithAutoSave = ({ examSetId }: ExamSessionProps) => {
             passageGroups[q.passage_id].push(q);
           }
         });
-        
-        // Sort questions within each passage by blank_index (for Part 6)
+
+        // Sort questions within each passage
         Object.keys(passageGroups).forEach(passageId => {
           passageGroups[passageId].sort((a, b) => {
-            // For Part 6, sort by blank_index first, then by order_index as fallback
-            const aBlankIndex = a.blank_index || 0;
-            const bBlankIndex = b.blank_index || 0;
-            if (aBlankIndex !== bBlankIndex) {
-              return aBlankIndex - bBlankIndex;
+            if (sortByBlankIndex) {
+              const aBlankIndex = a.blank_index || 0;
+              const bBlankIndex = b.blank_index || 0;
+              if (aBlankIndex !== bBlankIndex) {
+                return aBlankIndex - bBlankIndex;
+              }
             }
-            // Fallback to question_number if blank_index is the same
             return (a.question_number || 0) - (b.question_number || 0);
           });
         });
-        
-        // Only include complete passages (all questions from same passage)
-        const validPart6Questions: any[] = [];
-        Object.values(passageGroups).forEach(passageQuestions => {
-          // Check if this passage has all its questions in the fetched data
-          const passageId = passageQuestions[0].passage_id;
-          const allPassageQuestions = orderedQuestions.filter(q => q.passage_id === passageId);
+
+        // Sort passages by start_question_number
+        const sortedPassageIds = Object.keys(passageGroups).sort((aId, bId) => {
+          const aPassage = tempPassageMap[aId];
+          const bPassage = tempPassageMap[bId];
           
-          // Only include if we have all questions from this passage
-          if (passageQuestions.length === allPassageQuestions.length) {
-            validPart6Questions.push(...passageQuestions);
-          }
-        });
-        
-        // Sort passages by the first question's order_index, but maintain passage integrity
-        validPart6Questions.sort((a, b) => {
-          // Group by passage_id first, then sort passages by their first question's order_index
-          const aPassageId = a.passage_id;
-          const bPassageId = b.passage_id;
-          
-          if (aPassageId !== bPassageId) {
-            // Different passages - sort by the first question's question_number in each passage
-            return (a.question_number || 0) - (b.question_number || 0);
+          if (aPassage?.meta && bPassage?.meta) {
+            const aStart = parseInt((aPassage.meta as any).start_question_number || '999');
+            const bStart = parseInt((bPassage.meta as any).start_question_number || '999');
+            if (aStart !== bStart) return aStart - bStart;
           }
           
-          // Same passage - sort by blank_index
-          const aBlankIndex = a.blank_index || 0;
-          const bBlankIndex = b.blank_index || 0;
-          return aBlankIndex - bBlankIndex;
+          const aFirstNum = passageGroups[aId][0].question_number || 0;
+          const bFirstNum = passageGroups[bId][0].question_number || 0;
+          return aFirstNum - bFirstNum;
         });
+
+        const sortedQuestions: any[] = [];
+        sortedPassageIds.forEach(passageId => {
+          sortedQuestions.push(...passageGroups[passageId]);
+        });
+        return sortedQuestions;
+      };
+
+      // Sort Part 3, 4, 6, 7 questions by passage
+      const sortedPart3 = part3Questions.length > 0 ? sortPassageQuestions(part3Questions, false) : [];
+      const sortedPart4 = part4Questions.length > 0 ? sortPassageQuestions(part4Questions, false) : [];
+      const sortedPart6 = part6Questions.length > 0 ? sortPassageQuestions(part6Questions, true) : [];
+      const sortedPart7 = part7Questions.length > 0 ? sortPassageQuestions(part7Questions, false) : [];
+
+      console.log('✅ Part 3 sorted:', sortedPart3.length, 'questions');
+      console.log('✅ Part 4 sorted:', sortedPart4.length, 'questions');
+      console.log('✅ Part 6 sorted:', sortedPart6.length, 'questions');
+      console.log('✅ Part 7 sorted:', sortedPart7.length, 'questions');
+
+      // Reconstruct with proper order: Part 1-2 → Part 3 → Part 4 → Part 5 → Part 6 → Part 7
+      const part1to2 = otherQuestions.filter(q => (q.part as number) < 3);
+      const part5 = otherQuestions.filter(q => q.part === 5);
+      orderedQuestions = [...part1to2, ...sortedPart3, ...sortedPart4, ...part5, ...sortedPart6, ...sortedPart7];
+
+      // Filter by selected parts if needed
+      if (selectedParts && selectedParts.length > 0) {
+        console.log('🎯 Selected parts:', selectedParts);
+        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
         
-        orderedQuestions = [...otherPartQuestions, ...validPart6Questions];
-        console.log(`Part 6 passage integrity: ${validPart6Questions.length} questions from ${Object.keys(passageGroups).length} passages`);
+        // Ensure complete passages for Part 3, 4, 6 & 7
+        if (selectedParts.includes(3) || selectedParts.includes(4) || selectedParts.includes(6) || selectedParts.includes(7)) {
+          const filteredQuestions: any[] = [];
+          const processedPassages = new Set<string>();
+
+          orderedQuestions.forEach(q => {
+            if ((q.part === 3 || q.part === 4 || q.part === 6 || q.part === 7) && q.passage_id) {
+              if (!processedPassages.has(q.passage_id)) {
+                const passageQuestions = orderedQuestions.filter(pq => pq.passage_id === q.passage_id);
+                const allPassageQuestions = [...part3Questions, ...part4Questions, ...part6Questions, ...part7Questions].filter(pq => pq.passage_id === q.passage_id);
+                
+                if (passageQuestions.length === allPassageQuestions.length) {
+                  filteredQuestions.push(...passageQuestions);
+                }
+                processedPassages.add(q.passage_id);
+              }
+            } else {
+              filteredQuestions.push(q);
+            }
+          });
+
+          orderedQuestions = filteredQuestions;
+        }
       }
 
-      setQuestions(orderedQuestions);
+      console.log('🔍 Final question order:', orderedQuestions.map((q, idx) => ({
+        index: idx,
+        part: q.part,
+        passage_id: q.passage_id?.substring(0, 8),
+        blank_index: q.blank_index
+      })));
 
-      // Build passage map
-      const passageMap: Record<string, PassageLite> = {};
-      orderedQuestions.forEach(question => {
-        if (question.passage_id && question.passages) {
-          passageMap[question.passage_id] = {
-            texts: question.passages.texts,
-            image_url: question.passages.image_url,
-            audio_url: question.passages.audio_url
-          };
-        }
-      });
-      setPassageMap(passageMap);
+      setQuestions(orderedQuestions);
+      setPassageMap(tempPassageMap);
 
       // Calculate time limit based on actual question count
       console.log('Time calculation:', { 

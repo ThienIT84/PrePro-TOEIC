@@ -39,6 +39,7 @@ interface ExamAnswer {
 
 type PassageLite = {
   id: string;
+  passage_type?: 'single' | 'double' | 'triple'; // From DB
   texts: { 
     title?: string; 
     content?: string; 
@@ -51,6 +52,12 @@ type PassageLite = {
   } | null;
   image_url: string | null; // Backward compatibility
   audio_url: string | null;
+  meta?: {
+    topic?: string;
+    word_count?: number;
+    reading_time?: number;
+    start_question_number?: number | string;
+  } | null;
 };
 
 const ExamSession = ({ examSetId }: ExamSessionProps) => {
@@ -59,6 +66,38 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
   const selectedParts: number[] | undefined = (location.state as any)?.parts;
   const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
   const { toast } = useToast();
+
+  // Calculate correct TOEIC question number based on part
+  const getTOEICQuestionNumber = (questionIndex: number, questionsList: Question[]) => {
+    const question = questionsList[questionIndex];
+    if (!question) return questionIndex + 1;
+    
+    const part = question.part;
+    const partStartNumbers: Record<number, number> = {
+      1: 1,   // Part 1: 1-6
+      2: 7,   // Part 2: 7-31
+      3: 32,  // Part 3: 32-70
+      4: 71,  // Part 4: 71-100
+      5: 101, // Part 5: 101-130
+      6: 131, // Part 6: 131-146
+      7: 147  // Part 7: 147-200
+    };
+    
+    // For Part 6: Use start_question_number from passage metadata + blank_index
+    if (part === 6 && question.passage_id && question.blank_index) {
+      const passage = passageMap[question.passage_id];
+      if (passage && passage.meta && (passage.meta as any).start_question_number) {
+        const startNum = parseInt((passage.meta as any).start_question_number);
+        return startNum + question.blank_index - 1;
+      }
+    }
+    
+    // For other parts: Count questions in the same part before this question
+    const questionsInSamePart = questionsList.slice(0, questionIndex + 1).filter(q => q.part === part);
+    const questionInPartIndex = questionsInSamePart.length - 1;
+    
+    return partStartNumbers[part] + questionInPartIndex;
+  };
   
   const [examSet, setExamSet] = useState<ExamSet | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -266,100 +305,188 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
         throw qErr;
       }
 
-      // Order questions by order_index mapping
+      // Map questions from DB - IGNORE order_index completely
       const idToQuestion: Record<string, Question> = {};
       (questionRows || []).forEach((q: any) => { idToQuestion[q.id] = q as Question; });
-      let orderedQuestions = examQRows
+      
+      let allQuestions = examQRows
         .map(r => idToQuestion[r.question_id])
         .filter(Boolean) as Question[];
 
-      // Sort questions by order_index to ensure correct order
-      orderedQuestions.sort((a, b) => {
-        const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
-        const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
-        return aOrder - bOrder;
+      console.log('📊 Total questions fetched:', allQuestions.length);
+
+      // Group questions by part (NO sorting yet)
+      const part1Questions = allQuestions.filter(q => q.part === 1);
+      const part2Questions = allQuestions.filter(q => q.part === 2);
+      const part3Questions = allQuestions.filter(q => q.part === 3);
+      const part4Questions = allQuestions.filter(q => q.part === 4);
+      const part5Questions = allQuestions.filter(q => q.part === 5);
+      const part6Questions = allQuestions.filter(q => q.part === 6);
+      const part7Questions = allQuestions.filter(q => q.part === 7);
+
+      console.log('📊 Questions by part:', {
+        part1: part1Questions.length,
+        part2: part2Questions.length,
+        part3: part3Questions.length,
+        part4: part4Questions.length,
+        part5: part5Questions.length,
+        part6: part6Questions.length,
+        part7: part7Questions.length,
       });
 
-      // If user chose specific parts within this exam set, filter accordingly
-      if (selectedParts && selectedParts.length > 0) {
-        // For Part 6, ensure passage integrity (all questions from same passage)
-        if (selectedParts.includes(6)) {
-          const part6Questions = orderedQuestions.filter(q => q.part === 6);
-          const otherPartQuestions = orderedQuestions.filter(q => q.part !== 6 && selectedParts.includes(q.part as number));
-          
-          // Group Part 6 questions by passage_id and sort by order_index
-          const passageGroups: Record<string, Question[]> = {};
-          part6Questions.forEach(q => {
-            if (q.passage_id) {
-              if (!passageGroups[q.passage_id]) {
-                passageGroups[q.passage_id] = [];
-              }
-              passageGroups[q.passage_id].push(q);
-            }
+      // Load passages FIRST to get start_question_number for proper sorting
+      const allPassageIds = Array.from(new Set(
+        allQuestions
+          .filter(q => q.passage_id)
+          .map(q => q.passage_id!)
+      ));
+
+      let tempPassageMap: Record<string, { id: string; meta?: any }> = {};
+      if (allPassageIds.length > 0) {
+        const { data: passages, error: pErr } = await supabase
+          .from('passages')
+          .select('id, meta')
+          .in('id', allPassageIds);
+        if (!pErr && passages) {
+          passages.forEach((p: any) => {
+            tempPassageMap[p.id] = { id: p.id, meta: p.meta };
           });
-          
-          // Sort questions within each passage by blank_index (for Part 6)
-          Object.keys(passageGroups).forEach(passageId => {
-            passageGroups[passageId].sort((a, b) => {
-              // For Part 6, sort by blank_index first, then by order_index as fallback
+        }
+      }
+
+      console.log('📦 Loaded passages for sorting:', Object.keys(tempPassageMap).length);
+
+      // Function to sort passage-based questions (Part 3, 4, 6 & 7)
+      const sortPassageQuestions = (questions: Question[], sortByBlankIndex: boolean = false) => {
+        // Group by passage_id
+        const passageGroups: Record<string, Question[]> = {};
+        questions.forEach(q => {
+          if (q.passage_id) {
+            if (!passageGroups[q.passage_id]) {
+              passageGroups[q.passage_id] = [];
+            }
+            passageGroups[q.passage_id].push(q);
+          }
+        });
+
+        // Sort questions within each passage
+        Object.keys(passageGroups).forEach(passageId => {
+          passageGroups[passageId].sort((a, b) => {
+            if (sortByBlankIndex) {
+              // For Part 6, sort by blank_index first
               const aBlankIndex = a.blank_index || 0;
               const bBlankIndex = b.blank_index || 0;
               if (aBlankIndex !== bBlankIndex) {
                 return aBlankIndex - bBlankIndex;
               }
-              // Fallback to order_index if blank_index is the same
-              const aOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
-              const bOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
-              console.log(`Passage ${passageId}: Question ${a.id.substring(0,8)} blank_index ${aBlankIndex} order ${aOrder}, Question ${b.id.substring(0,8)} blank_index ${bBlankIndex} order ${bOrder}`);
-              return aOrder - bOrder;
-            });
+            }
+            // No fallback - keep DB order
+            return 0;
           });
+        });
+
+        // Sort passages by start_question_number from metadata OR alphabetically
+        const sortedPassageIds = Object.keys(passageGroups).sort((aId, bId) => {
+          const aPassage = tempPassageMap[aId];
+          const bPassage = tempPassageMap[bId];
           
-          // Only include complete passages (all questions from same passage)
-          const validPart6Questions: Question[] = [];
-          Object.values(passageGroups).forEach(passageQuestions => {
-            // Check if this passage has all its questions in the exam set
-            const passageId = passageQuestions[0].passage_id;
-            const allPassageQuestions = orderedQuestions.filter(q => q.passage_id === passageId);
-            
-            // Only include if we have all questions from this passage
-            if (passageQuestions.length === allPassageQuestions.length) {
-              validPart6Questions.push(...passageQuestions);
+          // Try sort by start_question_number if available
+          if (aPassage?.meta && bPassage?.meta) {
+            const aStart = parseInt((aPassage.meta as any).start_question_number || '0');
+            const bStart = parseInt((bPassage.meta as any).start_question_number || '0');
+            if (aStart > 0 && bStart > 0 && aStart !== bStart) {
+              console.log(`✅ Sorting passages by start_question_number: ${aId.substring(0,8)} (Q${aStart}) vs ${bId.substring(0,8)} (Q${bStart})`);
+              return aStart - bStart;
+            }
+          }
+          
+          // Fallback: sort alphabetically by passage_id (consistent order)
+          console.log(`⚠️ Fallback to alphabetical sort: ${aId.substring(0,8)} vs ${bId.substring(0,8)}`);
+          return aId.localeCompare(bId);
+        });
+
+        // Flatten sorted passages into array
+        const sortedQuestions: Question[] = [];
+        sortedPassageIds.forEach(passageId => {
+          sortedQuestions.push(...passageGroups[passageId]);
+        });
+
+        return sortedQuestions;
+      };
+
+      // Sort Part 3, 4, 6, 7 questions by passage
+      const sortedPart3 = part3Questions.length > 0 ? sortPassageQuestions(part3Questions, false) : [];
+      const sortedPart4 = part4Questions.length > 0 ? sortPassageQuestions(part4Questions, false) : [];
+      const sortedPart6 = part6Questions.length > 0 ? sortPassageQuestions(part6Questions, true) : [];
+      const sortedPart7 = part7Questions.length > 0 ? sortPassageQuestions(part7Questions, false) : [];
+
+      console.log('✅ Part sorting complete:', {
+        part3: sortedPart3.length,
+        part4: sortedPart4.length,
+        part6: sortedPart6.length,
+        part7: sortedPart7.length,
+      });
+
+      // For Part 1, 2, 5: Keep original order from DB (no passage grouping needed)
+      // Just take them as-is since they're standalone questions
+      
+      // Reconstruct orderedQuestions with proper TOEIC part order (1→2→3→4→5→6→7)
+      let orderedQuestions: Question[] = [
+        ...part1Questions,
+        ...part2Questions,
+        ...sortedPart3,
+        ...sortedPart4,
+        ...part5Questions,
+        ...sortedPart6,
+        ...sortedPart7
+      ];
+
+      console.log('🔍 Final question order by part:', orderedQuestions.map((q, idx) => ({
+        index: idx + 1,
+        part: q.part,
+        id: q.id.substring(0, 8),
+        passage_id: q.passage_id?.substring(0, 8),
+        blank_index: q.blank_index
+      })));
+
+      // If user chose specific parts within this exam set, filter accordingly
+      if (selectedParts && selectedParts.length > 0) {
+        console.log('🎯 Selected parts:', selectedParts);
+        orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
+        
+        // For Part 3, 4, 6 & 7, ensure complete passages only
+        if (selectedParts.includes(3) || selectedParts.includes(4) || selectedParts.includes(6) || selectedParts.includes(7)) {
+          const filteredQuestions: Question[] = [];
+          const processedPassages = new Set<string>();
+
+          orderedQuestions.forEach(q => {
+            if ((q.part === 3 || q.part === 4 || q.part === 6 || q.part === 7) && q.passage_id) {
+              if (!processedPassages.has(q.passage_id)) {
+                // Get all questions from this passage
+                const passageQuestions = orderedQuestions.filter(pq => pq.passage_id === q.passage_id);
+                const allPassageQuestions = [...part3Questions, ...part4Questions, ...part6Questions, ...part7Questions].filter(pq => pq.passage_id === q.passage_id);
+                
+                // Only include if we have complete passage
+                if (passageQuestions.length === allPassageQuestions.length) {
+                  filteredQuestions.push(...passageQuestions);
+                }
+                processedPassages.add(q.passage_id);
+              }
+            } else {
+              filteredQuestions.push(q);
             }
           });
-          
-          // Sort passages by the first question's order_index, but maintain passage integrity
-          validPart6Questions.sort((a, b) => {
-            // Group by passage_id first, then sort passages by their first question's order_index
-            const aPassageId = a.passage_id;
-            const bPassageId = b.passage_id;
-            
-            if (aPassageId !== bPassageId) {
-              // Different passages - sort by the first question's order_index in each passage
-              const aFirstOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
-              const bFirstOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
-              return aFirstOrder - bFirstOrder;
-            }
-            
-            // Same passage - sort by blank_index
-            const aBlankIndex = a.blank_index || 0;
-            const bBlankIndex = b.blank_index || 0;
-            return aBlankIndex - bBlankIndex;
-          });
-          
-          orderedQuestions = [...otherPartQuestions, ...validPart6Questions];
-          console.log(`Part 6 passage integrity: ${validPart6Questions.length} questions from ${Object.keys(passageGroups).length} passages`);
-          console.log('Final Part 6 questions order:', validPart6Questions.map(q => ({
-            id: q.id.substring(0,8),
-            passage_id: q.passage_id,
-            blank_index: q.blank_index,
-            order: examQRows.find(r => r.question_id === q.id)?.order_index
-          })));
-        } else {
-          // For other parts, simple filtering
-          orderedQuestions = orderedQuestions.filter(q => selectedParts.includes(q.part as number));
+
+          orderedQuestions = filteredQuestions;
         }
       }
+
+      console.log('🔍 Final question order:', orderedQuestions.map((q, idx) => ({
+        index: idx,
+        part: q.part,
+        passage_id: q.passage_id?.substring(0, 8),
+        blank_index: q.blank_index
+      })));
 
       // Load passages for questions that need them (3,4,6,7)
       const passageIds = Array.from(new Set(
@@ -372,7 +499,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
       if (passageIds.length > 0) {
         const { data: passages, error: pErr } = await supabase
           .from('passages')
-          .select('id, texts, image_url, audio_url')
+          .select('id, passage_type, texts, image_url, audio_url, meta')
           .in('id', passageIds);
         if (pErr) {
           console.error('Error fetching passages:', pErr);
@@ -380,9 +507,11 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
           (passages || []).forEach((p: any) => {
             map[p.id] = {
               id: p.id,
+              passage_type: p.passage_type || undefined,
               texts: p.texts || null,
               image_url: p.image_url || null,
               audio_url: p.audio_url || null,
+              meta: p.meta || null,
             };
           });
         }
@@ -959,7 +1088,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
             <div>
               <h1 className="text-xl font-bold">{examSet.title}</h1>
               <p className="text-sm text-muted-foreground">
-                Câu {currentIndex + 1} / {questions.length} • Part {currentQuestion.part}
+                Câu {getTOEICQuestionNumber(currentIndex, questions)} / 200 • Part {currentQuestion.part}
                 {currentQuestion.passage_id && (
                   <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                     Passage {questions.findIndex(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part) + 1}-{questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part).length}
@@ -1064,46 +1193,44 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               </div>
             )}
 
-            {/* Part 6 Passage Text Content */}
-            {currentQuestion.part === 6 && currentQuestion.passage_id && passageMap[currentQuestion.passage_id]?.texts?.content && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
-                <h4 className="text-lg font-semibold text-blue-900 mb-3">
-                  📖 Nội dung Passage này
-                </h4>
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                  <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-900">
-                    {passageMap[currentQuestion.passage_id].texts.content}
-                  </pre>
-                </div>
-              </div>
-            )}
+            {/* Part 6: Passage text intentionally hidden — images only */}
 
-            {/* Part 6,7 Passage Images (from passages) */}
-            {(currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.passage_id && passageMap[currentQuestion.passage_id] && (
+            {/* Part 6 Passage Images (from passages) - Part 7 uses separate section below */}
+            {currentQuestion.part === 6 && currentQuestion.passage_id && passageMap[currentQuestion.passage_id] && (
               (() => {
                 const p = passageMap[currentQuestion.passage_id];
-                const images = [];
+                const images: string[] = [];
                 
-                // Add images from new structure
-                if (p.texts?.img_url) images.push(p.texts.img_url);
-                if (p.texts?.img_url2) images.push(p.texts.img_url2);
-                if (p.texts?.img_url3) images.push(p.texts.img_url3);
-                
-                // Backward compatibility: fallback to old structure
-                if (images.length === 0) {
-                  if (p.image_url) images.push(p.image_url);
-                  if (p.texts?.additional) {
-                    const extra = p.texts.additional
-                      .split('|')
-                      .map(s => s.trim())
-                      .filter(Boolean);
-                    images.push(...extra);
-                  }
+                // Priority 1: Use texts.additional (new structure)
+                if (p.texts?.additional && p.texts.additional.trim() !== '') {
+                  const parsedImages = p.texts.additional
+                    .split('|')
+                    .map((url: string) => url.trim())
+                    .filter((url: string) => url.length > 0 && url.startsWith('http'));
+                  // Part 6: Only first image (even if multiple in additional)
+                  if (parsedImages.length > 0) images.push(parsedImages[0]);
                 }
+                
+                // Priority 2: Fallback to old structure (img_url)
+                if (images.length === 0 && p.texts?.img_url) {
+                  images.push(p.texts.img_url);
+                }
+                
+                // Priority 3: Fallback to image_url
+                if (images.length === 0 && p.image_url) {
+                  images.push(p.image_url);
+                }
+                
+                console.log('🔍 Part 6 Images:', {
+                  passage_id: p.id,
+                  texts_additional: p.texts?.additional,
+                  using_structure: p.texts?.additional ? 'NEW (texts.additional)' : 'OLD (img_url)',
+                  total_images: images.length
+                });
                 
                 if (images.length === 0) return null;
                 
-                // For Part 7, always display images in a single column for better readability
+                // Part 6: Single column display
                 return (
                   <div className="mb-6">
                     <div className="space-y-4">
@@ -1135,7 +1262,82 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
               })()
             )}
 
-            {/* Part 6,7 Passage Text - Hidden for Part 6,7, only show images */}
+            {/* Part 7 - Display passage type badge and all images for ALL questions in passage */}
+            {currentQuestion.part === 7 && currentQuestion.passage_id && passageMap[currentQuestion.passage_id] && (
+              (() => {
+                const passage = passageMap[currentQuestion.passage_id];
+                const passageType = passage.passage_type || 'single';
+                
+                // OPTION B: Parse texts.additional (preferred), fallback to img_url fields
+                const images: string[] = [];
+                
+                // Priority 1: Use texts.additional (new structure)
+                if (passage.texts?.additional && passage.texts.additional.trim() !== '') {
+                  const parsedImages = passage.texts.additional
+                    .split('|')
+                    .map((url: string) => url.trim())
+                    .filter((url: string) => url.length > 0 && url.startsWith('http'));
+                  images.push(...parsedImages);
+                }
+                
+                // Priority 2: Fallback to old structure (img_url, img_url2, img_url3)
+                if (images.length === 0) {
+                  if (passage.texts?.img_url) images.push(passage.texts.img_url);
+                  if (passage.texts?.img_url2) images.push(passage.texts.img_url2);
+                  if (passage.texts?.img_url3) images.push(passage.texts.img_url3);
+                }
+                
+                console.log('🔍 Part 7 Images (with fallback support):', {
+                  passage_id: currentQuestion.passage_id,
+                  current_question_id: currentQuestion.id.substring(0, 8),
+                  passage_type: passageType,
+                  texts_additional: passage.texts?.additional,
+                  using_structure: passage.texts?.additional ? 'NEW (texts.additional)' : 'OLD (img_url fields)',
+                  total_images: images.length,
+                  images
+                });
+                
+                const passageTypeLabel = 
+                  passageType === 'triple' ? '📚 Triple Passage (3 passages)' : 
+                  passageType === 'double' ? '📖 Double Passage (2 passages)' : 
+                  '📄 Single Passage';
+                
+                return (
+                  <div className="mb-6">
+                    <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50 text-sm mb-4">
+                      {passageTypeLabel}
+                    </Badge>
+                    
+                    {/* Display all images */}
+                    {images.length > 0 ? (
+                      <div className="space-y-4">
+                        {images.map((imageUrl, index) => (
+                          <div key={index} className="flex justify-center">
+                            <img 
+                              src={imageUrl}
+                              alt={`Passage ${index + 1}`}
+                              className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                              style={{ maxHeight: '500px' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                        <p className="text-yellow-800 text-sm">
+                          ⚠️ No images found in <code className="bg-yellow-100 px-2 py-1 rounded">texts.additional</code>
+                        </p>
+                        <p className="text-yellow-600 text-xs mt-1">
+                          Please add images to database field: <code>passages.texts.additional</code>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Part 6 Passage Text - Hidden, only show in separate section above */}
             {/* Part 3,4 Passage Text - Hidden for Part 3,4 (listening), only show audio */}
             {currentQuestion.part !== 7 && currentQuestion.part !== 6 && currentQuestion.part !== 3 && currentQuestion.part !== 4 && currentQuestion.passage_id && passageMap[currentQuestion.passage_id]?.texts?.content && (
               <div className="mb-4">
@@ -1294,16 +1496,27 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
                   // Show all questions in passage for all parts (3,4,6,7)
                   const passageQuestions = questions.filter(q => q.passage_id === currentQuestion.passage_id && q.part === currentQuestion.part);
                   
+                  // DEBUG: Check all questions with this passage_id (regardless of part)
+                  const allQuestionsWithPassageId = questions.filter(q => q.passage_id === currentQuestion.passage_id);
+                  
                   console.log('🔍 DEBUG Passage Questions:', {
                     currentQuestionId: currentQuestion.id.substring(0,8),
                     currentPassageId: currentQuestion.passage_id,
                     currentPart: currentQuestion.part,
                     passageQuestionsCount: passageQuestions.length,
+                    allQuestionsWithPassageIdCount: allQuestionsWithPassageId.length,
                     passageQuestions: passageQuestions.map(q => ({
                       id: q.id.substring(0,8),
                       part: q.part,
                       passage_id: q.passage_id,
+                      order_index: (q as any).order_index,
                       prompt_text: q.prompt_text?.substring(0,50) + '...'
+                    })),
+                    allQuestionsWithPassageId: allQuestionsWithPassageId.map(q => ({
+                      id: q.id.substring(0,8),
+                      part: q.part,
+                      passage_id: q.passage_id,
+                      order_index: (q as any).order_index
                     }))
                   });
                   
@@ -1561,7 +1774,7 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
                                 : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                           }`}
                 >
-                  {index + 1}
+                  {getTOEICQuestionNumber(index, questions)}
                 </Button>
                       );
                     })}
@@ -1650,10 +1863,10 @@ const ExamSession = ({ examSetId }: ExamSessionProps) => {
             <p>Bạn có chắc chắn muốn thoát bài thi này không?</p>
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h4 className="font-semibold text-blue-900 mb-2">Tiến độ hiện tại:</h4>
-              <div className="space-y-1 text-sm text-blue-800">
+                <div className="space-y-1 text-sm text-blue-800">
                 <div className="flex justify-between">
                   <span>Câu hỏi:</span>
-                  <span className="font-medium">{currentIndex + 1}/{questions.length}</span>
+                  <span className="font-medium">{getTOEICQuestionNumber(currentIndex, questions)}/200</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Đã trả lời:</span>

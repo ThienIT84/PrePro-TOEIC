@@ -53,6 +53,11 @@ class TOEICQuestionGenerator {
         return await this.getFailedQuestions(config.failedQuestionIds);
       }
 
+      // If examSetId is provided, use exam set specific questions
+      if (config.examSetId) {
+        return await this.generateExamSetQuestions(config);
+      }
+
       if (config.type === 'custom' && config.parts) {
         return await this.generateCustomTestQuestions(config);
       }
@@ -73,39 +78,178 @@ class TOEICQuestionGenerator {
   }
 
   /**
+   * Generate questions from a specific exam set
+   * OPTIMIZED: Fetch only questions belonging to this exam set
+   */
+  private async generateExamSetQuestions(config: ExamConfig): Promise<TOEICQuestion[]> {
+    const { examSetId, parts } = config;
+    
+    console.log(`🎯 Generating Exam Set Questions (examSetId: ${examSetId}, parts: ${parts?.join(', ') || 'all'}) - OPTIMIZED...`);
+    const startTime = performance.now();
+
+    try {
+      // OPTIMIZATION: Fetch questions for this specific exam set
+      let query = supabase
+        .from('exam_questions')
+        .select(`
+          question_id,
+          order_index,
+          questions (
+            id,
+            part,
+            prompt_text,
+            choices,
+            correct_choice,
+            explain_vi,
+            explain_en,
+            audio_url,
+            image_url,
+            transcript,
+            tags,
+            created_at
+          )
+        `)
+        .eq('exam_set_id', examSetId)
+        .order('order_index', { ascending: true });
+
+      // If specific parts are selected, filter by parts
+      if (parts && parts.length > 0) {
+        // Note: We need to filter after fetching because Supabase doesn't support
+        // filtering on joined table columns in the same query easily
+      }
+
+      const { data: examQuestions, error } = await query;
+
+      if (error) {
+        console.error('❌ Error fetching exam set questions:', error);
+        throw error;
+      }
+
+      if (!examQuestions || examQuestions.length === 0) {
+        console.warn('⚠️ No questions found for exam set, falling back to general questions');
+        // Fallback to regular generation
+        if (parts && parts.length > 0) {
+          return await this.generateCustomTestQuestions(config);
+        }
+        return await this.generateFullTestQuestions();
+      }
+
+      // Convert to TOEIC questions
+      let questions: TOEICQuestion[] = examQuestions
+        .map(eq => {
+          const q = (eq as any).questions;
+          if (!q) return null;
+          return this.convertQuestionToTOEICQuestion(q, q.part);
+        })
+        .filter(q => q !== null) as TOEICQuestion[];
+
+      // Filter by parts if specified
+      if (parts && parts.length > 0) {
+        questions = questions.filter(q => parts.includes(q.part));
+      }
+
+      const endTime = performance.now();
+      console.log(`🎉 Exam Set Questions generated in ${(endTime - startTime).toFixed(2)}ms: ${questions.length} total questions`);
+      console.log(`📊 Question distribution:`, questions.reduce((acc, q) => {
+        acc[q.part] = (acc[q.part] || 0) + 1;
+        return acc;
+      }, {} as Record<number, number>));
+
+      return questions;
+    } catch (error) {
+      console.error('❌ Error in generateExamSetQuestions:', error);
+      // Fallback to regular generation
+      console.log('🔄 Falling back to regular question generation...');
+      if (parts && parts.length > 0) {
+        return await this.generateCustomTestQuestions(config);
+      }
+      return await this.generateFullTestQuestions();
+    }
+  }
+
+  /**
    * Generate full test questions (200 questions)
+   * OPTIMIZED: Fetch all questions in a single query instead of 7 separate queries
    */
   private async generateFullTestQuestions(): Promise<TOEICQuestion[]> {
-    console.log('🎯 Generating Full Test (200 questions)...');
-    const questions: TOEICQuestion[] = [];
+    console.log('🎯 Generating Full Test (200 questions) - OPTIMIZED...');
+    const startTime = performance.now();
     
-    // Generate all parts
-    for (let part = 1; part <= 7; part++) {
-      const expectedCount = PART_CONFIGS[part].questionCount;
-      console.log(`🔄 Generating Part ${part}: expecting ${expectedCount} questions...`);
-      
-      const partQuestions = await this.generatePartQuestions(part, expectedCount);
-      questions.push(...partQuestions);
-      
-      console.log(`✅ Generated ${partQuestions.length}/${expectedCount} questions for Part ${part}`);
-      
-      // Debug: log first question details
-      if (partQuestions.length > 0) {
-        console.log(`📝 Sample question for Part ${part}:`, {
-          id: partQuestions[0].id,
-          type: partQuestions[0].type,
-          hasChoices: partQuestions[0].choices?.length || 0
+    try {
+      // OPTIMIZATION: Fetch all questions for all parts in ONE query
+      const { data: allQuestions, error } = await supabase
+        .from('questions')
+        .select('*')
+        .in('part', [1, 2, 3, 4, 5, 6, 7])
+        .limit(200); // Limit to avoid over-fetching
+
+      if (error) {
+        console.error('❌ Error fetching questions:', error);
+        throw error;
+      }
+
+      // Group questions by part
+      const questionsByPart: Record<number, any[]> = {
+        1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []
+      };
+
+      if (allQuestions) {
+        allQuestions.forEach(q => {
+          if (q.part >= 1 && q.part <= 7) {
+            questionsByPart[q.part].push(q);
+          }
         });
       }
-    }
 
-    console.log(`🎉 Full Test generated: ${questions.length} total questions`);
-    console.log(`📊 Question distribution:`, questions.reduce((acc, q) => {
-      acc[q.part] = (acc[q.part] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>));
-    
-    return questions;
+      console.log('📊 Questions fetched by part:', Object.entries(questionsByPart).map(([part, qs]) => 
+        `Part ${part}: ${qs.length} questions`
+      ).join(', '));
+
+      // Convert to TOEIC questions and fill missing with mock questions
+      const questions: TOEICQuestion[] = [];
+      
+      for (let part = 1; part <= 7; part++) {
+        const expectedCount = PART_CONFIGS[part].questionCount;
+        const dbQuestions = questionsByPart[part] || [];
+        
+        // Convert DB questions to TOEIC format
+        const convertedQuestions = dbQuestions
+          .slice(0, expectedCount)
+          .map(q => this.convertQuestionToTOEICQuestion(q, part));
+        
+        questions.push(...convertedQuestions);
+        
+        // Fill missing questions with mock data if needed
+        const missingCount = expectedCount - convertedQuestions.length;
+        if (missingCount > 0) {
+          console.log(`🎭 Generating ${missingCount} mock questions for Part ${part}`);
+          const mockQuestions = this.generateMockPartQuestions(part, missingCount, 'medium');
+          questions.push(...mockQuestions);
+        }
+        
+        console.log(`✅ Part ${part}: ${convertedQuestions.length} real + ${missingCount} mock = ${expectedCount} total`);
+      }
+
+      const endTime = performance.now();
+      console.log(`🎉 Full Test generated in ${(endTime - startTime).toFixed(2)}ms: ${questions.length} total questions`);
+      console.log(`📊 Question distribution:`, questions.reduce((acc, q) => {
+        acc[q.part] = (acc[q.part] || 0) + 1;
+        return acc;
+      }, {} as Record<number, number>));
+      
+      return questions;
+    } catch (error) {
+      console.error('❌ Error in generateFullTestQuestions:', error);
+      // Fallback to generating all mock questions
+      console.log('🔄 Falling back to all mock questions...');
+      const questions: TOEICQuestion[] = [];
+      for (let part = 1; part <= 7; part++) {
+        const expectedCount = PART_CONFIGS[part].questionCount;
+        const mockQuestions = this.generateMockPartQuestions(part, expectedCount, 'medium');
+        questions.push(...mockQuestions);
+      }
+      return questions;
+    }
   }
 
   /**
@@ -189,31 +333,91 @@ class TOEICQuestionGenerator {
 
   /**
    * Generate custom test questions
+   * OPTIMIZED: Fetch all questions in a single query instead of multiple queries
    */
   private async generateCustomTestQuestions(config: ExamConfig): Promise<TOEICQuestion[]> {
-    const questions: TOEICQuestion[] = [];
     const parts = config.parts || [];
     const questionCount = config.questionCount || 50;
 
-    console.log(`🎨 Generating Custom Test (${questionCount} questions for parts: ${parts.join(', ')})...`);
+    console.log(`🎨 Generating Custom Test (${questionCount} questions for parts: ${parts.join(', ')}) - OPTIMIZED...`);
+    const startTime = performance.now();
 
-    // Distribute questions across selected parts
-    const questionsPerPart = Math.floor(questionCount / parts.length);
-    const remainingQuestions = questionCount % parts.length;
+    try {
+      // OPTIMIZATION: Fetch all questions for selected parts in ONE query
+      const { data: allQuestions, error } = await supabase
+        .from('questions')
+        .select('*')
+        .in('part', parts)
+        .limit(questionCount * 2); // Fetch extra to ensure we have enough
 
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      const count = questionsPerPart + (i < remainingQuestions ? 1 : 0);
-      
-      if (count > 0) {
-        const partQuestions = await this.generatePartQuestions(part, count);
-        questions.push(...partQuestions);
-        console.log(`✅ Generated ${partQuestions.length} questions for Part ${part}`);
+      if (error) {
+        console.error('❌ Error fetching questions:', error);
+        throw error;
       }
-    }
 
-    console.log(`🎉 Custom Test generated: ${questions.length} total questions`);
-    return questions;
+      // Group questions by part
+      const questionsByPart: Record<number, any[]> = {};
+      parts.forEach(p => questionsByPart[p] = []);
+
+      if (allQuestions) {
+        allQuestions.forEach(q => {
+          if (parts.includes(q.part)) {
+            questionsByPart[q.part].push(q);
+          }
+        });
+      }
+
+      console.log('📊 Questions fetched by part:', Object.entries(questionsByPart).map(([part, qs]) => 
+        `Part ${part}: ${qs.length} questions`
+      ).join(', '));
+
+      // Distribute questions across selected parts
+      const questionsPerPart = Math.floor(questionCount / parts.length);
+      const remainingQuestions = questionCount % parts.length;
+      const questions: TOEICQuestion[] = [];
+
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const count = questionsPerPart + (i < remainingQuestions ? 1 : 0);
+        const dbQuestions = questionsByPart[part] || [];
+        
+        // Convert DB questions to TOEIC format
+        const convertedQuestions = dbQuestions
+          .slice(0, count)
+          .map(q => this.convertQuestionToTOEICQuestion(q, part));
+        
+        questions.push(...convertedQuestions);
+        
+        // Fill missing questions with mock data if needed
+        const missingCount = count - convertedQuestions.length;
+        if (missingCount > 0) {
+          console.log(`🎭 Generating ${missingCount} mock questions for Part ${part}`);
+          const mockQuestions = this.generateMockPartQuestions(part, missingCount, 'medium');
+          questions.push(...mockQuestions);
+        }
+        
+        console.log(`✅ Part ${part}: ${convertedQuestions.length} real + ${missingCount} mock = ${count} total`);
+      }
+
+      const endTime = performance.now();
+      console.log(`🎉 Custom Test generated in ${(endTime - startTime).toFixed(2)}ms: ${questions.length} total questions`);
+      return questions;
+    } catch (error) {
+      console.error('❌ Error in generateCustomTestQuestions:', error);
+      // Fallback to generating mock questions
+      console.log('🔄 Falling back to mock questions...');
+      const questions: TOEICQuestion[] = [];
+      const questionsPerPart = Math.floor(questionCount / parts.length);
+      const remainingQuestions = questionCount % parts.length;
+
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const count = questionsPerPart + (i < remainingQuestions ? 1 : 0);
+        const mockQuestions = this.generateMockPartQuestions(part, count, 'medium');
+        questions.push(...mockQuestions);
+      }
+      return questions;
+    }
   }
 
   /**
@@ -299,13 +503,29 @@ class TOEICQuestionGenerator {
    * Convert database item to TOEIC question format
    */
   private convertQuestionToTOEICQuestion(question: any, part: number): TOEICQuestion {
+    // Convert JSONB choices to array if needed
+    let choicesArray: string[] = [];
+    if (question.choices) {
+      if (Array.isArray(question.choices)) {
+        choicesArray = question.choices;
+      } else if (typeof question.choices === 'object') {
+        // Convert {A: "...", B: "...", C: "...", D: "..."} to array
+        choicesArray = [
+          question.choices.A || question.choices.a || '',
+          question.choices.B || question.choices.b || '',
+          question.choices.C || question.choices.c || '',
+          question.choices.D || question.choices.d || ''
+        ];
+      }
+    }
+    
     return {
       id: question.id,
       part,
       type: part <= 4 ? 'listening' : 'reading',
-      question: question.question,
-      choices: question.choices || [],
-      correct_answer: question.answer, // Fix: use 'answer' instead of 'correct_answer'
+      question: question.prompt_text || question.question || '', // Support both column names
+      choices: choicesArray,
+      correct_answer: question.correct_choice || question.answer || 'A', // Support both column names
       explanation: question.explain_vi || question.explain_en, // Use Vietnamese explanation first
       audio_url: question.audio_url,
       image_url: question.image_url,
