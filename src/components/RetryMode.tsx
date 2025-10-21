@@ -351,70 +351,10 @@ const RetryMode: React.FC<RetryModeProps> = ({
                 );
               })()}
 
-              {/* Image for Part 1 */}
-              {currentQuestion?.part === 1 && currentQuestion.question.image_url && (
-                <div className="mb-6">
-                  <div className="flex justify-center">
-                    <img 
-                      src={currentQuestion.question.image_url} 
-                      alt="Question image" 
-                      className="max-w-full h-auto rounded-lg border shadow-sm object-contain"
-                      style={{ maxHeight: '500px' }}
-                    />
-                  </div>
-                </div>
-              )}
+              {/* Image for Part 1 is handled in the else block below (Single Question section) */}
 
-              {/* Part 7 Passage Images (from passages) - Skip Part 6 as PassageDisplay handles it */}
-              {currentQuestion && currentQuestion.part === 7 && currentQuestion.question.passage_id && passageMap[currentQuestion.question.passage_id] && (
-                (() => {
-                  const p = passageMap[currentQuestion.question.passage_id];
-                  const images = [];
-                  
-                  // Add images from new structure
-                  if (p.texts?.img_url) images.push(p.texts.img_url);
-                  if (p.texts?.img_url2) images.push(p.texts.img_url2);
-                  if (p.texts?.img_url3) images.push(p.texts.img_url3);
-                  
-                  // Backward compatibility: fallback to old structure
-                  if (images.length === 0) {
-                    if (p.image_url) images.push(p.image_url);
-                    if (p.texts?.additional) {
-                      const extra = p.texts.additional
-                        .split('|')
-                        .map(s => s.trim())
-                        .filter(Boolean);
-                      images.push(...extra);
-                    }
-                  }
-                  
-                  if (images.length === 0) return null;
-                  
-                  return (
-                    <div className="mb-6">
-                      <div className="space-y-4">
-                        {images.map((src, i) => (
-                          <div key={i} className="flex justify-center">
-                            <img 
-                              src={src} 
-                              alt={`Passage ${i + 1}`} 
-                              className="max-w-full h-auto rounded-lg border shadow-lg hover:shadow-xl transition-shadow duration-200"
-                              style={{ 
-                                maxHeight: '600px',
-                                minHeight: '300px',
-                                objectFit: 'contain'
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()
-              )}
-
-              {/* Passage Content for Part 3, 4, 6, 7 */}
-              {currentQuestion && (currentQuestion.part === 3 || currentQuestion.part === 4 || currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.question.passage_id && (
+              {/* Passage Content for all Parts with passage_id (Part 3,4,6,7 only) */}
+              {currentQuestion && currentQuestion.question.passage_id && [3,4,6,7].includes(currentQuestion.part) && (
                 <div className="mb-6">
                   <PassageDisplay
                     passage={{
@@ -433,18 +373,7 @@ const RetryMode: React.FC<RetryModeProps> = ({
                 </div>
               )}
 
-              {/* Part 6,7 Passage Text - Hidden for Part 6,7, only show images */}
-              {/* Part 3,4 Passage Text - Hidden for Part 3,4 (listening), only show audio */}
-              {currentQuestion && currentQuestion.part !== 7 && currentQuestion.part !== 6 && currentQuestion.part !== 3 && currentQuestion.part !== 4 && currentQuestion.question.passage_id && passageMap[currentQuestion.question.passage_id]?.texts?.content && (
-                <div className="mb-4">
-                  {passageMap[currentQuestion.question.passage_id]?.texts?.title && (
-                    <h3 className="text-base font-semibold mb-2">{passageMap[currentQuestion.question.passage_id]?.texts?.title}</h3>
-                  )}
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">
-                    {passageMap[currentQuestion.question.passage_id]?.texts?.content}
-                  </pre>
-                </div>
-              )}
+              {/* Passage text is now handled by PassageDisplay component above */}
 
               {/* Question Text - Hidden for Part 1 and Part 2 */}
               {currentQuestion && currentQuestion.part !== 1 && currentQuestion.part !== 2 && (
@@ -503,8 +432,8 @@ const RetryMode: React.FC<RetryModeProps> = ({
                 </div>
               )}
 
-              {/* Passage Questions - Show all questions in passage */}
-              {currentQuestion?.question.passage_id ? (
+              {/* Passage Questions - Show all questions in passage (Part 3,4,6,7 only) */}
+              {currentQuestion?.question.passage_id && [3,4,6,7].includes(currentQuestion.part) ? (
                 <div className="space-y-6">
                   {/* Audio and Image for the entire passage - shown once at the top */}
                   {(() => {
@@ -636,12 +565,8 @@ const RetryMode: React.FC<RetryModeProps> = ({
                           key={choiceLetter}
                                     className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                             isSelected
-                              ? (isCorrect 
-                                  ? 'border-green-500 bg-green-50' 
-                                  : 'border-red-500 bg-red-50')
-                                        : isCorrect && question.isAnswered
-                                ? 'border-green-300 bg-green-25'
-                                          : 'border-gray-200 bg-white hover:border-gray-300'
+                              ? 'border-primary bg-primary/5'
+                              : 'border-gray-200 bg-white hover:border-gray-300'
                                     }`}
                                     onClick={() => {
                                       handleAnswerChange(question.id, choiceLetter);
@@ -650,32 +575,14 @@ const RetryMode: React.FC<RetryModeProps> = ({
                                     <div className="flex items-center gap-3">
                                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
                             isSelected
-                              ? (isCorrect 
-                                  ? 'bg-green-500 text-white' 
-                                  : 'bg-red-500 text-white')
-                                          : isCorrect && question.isAnswered
-                                ? 'bg-green-300 text-white'
-                                : 'bg-gray-200 text-gray-700'
+                              ? 'bg-primary text-white'
+                              : 'bg-gray-200 text-gray-700'
                           }`}>
                             {choiceLetter}
                           </div>
-                                      <span className={`text-sm ${
-                                        isSelected 
-                                          ? (isCorrect ? 'text-green-800' : 'text-red-800')
-                                          : 'text-gray-700'
-                                      }`}>
+                                      <span className="text-sm text-gray-700">
                             {hasText ? choiceText : `Lựa chọn ${choiceLetter}`}
                           </span>
-                          {isSelected && (
-                                        <span className="ml-auto text-xs font-medium">
-                              {isCorrect ? '✓ Đúng' : '✗ Sai'}
-                            </span>
-                          )}
-                                      {!isSelected && isCorrect && question.isAnswered && (
-                                        <span className="ml-auto text-xs font-medium text-green-600">
-                              ✓ Đáp án đúng
-                            </span>
-                          )}
                                     </div>
                                   </div>
                                 );
@@ -736,12 +643,8 @@ const RetryMode: React.FC<RetryModeProps> = ({
                               key={choiceLetter}
                               className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                                 isSelected 
-                                  ? (isCorrect 
-                                      ? 'border-green-500 bg-green-50' 
-                                      : 'border-red-500 bg-red-50')
-                                  : isCorrect && currentQuestion?.isAnswered
-                                    ? 'border-green-300 bg-green-25'
-                                    : 'border-border hover:border-primary/50'
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/50'
                               }`}
                             >
                               <input
@@ -754,12 +657,8 @@ const RetryMode: React.FC<RetryModeProps> = ({
                               />
                               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                                 isSelected 
-                                  ? (isCorrect
-                                      ? 'border-green-500 bg-green-500 text-white'
-                                      : 'border-red-500 bg-red-500 text-white')
-                                  : isCorrect && currentQuestion?.isAnswered
-                                    ? 'border-green-300 bg-green-300 text-white'
-                                    : 'border-muted-foreground'
+                                  ? 'border-primary bg-primary text-white'
+                                  : 'border-muted-foreground'
                               }`}>
                                 {isSelected && <CheckCircle className="h-4 w-4" />}
                               </div>
@@ -773,7 +672,6 @@ const RetryMode: React.FC<RetryModeProps> = ({
                       // Show actual choices from data
                       return Object.entries(choices).map(([choiceLetter, choiceText]) => {
                         const isSelected = currentQuestion?.userAnswer === choiceLetter;
-                        const isCorrect = currentQuestion?.correctAnswer === choiceLetter;
                         const hasText = choiceText && choiceText.trim().length > 0;
                         
                         return (
@@ -781,12 +679,8 @@ const RetryMode: React.FC<RetryModeProps> = ({
                             key={choiceLetter}
                             className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                               isSelected 
-                                ? (isCorrect 
-                                    ? 'border-green-500 bg-green-50' 
-                                    : 'border-red-500 bg-red-50')
-                                : isCorrect && currentQuestion?.isAnswered
-                                  ? 'border-green-300 bg-green-25'
-                                  : 'border-border hover:border-primary/50'
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
                             }`}
                           >
                             <input
@@ -799,12 +693,8 @@ const RetryMode: React.FC<RetryModeProps> = ({
                             />
                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                               isSelected 
-                                ? (isCorrect
-                                    ? 'border-green-500 bg-green-500 text-white'
-                                    : 'border-red-500 bg-red-500 text-white')
-                                : isCorrect && currentQuestion?.isAnswered
-                                  ? 'border-green-300 bg-green-300 text-white'
-                                  : 'border-muted-foreground'
+                                ? 'border-primary bg-primary text-white'
+                                : 'border-muted-foreground'
                             }`}>
                               {isSelected && <CheckCircle className="h-4 w-4" />}
                             </div>

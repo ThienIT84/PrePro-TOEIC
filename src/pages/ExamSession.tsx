@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { toeicQuestionGenerator, TOEICQuestion, ExamConfig } from '@/services/toeicQuestionGenerator';
+import { useExamQuestions } from '@/hooks/useExamQuestions';
 import { TimeMode } from '@/types';
 
 // Remove duplicate interfaces - using from toeicQuestionGenerator
@@ -46,43 +47,76 @@ const ExamSession = () => {
   const [timeLeft, setTimeLeft] = useState(-1); // -1 means not started yet
   const [isPaused, setIsPaused] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const timeMode: TimeMode = (location.state as any)?.timeMode || 'standard';
 
+  // Use React Query for caching
+  const { data: cachedQuestions, isLoading: isLoadingQuestions } = useExamQuestions(
+    examConfig || { type: 'full', examSetId },
+    !!examConfig // Only fetch when config is ready
+  );
+
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const type = urlParams.get('type') || 'mini';
-    const state = location.state as any;
+    const fetchExamSetAndSetConfig = async () => {
+      const urlParams = new URLSearchParams(location.search);
+      const type = urlParams.get('type') || 'custom';
+      const state = location.state as any;
+      
+      // If we have examSetId, use exam set configuration
+      if (examSetId) {
+        try {
+          // Fetch exam set data if not provided in state
+          const examSet = state?.examSet || await (async () => {
+            const { data, error } = await supabase
+              .from('exam_sets')
+              .select('*')
+              .eq('id', examSetId)
+              .single();
+            
+            if (error) throw error;
+            return data;
+          })();
+          
+          console.log('📋 Exam set loaded:', examSet);
+          
+          const config: ExamConfig = {
+            type: state?.parts && state.parts.length < 7 ? 'custom' : 'full',
+            parts: state?.parts?.map((p: number) => p) || [1, 2, 3, 4, 5, 6, 7],
+            questionCount: examSet.question_count || examSet.total_questions,
+            timeLimit: examSet.time_limit,
+            failedQuestionIds: state?.failedQuestionIds || [],
+            examSetId: examSetId
+          };
+          
+          console.log('⚙️ Exam config created:', config);
+          setExamConfig(config);
+          // Questions will be loaded by React Query hook
+        } catch (error) {
+          console.error('❌ Error fetching exam set:', error);
+          toast({
+            title: 'Lỗi',
+            description: 'Không thể tải thông tin đề thi',
+            variant: 'destructive'
+          });
+          navigate('/exam-sets');
+        }
+      } else {
+        // Original logic for mini/custom tests without examSetId
+        const config: ExamConfig = {
+          type: type as any,
+          parts: state?.parts?.map((p: string) => parseInt(p)) || [],
+          questionCount: state?.testConfig?.questionCount || 50,
+          timeLimit: state?.testConfig?.timeLimit || 45,
+          failedQuestionIds: state?.failedQuestionIds || []
+        };
+        
+        setExamConfig(config);
+        // Questions will be loaded by React Query hook
+      }
+    };
     
-    // If we have examSetId, use exam set configuration
-    if (examSetId && state?.examSet) {
-      const examSet = state.examSet;
-      const config: ExamConfig = {
-        type: type as any,
-        parts: state?.parts?.map((p: number) => p) || [],
-        questionCount: examSet.total_questions,
-        timeLimit: examSet.time_limit,
-        failedQuestionIds: state?.failedQuestionIds || [],
-        examSetId: examSetId
-      };
-      
-      setExamConfig(config);
-      loadQuestions(config);
-    } else {
-      // Original logic for mini/custom tests
-      const config: ExamConfig = {
-        type: type as any,
-        parts: state?.parts?.map((p: string) => parseInt(p)) || [],
-        questionCount: state?.testConfig?.questionCount || 50,
-        timeLimit: state?.testConfig?.timeLimit || 45,
-        failedQuestionIds: state?.failedQuestionIds || []
-      };
-      
-      setExamConfig(config);
-      loadQuestions(config);
-    }
-  }, [location, examSetId]);
+    fetchExamSetAndSetConfig();
+  }, [location, examSetId, navigate, toast]);
 
   useEffect(() => {
     console.log(`🕐 Timer effect: timeLeft=${timeLeft}, isPaused=${isPaused}, isCompleted=${isCompleted}, timeMode=${timeMode}`);
@@ -99,13 +133,14 @@ const ExamSession = () => {
     }
   }, [timeLeft, isPaused, isCompleted, timeMode]);
 
-  const loadQuestions = async (config: ExamConfig) => {
-    setLoading(true);
-    try {
-      const generatedQuestions = await toeicQuestionGenerator.generateQuestions(config);
+  // Load questions from React Query cache or fetch
+  useEffect(() => {
+    if (cachedQuestions && examConfig) {
+      console.log(`✅ Using cached/fetched questions: ${cachedQuestions.length} total`);
+      console.log(`📍 Current state - questions.length: ${questions.length}, timeLeft: ${timeLeft}`);
       
       // Debug: Check for duplicate IDs
-      const questionIds = generatedQuestions.map(q => q.id);
+      const questionIds = cachedQuestions.map(q => q.id);
       const uniqueIds = new Set(questionIds);
       if (questionIds.length !== uniqueIds.size) {
         console.warn('⚠️ Duplicate question IDs detected!', {
@@ -115,33 +150,25 @@ const ExamSession = () => {
         });
       }
       
-      console.log(`📚 Loaded ${generatedQuestions.length} questions:`, generatedQuestions.map(q => ({
-        id: q.id,
-        part: q.part,
-        type: q.type
-      })));
+      setQuestions(cachedQuestions);
+      console.log(`📝 Questions set in state: ${cachedQuestions.length} questions`);
       
-      setQuestions(generatedQuestions);
-      
-      // Set time based on time mode
-      if (timeMode === 'unlimited') {
-        setTimeLeft(-1); // -1 indicates unlimited time
-        console.log(`⏰ Unlimited time mode for ${generatedQuestions.length} questions`);
+      // Only set initial time, don't reset if already started
+      if (timeLeft === -1) {
+        // Set time based on time mode
+        if (timeMode === 'unlimited') {
+          // Keep as -1 for unlimited time until user clicks start
+          console.log(`⏰ Unlimited time mode for ${cachedQuestions.length} questions`);
+        } else {
+          // Keep as -1 until user clicks start button
+          console.log(`⏰ Standard time mode ready: ${(examConfig.timeLimit || 0) * 60} seconds for ${cachedQuestions.length} questions`);
+        }
       } else {
-        setTimeLeft((config.timeLimit || 0) * 60); // Convert minutes to seconds
-        console.log(`⏰ Timer set to ${(config.timeLimit || 0) * 60} seconds for ${generatedQuestions.length} questions`);
+        console.log(`⏰ Timer already running: ${timeLeft} seconds remaining`);
       }
-    } catch (error) {
-      console.error('Error loading questions:', error);
-      toast({
-        title: 'Lỗi',
-        description: 'Không thể tải câu hỏi. Vui lòng thử lại.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cachedQuestions, examConfig, timeMode]);
 
   // Remove generateMockQuestions - now using toeicQuestionGenerator
 
@@ -266,12 +293,55 @@ const ExamSession = () => {
     return colors[(part - 1) % colors.length];
   };
 
-  if (loading) {
+  // Show loading while fetching questions or if no questions loaded
+  if (isLoadingQuestions || !examConfig || questions.length === 0) {
     return (
       <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="h-64 bg-muted rounded"></div>
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-8 bg-muted rounded w-48 animate-pulse"></div>
+              <div className="h-4 bg-muted rounded w-64 animate-pulse"></div>
+            </div>
+            <div className="h-10 bg-muted rounded w-32 animate-pulse"></div>
+          </div>
+
+          {/* Progress Skeleton */}
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <div className="h-4 bg-muted rounded w-24 animate-pulse"></div>
+              <div className="h-4 bg-muted rounded w-16 animate-pulse"></div>
+            </div>
+            <div className="h-2 bg-muted rounded w-full animate-pulse"></div>
+          </div>
+
+          {/* Loading Message */}
+          <Card className="border-primary/20">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Đang tải câu hỏi...</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {isLoadingQuestions ? 'Đang tải từ database...' : 'Đang khởi tạo...'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Question Card Skeleton */}
+          <div className="space-y-4">
+            <div className="h-6 bg-muted rounded w-40 animate-pulse"></div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-16 bg-muted rounded animate-pulse"></div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -362,8 +432,29 @@ const ExamSession = () => {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
+  
+  // Safety check: if no current question, show loading
+  if (!currentQuestion) {
+    console.warn('⚠️ No current question found at index:', currentQuestionIndex, 'Total questions:', questions.length);
+    return (
+      <div className="p-6">
+        <Card className="max-w-4xl mx-auto">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p>Đang tải câu hỏi...</p>
+              <p className="text-sm text-muted-foreground">
+                Questions: {questions.length}, Index: {currentQuestionIndex}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-  const currentPart = currentQuestion?.part || 1;
+  const currentPart = currentQuestion.part || 1;
   const isListening = currentPart <= 4;
 
   return (

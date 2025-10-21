@@ -32,6 +32,13 @@ class QuestionGeneratorService {
   }
 
   /**
+   * Refresh API key from localStorage
+   */
+  refreshApiKey(): void {
+    groqQuestionGeneratorService.refreshApiKey();
+  }
+
+  /**
    * Tạo câu hỏi từ nội dung sử dụng Groq (miễn phí)
    */
   async generateQuestions(request: QuestionGenerationRequest): Promise<QuestionGenerationResponse> {

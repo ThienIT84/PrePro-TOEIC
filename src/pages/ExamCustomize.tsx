@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Play, Clock, Timer, Target, History } from 'lucide-react';
+import { ArrowLeft, Play, Clock, Timer, Target, History, Download } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
+import { usePrefetchExamQuestions } from '@/hooks/useExamQuestions';
 import ExamHistoryTable from '@/components/ExamHistoryTable';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -58,6 +59,8 @@ const ExamCustomize = () => {
   const [examSet, setExamSet] = useState<any>(null);
   const [partQuestionCounts, setPartQuestionCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  const { prefetchQuestions } = usePrefetchExamQuestions();
 
   // Fetch exam set data and question counts by part
   useEffect(() => {
@@ -138,10 +141,41 @@ const ExamCustomize = () => {
     setSelectedParts(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
   };
 
+  const handlePrefetch = async () => {
+    if (!examSetId || selectedParts.length === 0) return;
+    
+    setIsPrefetching(true);
+    try {
+      await prefetchQuestions({
+        type: selectedParts.length === 7 ? 'full' : 'custom',
+        parts: selectedParts,
+        examSetId,
+        timeLimit: typeof totalMinutes === 'number' ? totalMinutes : examSet?.time_limit,
+        questionCount: totalQuestions,
+      });
+      console.log('✅ Questions prefetched successfully!');
+    } catch (error) {
+      console.error('❌ Error prefetching questions:', error);
+    } finally {
+      setIsPrefetching(false);
+    }
+  };
+
   const start = () => {
     if (!examSetId || selectedParts.length === 0) return;
     navigate(`/exam-sets/${examSetId}/take`, { state: { parts: selectedParts, timeMode } });
   };
+
+  // Auto-prefetch when user selects parts
+  useEffect(() => {
+    if (examSetId && selectedParts.length > 0 && !isPrefetching) {
+      // Debounce prefetch to avoid too many requests
+      const timer = setTimeout(() => {
+        handlePrefetch();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [examSetId, selectedParts]);
 
   const handleViewDetails = (sessionId: string) => {
     navigate(`/exam-result/${sessionId}`);
@@ -194,6 +228,12 @@ const ExamCustomize = () => {
             <History className="h-4 w-4" />
             {showHistory ? 'Ẩn lịch sử' : 'Xem lịch sử'}
           </Button>
+          {isPrefetching && (
+            <Badge variant="secondary" className="flex items-center gap-2">
+              <Download className="h-3 w-3 animate-pulse" />
+              Đang tải trước...
+            </Badge>
+          )}
           <Badge> {totalQuestions} câu</Badge>
           <Badge> {typeof totalMinutes === 'string' ? totalMinutes : `${totalMinutes} phút`}</Badge>
           <Button disabled={selectedParts.length === 0} onClick={start}>

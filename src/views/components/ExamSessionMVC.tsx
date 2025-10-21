@@ -10,79 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { toeicQuestionGenerator } from '@/services/toeicQuestionGenerator';
 import { ExamSet, Question, DrillType, TimeMode } from '@/types';
-// Mock controller hook since it might not exist
-const useExamSessionController = () => {
-  return {
-    state: {},
-    examSet: null,
-    questions: [],
-    currentIndex: 0,
-    answers: new Map(),
-    timeLeft: 0,
-    isStarted: false,
-    isPaused: false,
-    isSubmitted: false,
-    loading: false,
-    showSubmitDialog: false,
-    hasCompleted: false,
-    refreshKey: 0,
-    sessionId: null,
-    passageMap: {},
-    selectedParts: null,
-    setExamSet: (examSet: any) => {},
-    setQuestions: (questions: any[]) => {},
-    setSelectedParts: (parts: any) => {},
-    setLoading: (loading: boolean) => {},
-    setHasCompleted: (completed: boolean) => {},
-    setPassageMap: (passages: any) => {},
-    setSessionId: (id: string) => {},
-    setTimeLeft: (time: number) => {},
-    startExam: () => {},
-    pauseExam: () => {},
-    nextQuestion: () => {},
-    previousQuestion: () => {},
-    goToQuestion: (index: number) => {},
-    handleAnswerChange: (questionId: string, answer: string) => {},
-    showSubmitDialogAction: () => {},
-    hideSubmitDialog: () => {},
-    handleSubmitExam: () => {},
-    formatTime: () => '',
-    getProgress: () => 0,
-    getAnsweredCount: () => 0,
-    getCurrentQuestion: () => null,
-    getCurrentAnswer: () => null,
-    calculateResults: () => ({ totalQuestions: 0, correctAnswers: 0, score: 0, timeSpent: 0 }),
-  };
-};
-
-// Mock interfaces since controller might not exist
-interface ExamAnswer {
-  question_id: string;
-  answer: string;
-  is_correct: boolean;
-  time_spent: number;
-  questionId?: string;
-  isCorrect?: boolean;
-  timeSpent?: number;
-}
-
-interface PassageLite {
-  id: string;
-  title: string;
-  content: string;
-  audio_url?: string;
-  image_url?: string; // Backward compatibility
-  texts?: {
-    title?: string;
-    content?: string;
-    content2?: string;
-    content3?: string;
-    img_url?: string;
-    img_url2?: string;
-    img_url3?: string;
-    additional?: string; // Backward compatibility
-  };
-}
+import { useExamSessionController } from '@/controllers/exam/useExamSessionController';
+import type { PassageLite, ExamAnswer } from '@/controllers/exam/ExamSessionController';
 import ExamSessionView from './ExamSessionView';
 
 interface ExamSessionMVCProps {
@@ -317,9 +246,18 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
           
           // Only include complete passages (all questions from same passage)
           const validPart6Questions: Question[] = [];
-          Object.values(passageGroups).forEach(passageQuestions => {
-            // Check if this passage has all its questions in the exam set
-            const passageId = passageQuestions[0].passage_id;
+          
+          // Get passage IDs sorted by order_index of first question (since we don't have passageMap here)
+          const sortedPassageIds = Object.keys(passageGroups).sort((aId, bId) => {
+            // Sort by order_index of first question in each passage
+            const aFirstOrder = examQRows.find(r => r.question_id === passageGroups[aId][0].id)?.order_index || 0;
+            const bFirstOrder = examQRows.find(r => r.question_id === passageGroups[bId][0].id)?.order_index || 0;
+            return aFirstOrder - bFirstOrder;
+          });
+          
+          // Add questions from each passage in sorted order
+          sortedPassageIds.forEach(passageId => {
+            const passageQuestions = passageGroups[passageId];
             const allPassageQuestions = orderedQuestions.filter(q => q.passage_id === passageId);
             
             // Only include if we have all questions from this passage
@@ -328,26 +266,10 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
             }
           });
           
-          // Sort passages by the first question's order_index, but maintain passage integrity
-          validPart6Questions.sort((a, b) => {
-            // Group by passage_id first, then sort passages by their first question's order_index
-            const aPassageId = a.passage_id;
-            const bPassageId = b.passage_id;
-            
-            if (aPassageId !== bPassageId) {
-              // Different passages - sort by the first question's order_index in each passage
-              const aFirstOrder = examQRows.find(r => r.question_id === a.id)?.order_index || 0;
-              const bFirstOrder = examQRows.find(r => r.question_id === b.id)?.order_index || 0;
-              return aFirstOrder - bFirstOrder;
-            }
-            
-            // Same passage - sort by blank_index
-            const aBlankIndex = a.blank_index || 0;
-            const bBlankIndex = b.blank_index || 0;
-            return aBlankIndex - bBlankIndex;
-          });
-          
-          orderedQuestions = [...otherPartQuestions, ...validPart6Questions];
+          // Insert Part 6 in correct position (between Part 5 and Part 7)
+          const beforePart6 = otherPartQuestions.filter(q => (q.part as number) < 6);
+          const afterPart6 = otherPartQuestions.filter(q => (q.part as number) > 6);
+          orderedQuestions = [...beforePart6, ...validPart6Questions, ...afterPart6];
           console.log(`Part 6 passage integrity: ${validPart6Questions.length} questions from ${Object.keys(passageGroups).length} passages`);
           console.log('Final Part 6 questions order:', validPart6Questions.map(q => ({
             id: q.id.substring(0,8),
@@ -380,8 +302,6 @@ const ExamSessionMVC: React.FC<ExamSessionMVCProps> = ({ examSetId: propExamSetI
           (passages || []).forEach((p: any) => {
             passageMap[p.id] = {
               id: p.id,
-              title: p.title || '',
-              content: p.content || '',
               texts: p.texts || null,
               image_url: p.image_url || null,
               audio_url: p.audio_url || null,

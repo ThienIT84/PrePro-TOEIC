@@ -1,4 +1,4 @@
-# 🎓 O-Buddy Hello - TOEIC Learning Platform
+# 🎓 Prepro TOEIC - TOEIC Learning Platform
 
 A comprehensive TOEIC learning platform built with modern React architecture and MVC pattern, featuring exam management, question banks, student analytics, and real-time progress tracking.
 
@@ -47,10 +47,10 @@ src/
 
 ```bash
 # Clone the repository
-git clone https://github.com/ThienIT84/o-buddy-hello.git
+git clone https://github.com/ThienIT84/prepro-toeic.git
 
 # Navigate to project directory
-cd o-buddy-hello
+cd prepro-toeic
 
 # Install dependencies
 npm install

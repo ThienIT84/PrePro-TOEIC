@@ -23,6 +23,7 @@ import { ExamSet, Question } from '@/types';
 import SimpleAudioPlayer from './SimpleAudioPlayer';
 import TimeStatistics from './TimeStatistics';
 import { PassageDisplay } from './PassageDisplay';
+import ExamReviewSettings from './ExamReviewSettings';
 
 interface ExamReviewProps {
   sessionId: string;
@@ -37,6 +38,8 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [showTranslations, setShowTranslations] = useState(true);
+  const [showExplanations, setShowExplanations] = useState(true);
 
   useEffect(() => {
     fetchExamData();
@@ -87,7 +90,17 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
       }
 
       console.log('Questions data:', questionsData);
-      setQuestions(questionsData as any || []);
+      
+      // Sort questions according to the order in servedQuestionIds
+      // Supabase .in() doesn't preserve order, so we need to sort manually
+      const sortedQuestions = (questionsData as any[] || []).sort((a, b) => {
+        const indexA = servedQuestionIds.indexOf(a.id);
+        const indexB = servedQuestionIds.indexOf(b.id);
+        return indexA - indexB;
+      });
+      
+      console.log('Sorted questions:', sortedQuestions);
+      setQuestions(sortedQuestions);
 
       // Fetch user answers from exam_attempts
       const { data: attemptsData, error: attemptsError } = await supabase
@@ -257,6 +270,12 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
               <h1 className="text-xl font-bold text-gray-900">Xem lại bài thi</h1>
               <p className="text-sm text-gray-600">{examSet.title}</p>
             </div>
+            <ExamReviewSettings
+              showTranslations={showTranslations}
+              showExplanations={showExplanations}
+              onToggleTranslations={setShowTranslations}
+              onToggleExplanations={setShowExplanations}
+            />
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-right">
@@ -335,112 +354,44 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                       </div>
                     )}
 
-                    {/* Passage Images - Skip for Part 6 as PassageDisplay handles it */}
-                    {currentQuestion.part !== 6 && (() => {
-                      const passage = (currentQuestion as any).passages;
-                      if (!passage) return null;
+                    {/* Part 6 and 7 images are now handled by PassageDisplay component above */}
 
-                      const images = [];
-                      
-                      // Add images from new structure
-                      if (passage.texts?.img_url) images.push(passage.texts.img_url);
-                      if (passage.texts?.img_url2) images.push(passage.texts.img_url2);
-                      if (passage.texts?.img_url3) images.push(passage.texts.img_url3);
-                      
-                      // Backward compatibility: fallback to old structure
-                      if (images.length === 0) {
-                        if (passage.image_url) images.push(passage.image_url);
-                        if (passage.texts?.additional) {
-                          const additionalImages = passage.texts.additional
-                            .split('|')
-                            .map((url: string) => url.trim())
-                            .filter((url: string) => url && url.startsWith('http'));
-                          images.push(...additionalImages);
-                        }
-                      }
-
-                      if (images.length === 0) return null;
-
-                      return (
-                        <div className="mb-4">
-                          {images.length === 1 ? (
-                            // Single image
-                            <div className="text-center">
-                              <img 
-                                src={images[0]} 
-                                alt="Passage image" 
-                                className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
-                                style={{ maxHeight: '500px' }}
-                              />
-                            </div>
-                          ) : (
-                            // Multiple images (Part 7)
-                            <div className="space-y-4">
-                              {images.map((url, index) => (
-                                <div key={index} className="text-center">
-                                  <img 
-                                    src={url} 
-                                    alt={`Passage image ${index + 1}`} 
-                                    className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
-                                    style={{ maxHeight: '500px' }}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Passage Text with Translation */}
-                    {(currentQuestion as any).passages?.texts?.content && (
-                      <PassageDisplay
-                        passage={{
-                          content: (currentQuestion as any).passages.texts.content,
-                          title: (currentQuestion as any).passages.texts.title || `Passage ${currentQuestionIndex + 1}`,
-                          content2: (currentQuestion as any).passages.texts.content2,
-                          content3: (currentQuestion as any).passages.texts.content3,
-                          img_url: (currentQuestion as any).passages?.texts?.img_url,
-                          img_url2: currentQuestion.part === 6 ? undefined : (currentQuestion as any).passages?.texts?.img_url2,
-                          img_url3: currentQuestion.part === 6 ? undefined : (currentQuestion as any).passages?.texts?.img_url3
-                        }}
-                        translationVi={(currentQuestion as any).passages?.translation_vi}
-                        translationEn={(currentQuestion as any).passages?.translation_en}
-                        showTranslation={true}
-                      />
+                    {/* Passage Text with Translation - For Part 3, 4, 6, 7 */}
+                    {(currentQuestion.part === 3 || currentQuestion.part === 4 || currentQuestion.part === 6 || currentQuestion.part === 7) && (currentQuestion as any).passages?.texts?.content && (
+                      <>
+                        {console.log(`🔍 Part ${currentQuestion.part} Passage Data:`, {
+                          passage: (currentQuestion as any).passages,
+                          translationVi: (currentQuestion as any).passages?.translation_vi,
+                          translationEn: (currentQuestion as any).passages?.translation_en,
+                          additional: (currentQuestion as any).passages?.texts?.additional,
+                          showTranslations: showTranslations,
+                          hasTranslationVi: !!(currentQuestion as any).passages?.translation_vi,
+                          hasTranslationEn: !!(currentQuestion as any).passages?.translation_en,
+                          translationViContent: (currentQuestion as any).passages?.translation_vi?.content,
+                          translationViContent2: (currentQuestion as any).passages?.translation_vi?.content2,
+                          translationViContent3: (currentQuestion as any).passages?.translation_vi?.content3
+                        })}
+                        <PassageDisplay
+                          passage={{
+                            content: (currentQuestion as any).passages.texts.content,
+                            title: (currentQuestion as any).passages.texts.title || `Passage ${currentQuestionIndex + 1}`,
+                            content2: (currentQuestion as any).passages.texts.content2,
+                            content3: (currentQuestion as any).passages.texts.content3,
+                            img_url: (currentQuestion as any).passages.texts.img_url,
+                            img_url2: (currentQuestion as any).passages.texts.img_url2,
+                            img_url3: (currentQuestion as any).passages.texts.img_url3,
+                            additional: (currentQuestion as any).passages.texts.additional
+                          }}
+                          translationVi={showTranslations ? ((currentQuestion as any).passages?.translation_vi || null) : null}
+                          translationEn={showTranslations ? ((currentQuestion as any).passages?.translation_en || null) : null}
+                          showTranslation={showTranslations}
+                        />
+                      </>
                     )}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Single Question Content for Part 1, 2, 5 */}
-              {(currentQuestion.part === 1 || currentQuestion.part === 2 || currentQuestion.part === 5) && (
-                <Card className="mb-6">
-                  <CardContent className="p-6">
-                    {/* Audio Player */}
-                    {currentQuestion.audio_url && (
-                      <div className="mb-6">
-                        <SimpleAudioPlayer 
-                          audioUrl={currentQuestion.audio_url} 
-                          transcript={currentQuestion.transcript || ''} 
-                        />
-                      </div>
-                    )}
-
-                    {/* Question Image */}
-                    {currentQuestion.image_url && (
-                      <div className="mb-6 text-center">
-                        <img 
-                          src={currentQuestion.image_url} 
-                          alt="Question image" 
-                          className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
-                          style={{ maxHeight: '400px' }}
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
 
               {/* All Questions for Current Passage (Part 3, 4, 6, 7) */}
               {(currentQuestion.part === 3 || currentQuestion.part === 4 || currentQuestion.part === 6 || currentQuestion.part === 7) && currentQuestion.passage_id && (
@@ -525,7 +476,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                             </div>
 
                             {/* Explanation for this question */}
-                            {(question.explain_vi || question.explain_en) && (
+                            {showExplanations && (question.explain_vi || question.explain_en) && (
                               <div className="mt-6 space-y-4">
                                 {/* Vietnamese Explanation */}
                                 {question.explain_vi && (
@@ -560,6 +511,28 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
               {(currentQuestion.part === 1 || currentQuestion.part === 2 || currentQuestion.part === 5) && (
                 <Card>
                   <CardContent className="p-6">
+                    {/* Audio Player */}
+                    {currentQuestion.audio_url && (
+                      <div className="mb-6">
+                        <SimpleAudioPlayer 
+                          audioUrl={currentQuestion.audio_url} 
+                          transcript={currentQuestion.transcript || ''} 
+                        />
+                      </div>
+                    )}
+
+                    {/* Question Image */}
+                    {currentQuestion.image_url && (
+                      <div className="mb-6 text-center">
+                        <img 
+                          src={currentQuestion.image_url} 
+                          alt="Question image" 
+                          className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
+                          style={{ maxHeight: '400px' }}
+                        />
+                      </div>
+                    )}
+
                     {/* Question Text */}
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-4">Câu hỏi:</h3>
@@ -614,7 +587,7 @@ const ExamReview: React.FC<ExamReviewProps> = ({ sessionId }) => {
                     </div>
 
                     {/* Explanation */}
-                    {(currentQuestion.explain_vi || currentQuestion.explain_en) && (
+                    {showExplanations && (currentQuestion.explain_vi || currentQuestion.explain_en) && (
                       <div className="mt-8 space-y-4">
                         {/* Vietnamese Explanation */}
                         {currentQuestion.explain_vi && (

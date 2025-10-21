@@ -319,6 +319,71 @@ const WizardExamSetCreator: React.FC<WizardExamSetCreatorProps> = ({ onExamCreat
         }
       }
       
+      // For Part 3,4,6,7: Group by passage_id to keep passage questions together
+      if ([3, 4, 6, 7].includes(part.part)) {
+        // Group questions by passage
+        const passageGroups: Record<string, Question[]> = {};
+        const questionsWithoutPassage: Question[] = [];
+        
+        availableQuestions.forEach(q => {
+          if (q.passage_id) {
+            if (!passageGroups[q.passage_id]) {
+              passageGroups[q.passage_id] = [];
+            }
+            passageGroups[q.passage_id].push(q);
+          } else {
+            questionsWithoutPassage.push(q);
+          }
+        });
+        
+        // Sort questions within each passage by blank_index (Part 6) or id (Part 3,4,7)
+        Object.keys(passageGroups).forEach(passageId => {
+          passageGroups[passageId].sort((a, b) => {
+            if (part.part === 6) {
+              // Part 6: Sort by blank_index
+              return (a.blank_index || 0) - (b.blank_index || 0);
+            } else {
+              // Part 3,4,7: Sort by id to maintain consistent order
+              // (assuming questions are created in order for same passage)
+              return a.id.localeCompare(b.id);
+            }
+          });
+        });
+        
+        // Get complete passages (shuffle passages, not individual questions)
+        const passageIds = Object.keys(passageGroups);
+        const shuffledPassageIds = [...passageIds].sort(() => 0.5 - Math.random());
+        
+        // Select complete passages until we have enough questions
+        const selectedQuestions: Question[] = [];
+        for (const passageId of shuffledPassageIds) {
+          const passageQuestions = passageGroups[passageId];
+          if (selectedQuestions.length + passageQuestions.length <= part.questionCount) {
+            selectedQuestions.push(...passageQuestions);
+          }
+          if (selectedQuestions.length >= part.questionCount) {
+            break;
+          }
+        }
+        
+        // If still not enough, add questions without passage
+        if (selectedQuestions.length < part.questionCount) {
+          const remaining = part.questionCount - selectedQuestions.length;
+          const shuffled = [...questionsWithoutPassage].sort(() => 0.5 - Math.random());
+          selectedQuestions.push(...shuffled.slice(0, remaining));
+        }
+        
+        // Check if enough questions available
+        if (selectedQuestions.length < part.questionCount) {
+          warnings.push(
+            `Part ${part.part}: Thiếu ${part.questionCount - selectedQuestions.length} câu (có ${selectedQuestions.length}/${part.questionCount})`
+          );
+        }
+        
+        return { ...part, questions: selectedQuestions };
+      }
+      
+      // For Part 1,2,5: Regular shuffle and select
       // Check if enough questions available
       if (availableQuestions.length < part.questionCount) {
         warnings.push(

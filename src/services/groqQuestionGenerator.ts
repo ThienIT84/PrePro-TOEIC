@@ -29,12 +29,26 @@ class GroqQuestionGeneratorService {
   private apiKey: string = '';
 
   constructor() {
-    // Hardcode API key để test
-    this.apiKey = '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';
+    // Sử dụng environment variable hoặc localStorage
+    this.apiKey = import.meta.env.VITE_GROQ_API_KEY || 
+                  (typeof window !== 'undefined' ? localStorage.getItem('groq_api_key') || '' : '');
     this.model = import.meta.env.VITE_GROQ_MODEL || this.model;
     console.log('🔍 DEBUG: Groq constructor - API Key:', this.apiKey ? 'SET' : 'NOT SET');
     console.log('🔍 DEBUG: Groq constructor - Model:', this.model);
     console.log('🔍 DEBUG: Groq constructor - Raw env:', import.meta.env.VITE_GROQ_API_KEY);
+  }
+
+  /**
+   * Refresh API key from localStorage
+   */
+  refreshApiKey(): void {
+    if (typeof window !== 'undefined') {
+      const newApiKey = localStorage.getItem('groq_api_key') || '';
+      if (newApiKey !== this.apiKey) {
+        this.apiKey = newApiKey;
+        console.log('🔍 DEBUG: Groq API key refreshed:', this.apiKey ? 'SET' : 'NOT SET');
+      }
+    }
   }
 
   /**
@@ -862,6 +876,8 @@ CRITICAL:
   private parseGeneratedQuestions(text: string): GeneratedQuestion[] {
     try {
       console.log('🔍 Parsing Groq response...');
+      console.log('🔍 Raw text length:', text.length);
+      console.log('🔍 Raw text preview:', text.substring(0, 300));
       
       // Clean text
       let cleanText = text.trim();
@@ -874,14 +890,37 @@ CRITICAL:
       // Find JSON
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.error('❌ No JSON found in response');
+        console.error('Cleaned text:', cleanText.substring(0, 500));
         throw new Error('No JSON found in response');
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      console.log('🔍 JSON match length:', jsonMatch[0].length);
+
+      // Parse directly without sanitization (Groq returns clean JSON)
+      // Just remove actual newlines and tabs that might be in the JSON formatting
+      let jsonStr = jsonMatch[0]
+        .replace(/\r\n/g, ' ')  // Remove Windows newlines
+        .replace(/\n/g, ' ')    // Remove Unix newlines
+        .replace(/\r/g, ' ')    // Remove Mac newlines
+        .replace(/\t/g, ' ')    // Remove tabs
+        .replace(/\s+/g, ' ');  // Collapse multiple spaces
+
+      console.log('🔍 Cleaned JSON length:', jsonStr.length);
+      console.log('🔍 Cleaned JSON preview:', jsonStr.substring(0, 300));
+
+      const parsed = JSON.parse(jsonStr);
+      
+      console.log('🔍 Parsed object keys:', Object.keys(parsed));
+      console.log('🔍 Has questions field?', 'questions' in parsed);
+      console.log('🔍 Questions is array?', Array.isArray(parsed.questions));
       
       if (!parsed.questions || !Array.isArray(parsed.questions)) {
+        console.error('❌ Invalid response format. Parsed:', parsed);
         throw new Error('Invalid response format');
       }
+
+      console.log('✅ Found', parsed.questions.length, 'questions');
 
       return parsed.questions.map((q: any, index: number) => ({
         question: q.question || `Question ${index + 1}`,
@@ -893,7 +932,8 @@ CRITICAL:
       }));
 
     } catch (error) {
-      console.error('Error parsing Groq response:', error);
+      console.error('❌ Error parsing Groq response:', error);
+      console.error('Error details:', error instanceof Error ? error.message : error);
       return [];
     }
   }

@@ -112,13 +112,16 @@ class TeacherAnalyticsService {
         this.getWeeklyProgress(studentIds)
       ]);
 
-      // Generate alerts using the new alerts service
+      // OPTIMIZATION: Generate alerts in background (non-blocking)
+      // Don't await - let it run in background
       if (students.length > 0) {
-        console.log('Generating alerts for students:', students.length);
-        await alertsService.generateAlerts(teacherId, students);
+        console.log('Starting background alert generation for', students.length, 'students');
+        alertsService.generateAlerts(teacherId, students).catch(err => 
+          console.error('Background alert generation error:', err)
+        );
       }
       
-      // Get alerts from database
+      // Get existing alerts from database (fast query)
       const alerts = await alertsService.getAlerts(teacherId);
 
       return {
