@@ -40,16 +40,38 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
   className = ''
 }) => {
   const [showTranslations, setShowTranslations] = useState(showTranslation);
-  const [activeTab, setActiveTab] = useState(
-    translationVi ? 'vietnamese' : translationEn ? 'english' : 'original'
-  );
+  
+  // Determine default active tab
+  const getDefaultTab = () => {
+    if (translationVi) return 'vietnamese';
+    if (translationEn) return 'english';
+    return 'original';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab());
 
   // Update local state when prop changes
   useEffect(() => {
     setShowTranslations(showTranslation);
   }, [showTranslation]);
+  
+  // Update active tab when translations change
+  useEffect(() => {
+    setActiveTab(getDefaultTab());
+  }, [translationVi, translationEn]);
 
   const hasTranslations = translationVi || translationEn;
+  
+  // Helper to clean and validate translation content
+  const cleanContent = (content: any): string => {
+    if (!content) return '';
+    if (typeof content === 'string') return content.trim();
+    // If it's an object or array, try to stringify it
+    if (typeof content === 'object') {
+      return JSON.stringify(content);
+    }
+    return String(content);
+  };
   
   // Debug logging
   console.log('🔍 PassageDisplay Debug:', {
@@ -57,14 +79,29 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
     translationVi,
     translationEn,
     showTranslations,
+    activeTab,
+    translationViType: typeof translationVi,
     translationViContent: translationVi?.content,
+    translationViContentLength: translationVi?.content?.length,
     translationViContent2: translationVi?.content2,
-    translationViContent3: translationVi?.content3
+    translationViContent3: translationVi?.content3,
+    translationViContentPreview: cleanContent(translationVi?.content)?.substring(0, 100)
   });
 
   // Helper function to render passage content
-  const renderPassageContent = (content: string, content2?: string, content3?: string) => {
-    const contents = [content, content2, content3].filter(Boolean);
+  const renderPassageContent = (content?: string, content2?: string, content3?: string) => {
+    // Clean and filter out empty strings
+    const contents = [content, content2, content3]
+      .map(c => cleanContent(c))
+      .filter(c => c.length > 0);
+    
+    if (contents.length === 0) {
+      return (
+        <div className="text-sm text-gray-500 italic">
+          Chưa có nội dung
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-4">
@@ -161,7 +198,7 @@ export const PassageDisplay: React.FC<PassageDisplayProps> = ({
         {hasTranslations && showTranslations && (
           <div className="mt-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className={`grid w-full ${translationVi && translationEn ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {translationVi && (
                   <TabsTrigger value="vietnamese" className="flex items-center gap-2">
                     🇻🇳 Tiếng Việt

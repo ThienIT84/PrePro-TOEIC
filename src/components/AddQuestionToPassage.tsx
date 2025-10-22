@@ -32,7 +32,7 @@ const AddQuestionToPassage: React.FC<AddQuestionToPassageProps> = ({
   const [fetchingQuestions, setFetchingQuestions] = useState(true);
 
   const [questionData, setQuestionData] = useState({
-    blank_index: passagePart === 6 ? 131 : null,
+    blank_index: passagePart === 6 ? 1 : null,
     choices: { A: '', B: '', C: '', D: '' },
     correct_choice: 'A' as CorrectChoice,
     difficulty: 'medium' as Difficulty,
@@ -65,14 +65,11 @@ const AddQuestionToPassage: React.FC<AddQuestionToPassageProps> = ({
       // Auto-suggest next blank_index for Part 6
       if (passagePart === 6 && blankIndexes.length > 0) {
         const maxIndex = Math.max(...blankIndexes);
-        const minIndex = Math.min(...blankIndexes);
-        // Suggest next index in sequence, within the same group of 4
-        const groupStart = Math.floor((minIndex - 131) / 4) * 4 + 131;
-        const groupEnd = groupStart + 3;
-        if (maxIndex < groupEnd) {
+        // For Part 6, blank_index is 1-4 (not 131-146)
+        if (maxIndex < 4) {
           setQuestionData(prev => ({ ...prev, blank_index: maxIndex + 1 }));
         } else {
-          setQuestionData(prev => ({ ...prev, blank_index: groupStart }));
+          setQuestionData(prev => ({ ...prev, blank_index: 1 }));
         }
       }
     } catch (error) {
@@ -144,9 +141,8 @@ const AddQuestionToPassage: React.FC<AddQuestionToPassageProps> = ({
       if (addAnother) {
         // Reset form for next question
         const currentIndex = questionData.blank_index;
-        const groupStart = currentIndex ? Math.floor((currentIndex - 131) / 4) * 4 + 131 : 131;
-        const groupEnd = groupStart + 3;
-        const nextBlankIndex = currentIndex && currentIndex < groupEnd 
+        // For Part 6, blank_index is 1-4
+        const nextBlankIndex = currentIndex && currentIndex < 4 
           ? currentIndex + 1 
           : null;
         
@@ -178,17 +174,9 @@ const AddQuestionToPassage: React.FC<AddQuestionToPassageProps> = ({
 
   // Get available blank indexes for Part 6
   const getAvailableBlankIndexes = () => {
-    // If there are existing questions, determine the group range from them
-    if (existingQuestions.length > 0) {
-      const minIndex = Math.min(...existingQuestions);
-      const groupStart = Math.floor((minIndex - 131) / 4) * 4 + 131;
-      const all = [groupStart, groupStart + 1, groupStart + 2, groupStart + 3];
-      return all.filter(idx => !existingQuestions.includes(idx));
-    }
-    
-    // If no existing questions, allow all Part 6 question numbers (131-146)
-    const allPart6Numbers = Array.from({ length: 16 }, (_, i) => 131 + i);
-    return allPart6Numbers;
+    // Part 6: Each passage has 4 blanks (1, 2, 3, 4)
+    const allBlanks = [1, 2, 3, 4];
+    return allBlanks.filter(idx => !existingQuestions.includes(idx));
   };
 
   const availableIndexes = passagePart === 6 ? getAvailableBlankIndexes() : [];
@@ -207,7 +195,7 @@ const AddQuestionToPassage: React.FC<AddQuestionToPassageProps> = ({
       <Alert className="bg-green-50 border-green-200">
         <Check className="h-4 w-4 text-green-600" />
         <AlertDescription className="text-green-800">
-          <strong>Đã hoàn thành!</strong> Passage này đã có đủ 4 câu hỏi (143-146).
+          <strong>Đã hoàn thành!</strong> Passage này đã có đủ 4 câu hỏi (chỗ trống 1-4).
         </AlertDescription>
       </Alert>
     );
@@ -246,7 +234,7 @@ const AddQuestionToPassage: React.FC<AddQuestionToPassageProps> = ({
             <SelectContent>
               {availableIndexes.map(idx => (
                 <SelectItem key={idx} value={idx.toString()}>
-                  Câu {idx}
+                  Chỗ trống {idx}
                 </SelectItem>
               ))}
             </SelectContent>
