@@ -170,3 +170,8 @@ Nếu vẫn bị white screen sau khi thử tất cả:
 
 
 
+
+
+
+
+
