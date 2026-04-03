@@ -1,0 +1,1032 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { PassageDisplay } from '@/components/PassageDisplay';
+import { 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Trophy, 
+  Target, 
+  RotateCcw,
+  ArrowLeft,
+  Eye,
+  AlertCircle
+} from 'lucide-react';
+import SimpleAudioPlayer from '@/components/SimpleAudioPlayer';
+import RetryMode from '@/components/RetryMode';
+
+interface ExamResult {
+  session_id: string;
+  exam_set_name: string;
+  total_questions: number;
+  correct_answers: number;
+  score: number;
+  time_spent: number;
+  completed_at: string;
+  questions: QuestionResult[];
+  results?: unknown;
+}
+
+interface QuestionResult {
+  question_id: string;
+  question_text: string;
+  correct_answer: string;
+  user_answer: string;
+  is_correct: boolean;
+  time_spent: number;
+  explain_vi: string;
+  explain_en: string;
+  tags: string;
+  transcript: string;
+  part: number;
+  choices?: { A: string; B: string; C: string; D: string } | null;
+  audio_url?: string | null;
+  image_url?: string | null;
+  passage_id?: string | null;
+  passage_audio_url?: string | null;
+  passage_image_url?: string | null;
+  passage_transcript?: string | null;
+  passage_translation_vi?: {
+    content: string;
+  } | null;
+  passage_translation_en?: {
+    content: string;
+  } | null;
+}
+
+const ExamResult = () => {
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
+  const [result, setResult] = useState<ExamResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryMode, setRetryMode] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (sessionId) {
+      fetchExamResult();
+    }
+  }, [sessionId]);
+
+  const fetchExamResult = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching exam result for session:', sessionId);
+      console.log('ExamResult component mounted, starting fetch...');
+      
+      // Thử dùng RPC function trước
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_exam_result', {
+        session_uuid: sessionId
+      });
+
+      if (rpcError) {
+        console.error('RPC Error:', rpcError);
+        console.log('Falling back to direct query...');
+        
+        // Fallback: query trực tiếp
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('exam_sessions')
+          .select(`
+            id,
+            total_questions,
+            correct_answers,
+            score,
+            time_spent,
+            completed_at,
+            results,
+            exam_sets (title, description)
+          `)
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError) {
+          console.error('Session query error:', sessionError);
+          setError(`Không thể tải kết quả thi: ${sessionError.message}`);
+          return;
+        }
+
+        // Lấy attempts
+        const { data: attemptsData, error: attemptsError } = await supabase
+          .from('exam_attempts')
+          .select('question_id, user_answer, is_correct, time_spent')
+          .eq('session_id', sessionId);
+
+        const passageMap: Record<string, unknown> = {};
+
+        if (!attemptsError) {
+          const qids = attemptsData.map(a => a.question_id);
+          // Use served questions from session.results but only include those that were actually attempted
+          // This ensures we show unanswered questions from selected parts only
+          const served = (sessionData as any)?.results?.served_question_ids as string[] | undefined;
+          const allIds = served ? Array.from(new Set([...served, ...qids])) : qids;
+           const { data: qs, error: qErr } = await supabase
+             .from('questions')
+             .select('id, prompt_text, choices, correct_choice, explain_vi, explain_en, tags, transcript, audio_url, image_url, passage_id')
+             .in('id', allIds);
+          if (qErr) {
+            console.error('Questions query error:', qErr);
+          } else {
+            // Merge question details
+            const map: Record<string, any> = {};
+            (qs || []).forEach(q => { map[q.id] = q; });
+            attemptsData.forEach(a => { (a as any).question_detail = map[a.question_id]; });
+
+            // Get passage data for questions with passage_id
+            const passageIds = [...new Set((qs || []).map(q => q.passage_id).filter(Boolean))];
+            console.log('Passage IDs found:', passageIds);
+            if (passageIds.length > 0) {
+              const { data: passages, error: passageError } = await supabase
+                .from('passages')
+                .select('id, audio_url, image_url, texts, translation_vi, translation_en')
+                .in('id', passageIds);
+              
+              console.log('Passages query result:', { passages, passageError });
+              
+              if (!passageError && passages) {
+                passages.forEach((p: any) => {
+                  passageMap[p.id] = {
+                    audio_url: p.audio_url,
+                    image_url: p.image_url,
+                    texts: p.texts,
+                    translation_vi: p.translation_vi,
+                    translation_en: p.translation_en
+                  };
+                });
+                console.log('PassageMap created:', passageMap);
+              }
+            }
+
+            // Add unanswered questions from served list (only from selected parts)
+            if (served && served.length > 0) {
+              const answeredSet = new Set(qids);
+              const missing = served.filter(id => !answeredSet.has(id));
+              missing.forEach(id => {
+                attemptsData.push({
+                  question_id: id,
+                  user_answer: '',
+                  is_correct: false,
+                  time_spent: 0,
+                  question_detail: map[id]
+                } as any);
+              });
+            }
+          }
+        }
+
+        if (attemptsError) {
+          console.error('Attempts query error:', attemptsError);
+          setError(`Không thể tải chi tiết câu trả lời: ${attemptsError.message}`);
+          return;
+        }
+
+        // Transform data
+        const transformedResult = {
+          session_id: (sessionData as any).id,
+          exam_set_name: (sessionData as any).exam_sets?.title || 'Bài thi',
+          total_questions: (sessionData as any).total_questions,
+          correct_answers: (sessionData as any).correct_answers,
+          score: (sessionData as any).score,
+          time_spent: (sessionData as any).time_spent,
+          completed_at: (sessionData as any).completed_at,
+          questions: (attemptsData || []).map(attempt => {
+            const questionDetail = (attempt as any).question_detail;
+            const passageId = questionDetail?.passage_id;
+            const passageData = passageId ? passageMap[passageId] : null;
+            
+            return {
+              question_id: attempt.question_id,
+              question_text: questionDetail?.prompt_text || '',
+              correct_answer: questionDetail?.correct_choice || '',
+              user_answer: attempt.user_answer || '',
+              is_correct: attempt.is_correct,
+              time_spent: attempt.time_spent,
+              explain_vi: questionDetail?.explain_vi || '',
+              explain_en: questionDetail?.explain_en || '',
+              tags: questionDetail?.tags ? String(questionDetail.tags) : '',
+              transcript: questionDetail?.transcript || '',
+              choices: questionDetail?.choices || null,
+              audio_url: questionDetail?.audio_url || null,
+              image_url: questionDetail?.image_url || null,
+              passage_id: passageId || null,
+              passage_audio_url: (passageData as any)?.audio_url || null,
+              passage_image_url: (passageData as any)?.image_url || null,
+              passage_transcript: (passageData as any)?.texts?.content || null,
+              passage_translation_vi: (passageData as any)?.translation_vi || null,
+              passage_translation_en: (passageData as any)?.translation_en || null
+            };
+          })
+        };
+
+        console.log('Transformed result:', transformedResult);
+        console.log('Sample question data:', transformedResult.questions[0]);
+        console.log('Questions with audio_url:', transformedResult.questions.filter(q => q.audio_url));
+        console.log('Questions with image_url:', transformedResult.questions.filter(q => q.image_url));
+        setResult(transformedResult as ExamResult);
+        
+        // Store questions and attempts for retry mode
+        console.log('ExamResult: attemptsData sample:', attemptsData[0]);
+        console.log('ExamResult: question_detail sample:', (attemptsData[0] as any)?.question_detail);
+        
+        // Get all question IDs from attempts
+        const questionIds = attemptsData.map(a => a.question_id);
+        console.log('ExamResult: questionIds to fetch:', questionIds);
+        
+        // Fetch full question data from database
+        const { data: fullQuestions, error: qErr } = await supabase
+          .from('questions')
+          .select('*')
+          .in('id', questionIds);
+        
+        if (qErr) {
+          console.error('Error fetching full questions:', qErr);
+        } else {
+          console.log('ExamResult: fetched fullQuestions:', fullQuestions);
+        }
+        
+        const validQuestions = (fullQuestions || []).map(question => {
+          const attempt = attemptsData.find(a => a.question_id === question.id);
+          return {
+            ...question,
+            // Add attempt data
+            user_answer: attempt?.user_answer || '',
+            is_correct: attempt?.is_correct || false,
+            time_spent: attempt?.time_spent || 0
+          };
+        });
+        
+        console.log('ExamResult: validQuestions count:', validQuestions.length);
+        console.log('ExamResult: validQuestions sample:', validQuestions[0]);
+        console.log('ExamResult: validQuestions choices sample:', validQuestions[0]?.choices);
+        console.log('ExamResult: validQuestions image_url sample:', validQuestions[0]?.image_url);
+        setQuestions(validQuestions);
+        setAttempts(attemptsData);
+        return;
+      }
+
+      if (rpcData && rpcData.length > 0) {
+        console.log('RPC result:', rpcData[0]);
+        console.log('RPC result fields:', Object.keys(rpcData[0]));
+        
+        // RPC function trả về attempts_data thay vì questions
+        const rpcResult = rpcData[0] as any;
+        const transformedResult = {
+          ...rpcResult,
+          questions: rpcResult.attempts_data || [] // Map attempts_data to questions
+        };
+        
+        console.log('Transformed RPC result:', transformedResult);
+        setResult(transformedResult as ExamResult);
+        
+        // Store questions and attempts for retry mode (RPC case)
+        if (rpcResult.attempts_data && Array.isArray(rpcResult.attempts_data)) {
+          console.log('ExamResult RPC: attempts_data sample:', rpcResult.attempts_data[0]);
+          
+          // Get all question IDs from attempts_data
+          const questionIds = rpcResult.attempts_data.map((attempt: any) => attempt.question_id);
+          console.log('ExamResult RPC: questionIds to fetch:', questionIds);
+          
+          // Fetch full question data from database
+          const { data: fullQuestions, error: qErr } = await supabase
+            .from('questions')
+            .select('*')
+            .in('id', questionIds);
+          
+          if (qErr) {
+            console.error('ExamResult RPC: Error fetching full questions:', qErr);
+          } else {
+            console.log('ExamResult RPC: fetched fullQuestions:', fullQuestions);
+          }
+          
+          const validQuestions = (fullQuestions || []).map(question => {
+            const attempt = rpcResult.attempts_data.find((a: any) => a.question_id === question.id);
+            return {
+              ...question,
+              // Add attempt data
+              user_answer: attempt?.user_answer || '',
+              is_correct: attempt?.is_correct || false,
+              time_spent: attempt?.time_spent || 0
+            };
+          });
+          
+          console.log('ExamResult RPC: validQuestions count:', validQuestions.length);
+          console.log('ExamResult RPC: validQuestions sample:', validQuestions[0]);
+          console.log('ExamResult RPC: validQuestions choices sample:', validQuestions[0]?.choices);
+          console.log('ExamResult RPC: validQuestions image_url sample:', validQuestions[0]?.image_url);
+          setQuestions(validQuestions);
+          setAttempts(rpcResult.attempts_data);
+        }
+      } else {
+        setError('Không tìm thấy kết quả thi');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Có lỗi xảy ra khi tải kết quả thi');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  // Handle retry mode
+  const handleRetryMode = () => {
+    console.log('ExamResult: Entering retry mode with questions:', questions?.length, 'attempts:', attempts?.length);
+    setRetryMode(true);
+  };
+
+  const handleExitRetryMode = () => {
+    setRetryMode(false);
+  };
+
+  const handleUpdateResult = (newScore: number, newCorrectCount: number) => {
+    if (result) {
+      setResult({
+        ...result,
+        score: newScore,
+        correct_answers: newCorrectCount
+      });
+    }
+    setRetryMode(false);
+  };
+
+  const getScoreBadgeVariant = (score: number) => {
+    if (score >= 80) return 'default';
+    if (score >= 60) return 'secondary';
+    return 'destructive';
+  };
+
+  const getScoreMessage = (score: number) => {
+    if (score >= 90) return 'Xuất sắc! 🎉';
+    if (score >= 80) return 'Tốt! 👍';
+    if (score >= 70) return 'Khá tốt! 👌';
+    if (score >= 60) return 'Đạt yêu cầu! ✅';
+    return 'Cần cải thiện! 📚';
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Button onClick={() => navigate('/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Về Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!result) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Không có dữ liệu kết quả thi</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Phân loại câu hỏi thành 3 loại
+  const correctAnswers = result.questions?.filter(q => q.is_correct === true) || [];
+  const wrongAnswers = result.questions?.filter(q => q.is_correct === false) || [];
+  const unansweredQuestions = result.questions?.filter(q => q.is_correct === null || q.is_correct === undefined) || [];
+  const totalQuestions = result.questions?.length || 0;
+  
+  // Tính thời gian thực tế từ tổng thời gian của các câu hỏi
+  const actualTimeSpent = result.questions?.reduce((total, q) => total + (q.time_spent || 0), 0) || 0;
+  
+  // Debug log để kiểm tra dữ liệu
+  console.log('Exam result debug:', {
+    totalQuestions,
+    correctAnswers: correctAnswers.length,
+    wrongAnswers: wrongAnswers.length,
+    unansweredQuestions: unansweredQuestions.length,
+    resultScore: result.score,
+    resultCorrectAnswers: result.correct_answers,
+    resultTotalQuestions: result.total_questions,
+    resultTimeSpent: result.time_spent,
+    actualTimeSpent: actualTimeSpent
+  });
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Retry Mode */}
+      {retryMode && sessionId && (
+        <RetryMode
+          sessionId={sessionId}
+          questions={questions || []}
+          attempts={attempts || []}
+          onExit={handleExitRetryMode}
+          onUpdate={handleUpdateResult}
+        />
+      )}
+
+      {/* Normal Result View */}
+      {!retryMode && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Kết quả thi</h1>
+              <p className="text-muted-foreground">{result.exam_set_name}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Về Dashboard
+              </Button>
+              <Button onClick={() => navigate(`/exam-review/${sessionId}`)}>
+                <Eye className="h-4 w-4 mr-2" />
+                Xem chi tiết đáp án
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={handleRetryMode}
+                className="bg-orange-100 text-orange-700 hover:bg-orange-200"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Làm lại câu sai
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/exams')}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Thi khác
+              </Button>
+            </div>
+          </div>
+
+      {/* Score Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Điểm số</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${getScoreColor(result.score)}`}>
+              {result.score}
+            </div>
+            <Badge variant={getScoreBadgeVariant(result.score)} className="mt-1">
+              {getScoreMessage(result.score)}
+            </Badge>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Câu đúng</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {correctAnswers.length}/{totalQuestions}
+            </div>
+            <Progress 
+              value={totalQuestions > 0 ? (correctAnswers.length / totalQuestions) * 100 : 0} 
+              className="mt-2"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Thời gian</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatTime(actualTimeSpent)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Hoàn thành lúc {new Date(result.completed_at).toLocaleString('vi-VN')}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Câu sai + Chưa làm</CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {wrongAnswers.length + unansweredQuestions.length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cần ôn tập lại
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed Results */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="wrong">Câu sai ({wrongAnswers.length})</TabsTrigger>
+          <TabsTrigger value="unanswered">Chưa làm ({unansweredQuestions.length})</TabsTrigger>
+          <TabsTrigger value="all">Tất cả câu hỏi</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tổng quan kết quả</CardTitle>
+              <CardDescription>
+                Phân tích chi tiết về bài thi của bạn
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-3xl font-bold text-green-600">
+                    {correctAnswers.length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Câu đúng</div>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-3xl font-bold text-red-600">
+                    {wrongAnswers.length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Câu sai</div>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-3xl font-bold text-gray-600">
+                    {unansweredQuestions.length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Chưa làm</div>
+                </div>
+              </div>
+              
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-lg font-semibold">
+                  Tỷ lệ đúng: {totalQuestions > 0 ? ((correctAnswers.length / totalQuestions) * 100).toFixed(1) : 0}%
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Thời gian trung bình mỗi câu: {totalQuestions > 0 ? formatTime(Math.round(actualTimeSpent / totalQuestions)) : '0:00'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="wrong" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Câu trả lời sai</CardTitle>
+              <CardDescription>
+                Ôn tập lại những câu bạn đã trả lời sai
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {wrongAnswers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                  <p>Chúc mừng! Bạn đã trả lời đúng tất cả câu hỏi! 🎉</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {wrongAnswers.map((question, index) => (
+                    <div key={question.question_id} className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge variant="destructive">Câu {index + 1}</Badge>
+                        <Badge variant="outline">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatTime(question.time_spent)}
+                        </Badge>
+                      </div>
+                      
+                      <p className="font-medium">{question.question_text}</p>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-red-600">Bạn chọn:</span>
+                          <Badge variant="destructive">{question.user_answer}</Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-green-600">Đáp án đúng:</span>
+                          <Badge variant="default">{question.correct_answer}</Badge>
+                        </div>
+                        {question.choices && (
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div><strong>A.</strong> {question.choices.A}</div>
+                            <div><strong>B.</strong> {question.choices.B}</div>
+                            <div><strong>C.</strong> {question.choices.C}</div>
+                            <div><strong>D.</strong> {question.choices.D}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Giải thích */}
+                      {question.explain_vi && (
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <h4 className="font-medium text-blue-900 mb-1">Giải thích:</h4>
+                          <p className="text-sm text-blue-800">{question.explain_vi}</p>
+                        </div>
+                      )}
+
+                      {/* Tags */}
+                      {question.tags && (
+                        <div className="flex flex-wrap gap-1">
+                          {String(question.tags).split(',').map((tag, tagIndex) => (
+                            <Badge key={tagIndex} variant="secondary" className="text-xs">
+                              {tag.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Image display */}
+                      {question.image_url && (
+                        <div className="mt-3">
+                          <img 
+                            src={question.image_url} 
+                            alt="Question image" 
+                            className="max-w-full h-auto rounded-lg border"
+                            style={{ maxHeight: '300px' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Audio replay + Transcript */}
+                      {(question.audio_url || question.transcript) && (
+                        <div className="mt-3">
+                          <SimpleAudioPlayer 
+                            audioUrl={question.audio_url || ''} 
+                            transcript={(question.part === 3 || question.part === 4) ? '' : question.transcript} 
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="unanswered" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Câu chưa làm</CardTitle>
+              <CardDescription>
+                Những câu hỏi bạn chưa trả lời
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {unansweredQuestions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                  <p>Tuyệt vời! Bạn đã làm hết tất cả câu hỏi! 🎉</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {unansweredQuestions.map((question, index) => (
+                    <div key={question.question_id} className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge variant="secondary">Câu {index + 1}</Badge>
+                        <Badge variant="outline">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatTime(question.time_spent)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">{question.question_text}</p>
+                        
+                        {question.choices && (
+                          <div className="space-y-1">
+                            {Object.entries(question.choices).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-2 text-sm">
+                                <span className="font-medium">{key}:</span>
+                                <span className={question.user_answer === key ? 'font-semibold text-blue-600' : ''}>
+                                  {value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-500">Bạn chọn:</span>
+                          <Badge variant="secondary">
+                            {question.user_answer || 'Chưa trả lời'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-green-600">Đáp án đúng:</span>
+                          <Badge variant="default">{question.correct_answer}</Badge>
+                        </div>
+                      </div>
+
+                      {/* Image */}
+                      {question.image_url && (
+                        <div className="mt-3">
+                          <img 
+                            src={question.image_url} 
+                            alt="Question image" 
+                            className="max-w-full h-auto rounded-lg border"
+                            style={{ maxHeight: '300px' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Audio replay + Transcript */}
+                      {(question.audio_url || question.transcript) && (
+                        <div className="mt-3">
+                          <SimpleAudioPlayer 
+                            audioUrl={question.audio_url || ''} 
+                            transcript={(question.part === 3 || question.part === 4) ? '' : question.transcript} 
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="all" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tất cả câu hỏi</CardTitle>
+              <CardDescription>
+                Xem lại tất cả câu hỏi và câu trả lời của bạn
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {(() => {
+                  // Group questions by passage_id
+                  const groupedQuestions = (result.questions || []).reduce((groups, question, index) => {
+                    const passageId = question.passage_id || `single_${question.question_id}`;
+                    if (!groups[passageId]) {
+                      groups[passageId] = [];
+                    }
+                    groups[passageId].push({ ...question, originalIndex: index });
+                    return groups;
+                  }, {} as Record<string, Array<QuestionResult & { originalIndex: number }>>);
+
+                  return Object.entries(groupedQuestions).map(([passageId, questions]) => {
+                    const isPassage = passageId.startsWith('passage_') || questions.length > 1;
+                    
+                    return (
+                      <div key={passageId} className="space-y-4">
+                        {/* Passage Header */}
+                        {isPassage && (
+                          <div className="space-y-4">
+                            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-400">
+                              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                                📖 Passage (Câu {questions[0].originalIndex + 1}-{questions[questions.length - 1].originalIndex + 1})
+                              </h3>
+                              
+                              {/* Passage Images - Skip for Part 6 as PassageDisplay handles it */}
+                              {questions[0].part !== 6 && (() => {
+                                const images = [];
+                                
+                                // Add images from new structure - Only first image for Part 7
+                                if ((questions[0] as any).passage_img_url) images.push((questions[0] as any).passage_img_url);
+                                // Only add additional images for Part 7 (not Part 6)
+                                if (questions[0].part === 7) {
+                                  if ((questions[0] as any).passage_img_url2) images.push((questions[0] as any).passage_img_url2);
+                                  if ((questions[0] as any).passage_img_url3) images.push((questions[0] as any).passage_img_url3);
+                                }
+                                
+                                // Backward compatibility: fallback to old structure
+                                if (images.length === 0 && questions[0].passage_image_url) {
+                                  images.push(questions[0].passage_image_url);
+                                }
+                                
+                                if (images.length === 0) return null;
+                                
+                                return (
+                                  <div className="mb-4 space-y-4">
+                                    {images.map((src, index) => (
+                                      <div key={index}>
+                                        <img 
+                                          src={src} 
+                                          alt={`Passage Image ${index + 1}`} 
+                                          className="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                                          style={{ maxHeight: '400px' }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                              
+                              {/* Passage Audio */}
+                              {questions[0].passage_audio_url && (
+                                <div>
+                                  <SimpleAudioPlayer 
+                                    audioUrl={questions[0].passage_audio_url} 
+                                    transcript={questions[0].passage_transcript || ''} 
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Passage Text with Translation */}
+                            {questions[0].passage_transcript && (
+                              <>
+                                {console.log('Passage translation data:', {
+                                  transcript: questions[0].passage_transcript,
+                                  translationVi: questions[0].passage_translation_vi,
+                                  translationEn: questions[0].passage_translation_en
+                                })}
+                                <PassageDisplay
+                                  passage={{
+                                    content: questions[0].passage_transcript || '',
+                                    title: `Passage ${questions[0].originalIndex + 1}-${questions[questions.length - 1].originalIndex + 1}`,
+                                    content2: (questions[0] as any).passage_content2,
+                                    content3: (questions[0] as any).passage_content3,
+                                    img_url: questions[0].passage_image_url,
+                                    img_url2: questions[0].part === 6 ? undefined : (questions[0] as any).passage_img_url2,
+                                    img_url3: questions[0].part === 6 ? undefined : (questions[0] as any).passage_img_url3
+                                  }}
+                                  translationVi={questions[0].passage_translation_vi}
+                                  translationEn={questions[0].passage_translation_en}
+                                  showTranslation={true}
+                                />
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Questions in this passage */}
+                        <div className="space-y-4">
+                          {questions.map((question) => (
+                            <div key={question.question_id} className="p-4 border rounded-lg space-y-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <Badge variant={question.is_correct ? "default" : "destructive"}>
+                                  Câu {question.originalIndex + 1}
+                                </Badge>
+                                <div className="flex gap-2">
+                                  <Badge variant="outline">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {formatTime(question.time_spent)}
+                                  </Badge>
+                                  {question.is_correct ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <XCircle className="h-4 w-4 text-red-500" />
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <p className="font-medium">{question.question_text}</p>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">Bạn chọn:</span>
+                                  <Badge variant={question.is_correct ? "default" : "destructive"}>
+                                    {question.user_answer}
+                                  </Badge>
+                                </div>
+                                {!question.is_correct && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-green-600">Đáp án đúng:</span>
+                                    <Badge variant="default">{question.correct_answer}</Badge>
+                                  </div>
+                                )}
+                                {question.choices && (
+                                  <div className="space-y-2">
+                                    {(question.part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((choice) => {
+                                      const choiceText = question.choices[choice];
+                                      const isCorrectAnswer = question.correct_answer === choice;
+                                      const isUserAnswer = question.user_answer === choice;
+                                      
+                                      return (
+                                        <div
+                                          key={choice}
+                                          className={`p-3 rounded-lg border-2 ${
+                                            isCorrectAnswer
+                                              ? 'border-green-500 bg-green-50'
+                                              : isUserAnswer && !isCorrectAnswer
+                                              ? 'border-red-500 bg-red-50'
+                                              : 'border-gray-200 bg-white'
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div
+                                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                                isCorrectAnswer
+                                                  ? 'bg-green-500 text-white'
+                                                  : isUserAnswer && !isCorrectAnswer
+                                                  ? 'bg-red-500 text-white'
+                                                  : 'bg-gray-200 text-gray-700'
+                                              }`}
+                                            >
+                                              {choice}
+                                            </div>
+                                            <span className="flex-1">{choiceText}</span>
+                                            {isCorrectAnswer && (
+                                              <CheckCircle className="h-5 w-5 text-green-600" />
+                                            )}
+                                            {isUserAnswer && !isCorrectAnswer && (
+                                              <XCircle className="h-5 w-5 text-red-600" />
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Giải thích */}
+                              {question.explain_vi && (
+                                <div className="p-3 bg-blue-50 rounded-lg">
+                                  <h4 className="font-medium text-blue-900 mb-1">Giải thích:</h4>
+                                  <p className="text-sm text-blue-800">{question.explain_vi}</p>
+                                </div>
+                              )}
+
+                              {/* Tags */}
+                              {question.tags && (
+                                <div className="flex flex-wrap gap-1">
+                                  {String(question.tags).split(',').map((tag, tagIndex) => (
+                                    <Badge key={tagIndex} variant="secondary" className="text-xs">
+                                      {tag.trim()}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Question Image */}
+                              {question.image_url && (
+                                <div className="mt-3">
+                                  <img 
+                                    src={question.image_url} 
+                                    alt="Question image" 
+                                    className="max-w-full h-auto rounded-lg border"
+                                    style={{ maxHeight: '300px' }}
+                                  />
+                                </div>
+                              )}
+
+                              {/* Question Audio + Transcript */}
+                              {(question.audio_url || question.transcript) && (
+                                <div className="mt-3">
+                                  <SimpleAudioPlayer 
+                            audioUrl={question.audio_url || ''} 
+                            transcript={(question.part === 3 || question.part === 4) ? '' : question.transcript} 
+                          />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default ExamResult;
