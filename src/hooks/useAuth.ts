@@ -135,7 +135,13 @@ export const useAuth = () => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    name: string,
+    role: "student" | "teacher" = "student",
+    targetScore: number = 850
+  ) => {
     const redirectUrl = `${window.location.origin}/`;
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -144,12 +150,22 @@ export const useAuth = () => {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: name,
+          role,
+          target_score: targetScore,
         },
       },
     });
     
     // Profile will be automatically created by the database trigger
     // No need to manually create it here
+    return { data, error };
+  };
+
+  const resetPassword = async (email: string) => {
+    const redirectUrl = window.location.origin + "/auth";
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
     return { data, error };
   };
 
@@ -223,6 +239,7 @@ export const useAuth = () => {
     signIn,
     signUp,
     signOut,
+    resetPassword,
     updateProfile,
     refreshProfile,
     clearCacheAndRefresh,
