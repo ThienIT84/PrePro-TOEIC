@@ -100,6 +100,130 @@ All colors MUST be HSL.
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  /* 3D Spatial & Float Animations */
+  @keyframes float-slow {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-8px) rotate(1deg);
+    }
+  }
+
+  @keyframes float-reverse {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(8px) rotate(-1deg);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-float-slow {
+    animation: float-slow 4s ease-in-out infinite;
+  }
+
+  .animate-float-reverse {
+    animation: float-reverse 5s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 6s ease-in-out infinite;
+  }
+
+  /* Keyframe dải sáng quét chữ liên tục từ trái sang phải */
+  @keyframes text-shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer-text {
+    background: linear-gradient(90deg, hsl(217 91% 60%) 0%, #38bdf8 30%, hsl(142 76% 40%) 60%, hsl(217 91% 60%) 100%);
+    background-size: 200% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: text-shimmer 5s linear infinite;
+  }
+
+  /* Keyframe chạy chữ ngang từ TRÁI SANG PHẢI liên tục */
+  @keyframes marquee-ltr {
+    0% {
+      transform: translateX(-50%);
+    }
+    100% {
+      transform: translateX(0%);
+    }
+  }
+
+  .animate-marquee-ltr {
+    display: flex;
+    width: max-content;
+    animation: marquee-ltr 25s linear infinite;
+  }
+
+  .animate-marquee-ltr:hover {
+    animation-play-state: paused;
+  }
+
+  /* Keyframe trượt chữ mạnh mẽ từ trái sang phải khi đổi từ khóa */
+  @keyframes word-slide-right {
+    0% {
+      transform: translateX(-50px);
+      opacity: 0;
+      filter: blur(6px);
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+      filter: blur(0px);
+    }
+  }
+
+  .animate-word-slide-right {
+    animation: word-slide-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Chữ trôi nhịp nhàng qua lại */
+  @keyframes drift-right {
+    0% {
+      transform: translateX(-10px);
+    }
+    50% {
+      transform: translateX(12px);
+    }
+    100% {
+      transform: translateX(-10px);
+    }
+  }
+
+  .animate-drift-right {
+    animation: drift-right 4s ease-in-out infinite;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
   /* Background patterns */
   .bg-grid-white {
     background-image: url("data:image/svg+xml,%3csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3e%3cdefs%3e%3cpattern id='grid' width='20' height='20' patternUnits='userSpaceOnUse'%3e%3cpath d='M 20 0 L 0 0 0 20' fill='none' stroke='white' stroke-width='1' opacity='0.1'/%3e%3c/pattern%3e%3c/defs%3e%3crect width='100%25' height='100%25' fill='url(%23grid)'/%3e%3c/svg%3e");
