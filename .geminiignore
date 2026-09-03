@@ -1,0 +1,29 @@
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Lock files (quá lớn, không cần AI đọc)
+package-lock.json
+bun.lockb
+
+# Supabase local
+supabase/.temp/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Env files (bảo mật)
+.env
+.env.local
+.env.production
