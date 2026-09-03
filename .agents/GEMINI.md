@@ -81,6 +81,69 @@ Dự án đang migration sang MVC pattern. Khi tạo/sửa components:
 
 ---
 
+## 🌿 GIT BRANCHING — Mỗi tính năng một branch
+
+### Quy tắc bắt buộc
+- **KHÔNG commit trực tiếp vào `main`**
+- Mỗi tính năng / bugfix / refactor → tạo branch riêng
+- Merge vào `main` chỉ khi đã verify xong
+
+### Branch Naming Convention
+```
+<type>/<short-description>
+
+Ví dụ:
+  feat/exam-retry-mode
+  fix/question-validation-part6
+  refactor/exam-session-mvc
+  chore/update-dependencies
+```
+
+| Prefix | Dùng khi |
+|--------|---------|
+| `feat/` | Thêm tính năng mới |
+| `fix/` | Sửa bug |
+| `refactor/` | Refactor / migration (không thay đổi functionality) |
+| `chore/` | Config, dependencies, docs, CI/CD |
+| `test/` | Thêm/sửa tests |
+
+### Workflow
+1. **Tạo branch** từ `main` mới nhất:
+   ```bash
+   git checkout main && git pull
+   git checkout -b feat/ten-tinh-nang
+   ```
+2. **Implement** theo Phased Implementation (xem bên dưới)
+3. **Commit** theo từng phase — mỗi commit là 1 đơn vị logic:
+   ```bash
+   git add <files>
+   git commit -m "<type>: <mô tả ngắn>"
+   ```
+4. **Push + tạo PR** khi hoàn thành:
+   ```bash
+   git push origin feat/ten-tinh-nang
+   ```
+5. **Review** → merge vào `main` → xóa branch
+
+### Commit Message Format
+```
+<type>: <mô tả ngắn bằng tiếng Việt hoặc Anh>
+
+Ví dụ:
+  feat: thêm retry mode cho exam session
+  fix: sửa validation blank_index Part 6
+  refactor: tách ExamSession sang MVC pattern
+  chore: update shadcn/ui components
+  test: thêm unit tests cho QuestionModel
+```
+
+### Khi nào agent PHẢI hỏi user
+- Trước khi tạo branch mới (xác nhận tên branch)
+- Trước khi merge vào `main`
+- Khi có conflict cần resolve
+
+---
+
 ## ⚠️ QUY TẮC IMPLEMENTATION BẮT BUỘC — Phased Implementation & Quality Gates
 
 ### Nguyên tắc cốt lõi
