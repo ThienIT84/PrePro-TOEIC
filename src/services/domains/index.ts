@@ -7,6 +7,7 @@ export { BaseService } from './BaseService';
 
 // Question Domain
 export { QuestionService } from './question/QuestionService';
+export { QuestionGenerationService } from './question/QuestionGenerationService';
 
 // Exam Domain
 export { ExamService } from './exam/ExamService';
@@ -22,6 +23,7 @@ export { MediaService } from './media/MediaService';
 
 // Import services for ServiceFactory
 import { QuestionService } from './question/QuestionService';
+import { QuestionGenerationService } from './question/QuestionGenerationService';
 import { ExamService } from './exam/ExamService';
 import { UserService } from './user/UserService';
 import { AnalyticsService } from './analytics/AnalyticsService';
@@ -36,6 +38,13 @@ export class ServiceFactory {
       this.instances.set('question', new QuestionService());
     }
     return this.instances.get('question') as QuestionService;
+  }
+
+  static getQuestionGenerationService(): QuestionGenerationService {
+    if (!this.instances.has('questionGeneration')) {
+      this.instances.set('questionGeneration', new QuestionGenerationService());
+    }
+    return this.instances.get('questionGeneration') as QuestionGenerationService;
   }
 
   static getExamService(): ExamService {
@@ -69,6 +78,7 @@ export class ServiceFactory {
   static getAllServices() {
     return {
       question: this.getQuestionService(),
+      questionGeneration: this.getQuestionGenerationService(),
       exam: this.getExamService(),
       user: this.getUserService(),
       analytics: this.getAnalyticsService(),
