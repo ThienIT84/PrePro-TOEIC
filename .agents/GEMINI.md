@@ -1,5 +1,79 @@
 # PrePro-TOEIC Project Rules
 
+---
+
+## 🛡️ DISCIPLINED ENGINEERING V2 — 14 Nguyên Tắc Kỷ Luật Cốt Lõi
+
+Bộ quy tắc vận hành bắt buộc đối với mọi Agent và Subagent khi phát triển dự án PrePro-TOEIC:
+
+### 1. Understand Before Changing
+- Trước khi bắt tay làm, phải tái hiện rõ ràng: **Mục tiêu (Goal)**, **Phạm vi (Scope)**, **Những gì KHÔNG làm (Non-goals)**, **Ràng buộc (Constraints)**, và **Tiêu chí nghiệm thu (Acceptance Criteria)**.
+- Tránh giả định mơ hồ; hiểu cấu trúc hiện tại trước khi thay đổi.
+
+### 2. Risk-Based Clarification
+- **Rủi ro lớn / Không thể đảo ngược** (xóa code, đổi schema DB, đổi kiến trúc lớn): **BẮT BUỘC DỪNG LẠI VÀ HỎI USER**.
+- **Rủi ro nhỏ / Có thể đảo ngược** (format code, đặt tên biến, điều chỉnh vị trí UI minor): **Nêu rõ giả định (state the assumption) và tiếp tục thực hiện**.
+
+### 3. Preserve Existing Work
+- **Tuyệt đối không xóa/ghi đè** những thay đổi do user tự làm hoặc code của các tính năng không liên quan.
+- Khi refactor: Giữ nguyên 100% functionality hiện có, chỉ thay đổi cấu trúc mã nguồn.
+
+### 4. Git Isolation
+- **KHÔNG BAO GIỜ commit trực tiếp vào `main`**.
+- Mọi tính năng, bugfix, refactor đều chạy trên branch riêng biệt (`feat/`, `fix/`, `refactor/`, `chore/`).
+- Các tác vụ ghi song song (parallel write tasks) phải sử dụng branch hoặc Git Worktree (`Workspace: 'share'`).
+
+### 5. Minimal Necessary Change
+- Chỉ tạo ra thay đổi nhỏ nhất, mạch lạc nhất để giải quyết triệt để vấn đề (KISS / YAGNI).
+- Không "tiện tay" sửa hoặc tối ưu hóa quá mức (over-engineering) những phần không thuộc phạm vi yêu cầu.
+
+### 6. Existing Architecture First
+- Ưu tiên tuân thủ các quy ước, patterns sẵn có của repository (MVC pattern, `BaseService`, `ServiceFactory`, `useToast`...) trước khi nghĩ đến việc tạo thêm lớp trừu tượng (abstraction) mới.
+
+### 7. Structural Change Control
+- Không tự ý thêm dependencies (`package.json`), không đổi database schema/migration, không đổi API endpoints hoặc cấu hình hệ thống (`vite.config`, `tsconfig`...) nếu không có lý do chính đáng và sự đồng ý của user.
+
+### 8. Phase by Complexity
+- **Task đơn giản (1-2 files)**: Thực thi trực tiếp, có verify.
+- **Task phức tạp (>3 files)**: Bắt buộc bẻ nhỏ thành các phases độc lập, có thể kiểm chứng riêng lẻ theo thứ tự: *Dependencies ➔ Core Logic ➔ UI ➔ Integration ➔ Tests*.
+
+### 9. Risk-Proportional Gates
+- Sử dụng các chốt kiểm định (Quality Gates) tương xứng với mức độ rủi ro:
+  - Trong quá trình code: Kiểm tra targeted gates (tsc cho file sửa, lint).
+  - Trước khi hoàn tất: Kiểm tra toàn diện bắt buộc (`npm test`, `npx tsc --noEmit`, `npm run build`).
+
+### 10. Evidence-Based Completion
+- **Tuyệt đối không tuyên bố hoàn thành dựa trên lời nói suông**.
+- Mọi xác nhận hoàn thành ("đã chạy test", "đã build thành công") đều phải có bằng chứng lệnh terminal thực tế (Command Output: exit code 0, test pass count).
+
+### 11. Self Review
+- Trước khi báo cáo kết quả cho user, Agent phải tự rà soát `git diff`:
+  - Kiểm tra xem có scope creep (sửa lan man ra ngoài yêu cầu) không.
+  - Loại bỏ các log gỡ lỗi rác (`console.log`, `DEBUG`), files tạm, hoặc rò rỉ secrets/keys.
+  - Đánh giá nguy cơ hồi quy (regression risk).
+
+### 12. Controlled Integration
+- Khi dùng Subagents: Subagent chịu trách nhiệm thi công (implement); Agent chính (Coordinator) chịu trách nhiệm review diff, chạy kiểm định và tích hợp (integrate).
+
+### 13. Transparent Failure
+- Khi gặp lỗi hoặc test fail, phải phân định minh bạch:
+  - **Lỗi mới** do code vừa thêm vào?
+  - **Lỗi tồn đọng từ trước** của codebase?
+  - **Lỗi môi trường / thiếu config/keys**?
+  - Những phần nào đã verify và phần nào chưa thể verify (unverified areas)?
+
+### 14. Standard Completion Report
+- Luôn trả về báo cáo hoàn tất có cấu trúc chuẩn mực:
+  - **Status**: Trạng thái hoàn thành.
+  - **Changes**: Tóm tắt thay đổi logic chính.
+  - **Files**: Danh sách các files đã tạo / chỉnh sửa.
+  - **Decisions**: Quyết định thiết kế đáng chú ý (nếu có).
+  - **Verification**: Bằng chứng kiểm thử (Unit test log, Type check log).
+  - **Risks & Notes**: Rủi ro tiềm ẩn hoặc lưu ý cần biết.
+  - **Git State**: Trạng thái branch và commit ID.
+
+---
+
 ## Tech Stack
 - **Frontend**: React 18 + TypeScript (strict mode) + Vite
 - **UI**: Tailwind CSS + shadcn/ui (Radix UI primitives) + Lucide icons
