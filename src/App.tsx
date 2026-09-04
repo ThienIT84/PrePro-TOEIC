@@ -16,8 +16,7 @@ import QuestionGeneratorPage from "./pages/QuestionGeneratorPage";
 import ExamQuestionManagement from "./components/ExamQuestionManagement";
 import ExamResult from "./components/ExamResult";
 import ExamHistory from "./components/ExamHistory";
-import StudentExamResults from "./components/StudentExamResults";
-import ExamSession from "./components/ExamSession";
+// Legacy ExamSession replaced by ExamSessionMVC
 // Removed debug page: ExamSessionDebug
 import ExamSessionPage from "./pages/ExamSession";
 import ExamSessionMVC from "./views/components/ExamSessionMVC";
@@ -45,7 +44,7 @@ const queryClient = new QueryClient({
 
 const ExamSessionWrapper = () => {
   const { examSetId } = useParams<{ examSetId: string }>();
-  return <ExamSession examSetId={examSetId!} />;
+  return <ExamSessionMVC examSetId={examSetId!} />;
 };
 
 const AppContent = () => {
