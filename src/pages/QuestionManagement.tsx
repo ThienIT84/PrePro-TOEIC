@@ -8,8 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import TOEICQuestionCreator from '@/components/TOEICQuestionCreator';
-import TOEICQuestionManager from '@/components/TOEICQuestionManager';
+import QuestionCreatorMVC from '@/views/components/QuestionCreatorMVC';
+import QuestionManagerMVC from '@/views/components/QuestionManagerMVC';
 // Removed debug component: TestConnection
 import TOEICBulkUpload from '@/components/TOEICBulkUpload';
 import EditQuestion from '@/components/EditQuestion';
@@ -519,14 +519,14 @@ const QuestionManagement = () => {
         </TabsList>
 
         <TabsContent value="toeic" className="mt-6">
-          <TOEICQuestionCreator onSuccess={() => {
+          <QuestionCreatorMVC onSuccess={() => {
             fetchQuestions();
             setActiveTab('toeic-manage');
           }} />
         </TabsContent>
 
         <TabsContent value="toeic-manage" className="mt-6">
-          <TOEICQuestionManager onEdit={(questionId) => {
+          <QuestionManagerMVC onEdit={(questionId) => {
             // TODO: Implement edit functionality
             console.log('Edit question:', questionId);
           }} />
