@@ -7,47 +7,15 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-// Mock controller hook since it might not exist
-const useExamManagementDashboardController = () => {
-  return {
-    state: {},
-    activeTab: 'dashboard',
-    examSets: [],
-    statistics: {
-      totalExamSets: 0,
-      activeExamSets: 0,
-      totalAttempts: 0,
-      averageScore: 0,
-      totalQuestions: 0
-    },
-    loading: false,
-    searchTerm: '',
-    filterStatus: 'all',
-    filterType: 'all',
-    setActiveTab: () => {},
-    setSearchTerm: () => {},
-    setFilterStatus: () => {},
-    setFilterType: () => {},
-    clearFilters: () => {},
-    fetchExamSets: async () => {},
-    fetchStatistics: async () => {},
-    deleteExamSet: async (id: string) => ({ success: true, error: null }),
-    toggleExamStatus: async (id: string, status: string) => ({ success: true, error: null }),
-    getFilteredExamSets: () => [],
-    getStatusColor: () => '',
-    getTypeIconName: () => '',
-    getRecentExamSets: () => [],
-  };
-};
+import { useExamManagementDashboardController } from '@/controllers/exam/useExamManagementDashboardController';
 import ExamManagementDashboardView from './ExamManagementDashboardView';
 
 const ExamManagementDashboardMVC: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use exam management dashboard controller
+  // Use real exam management dashboard controller
   const {
-    state,
     activeTab,
     examSets,
     statistics,
@@ -85,20 +53,20 @@ const ExamManagementDashboardMVC: React.FC = () => {
       
       if (result.success) {
         toast({
-          title: "Success",
-          description: "Exam set deleted successfully",
+          title: "Thành công",
+          description: "Đã xóa đề thi thành công",
         });
       } else {
         toast({
-          title: "Error",
-          description: result.error || 'Failed to delete exam set',
+          title: "Lỗi",
+          description: result.error || 'Không thể xóa đề thi',
           variant: "destructive",
         });
       }
     } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: (error as any).message,
+        title: "Lỗi",
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
     }
@@ -107,25 +75,25 @@ const ExamManagementDashboardMVC: React.FC = () => {
   // Handle toggle exam status
   const handleToggleExamStatus = async (id: string, currentStatus: string) => {
     try {
-      const result = await toggleExamStatus(id, currentStatus);
+      const result = await toggleExamStatus(id, currentStatus === 'active');
       
       if (result.success) {
         const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
         toast({
-          title: "Success",
-          description: `Exam set ${newStatus === 'active' ? 'activated' : 'deactivated'}`,
+          title: "Thành công",
+          description: `Đề thi đã được ${newStatus === 'active' ? 'kích hoạt' : 'tạm dừng'}`,
         });
       } else {
         toast({
-          title: "Error",
-          description: result.error || 'Failed to toggle exam status',
+          title: "Lỗi",
+          description: result.error || 'Không thể thay đổi trạng thái đề thi',
           variant: "destructive",
         });
       }
     } catch (error: unknown) {
       toast({
-        title: "Error",
-        description: (error as any).message,
+        title: "Lỗi",
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
     }
@@ -133,23 +101,19 @@ const ExamManagementDashboardMVC: React.FC = () => {
 
   // Handle create exam set
   const handleCreateExamSet = () => {
-    // Navigate to create exam page
     window.location.href = '/exam-sets';
   };
 
   // Handle preview exam set
   const handlePreviewExamSet = (examSet: unknown) => {
-    // Preview exam set
-    console.log('Preview exam set:', examSet);
     toast({
-      title: "Preview",
-      description: `Previewing exam set: ${(examSet as any).title}`,
+      title: "Xem trước",
+      description: `Đang xem trước đề thi: ${(examSet as any)?.title || ''}`,
     });
   };
 
   // Handle edit exam set
   const handleEditExamSet = (id: string) => {
-    // Edit exam set
     window.location.href = `/exam-sets/${id}/edit`;
   };
 
@@ -157,7 +121,7 @@ const ExamManagementDashboardMVC: React.FC = () => {
     <ExamManagementDashboardView
       // State
       activeTab={activeTab}
-      examSets={examSets}
+      examSets={examSets as any}
       statistics={statistics}
       loading={loading}
       searchTerm={searchTerm}
@@ -177,10 +141,10 @@ const ExamManagementDashboardMVC: React.FC = () => {
       onEditExamSet={handleEditExamSet}
 
       // Utility functions
-      getFilteredExamSets={getFilteredExamSets}
-      getStatusColor={getStatusColor}
+      getFilteredExamSets={getFilteredExamSets as any}
+      getStatusColor={(status: string) => getStatusColor(status === 'active')}
       getTypeIconName={getTypeIconName}
-      getRecentExamSets={getRecentExamSets}
+      getRecentExamSets={getRecentExamSets as any}
     />
   );
 };
