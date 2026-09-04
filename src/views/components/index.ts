@@ -44,3 +44,5 @@ export { default as StudentExamResultsView } from './StudentExamResultsView';
 export { default as StudentExamResultsMVC } from './StudentExamResultsMVC';
 export { default as ExamHistoryView } from './ExamHistoryView';
 export { default as ExamHistoryMVC } from './ExamHistoryMVC';
+export { default as ExamResultView } from './ExamResultView';
+export { default as ExamResultMVC } from './ExamResultMVC';
