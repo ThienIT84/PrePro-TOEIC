@@ -15,3 +15,5 @@ export { ExamQuestionManagementController } from './ExamQuestionManagementContro
 export { useExamQuestionManagementController } from './useExamQuestionManagementController';
 export { ExamHistoryController } from './ExamHistoryController';
 export { useExamHistoryController } from './useExamHistoryController';
+export { ExamResultController } from './ExamResultController';
+export { useExamResultController } from './useExamResultController';
