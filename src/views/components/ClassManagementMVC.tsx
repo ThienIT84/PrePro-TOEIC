@@ -8,71 +8,16 @@ import React, { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-// Mock interfaces since controllers might not exist
-interface ClassInfo {
-  id: string;
-  name: string;
-  description: string;
-  student_count: number;
-  created_at: string;
-  avg_score: number;
-  completion_rate: number;
-  students: Student[];
-}
-
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  avg_score: number;
-  last_activity: string;
-  is_in_class: boolean;
-}
-
-// Mock controller hook
-const useClassManagementController = () => {
-  return {
-    state: {},
-    classes: [],
-    students: [],
-    loading: false,
-    selectedClass: null,
-    isCreateDialogOpen: false,
-    isEditDialogOpen: false,
-    newClass: { name: '', description: '' },
-    setClasses: (classes: ClassInfo[]) => {},
-    setStudents: (students: Student[]) => {},
-    setLoading: (loading: boolean) => {},
-    setSelectedClass: (selectedClass: ClassInfo | null) => {},
-    setCreateDialogOpen: (isOpen: boolean) => {},
-    setEditDialogOpen: (isOpen: boolean) => {},
-    updateNewClassField: (field: string, value: string) => {},
-    createClass: () => ({ success: true, error: null }),
-    deleteClass: (classId: string) => ({ success: true, error: null }),
-    addStudentToClass: (classId: string, studentId: string) => ({ success: true, error: null }),
-    removeStudentFromClass: (classId: string, studentId: string) => ({ success: true, error: null }),
-    exportClassReport: (classId: string) => ({ success: true, error: null }),
-    getAvailableStudentsForClass: (classId: string) => [],
-    getClassById: (classId: string) => null,
-    getStudentById: (studentId: string) => null,
-    calculateClassStatistics: (classId: string) => ({ totalStudents: 0, avgScore: 0, completionRate: 0 }),
-    getClassAnalytics: (classId: string) => ({ scoreDistribution: [], activityTrend: [], topPerformers: [], strugglingStudents: [] }),
-    validateClassForm: (formData: any) => ({ isValid: true, errors: [] }),
-    searchClasses: (query: string) => [],
-    searchStudents: (query: string) => [],
-    getClassSummaryStatistics: () => ({ totalClasses: 0, totalStudents: 0, avgClassSize: 0, avgScore: 0 }),
-    resetForm: () => {},
-  };
-};
+import { useClassManagementController } from '@/controllers/user/useClassManagementController';
+import { ClassInfo, Student } from '@/controllers/user/ClassManagementController';
 import ClassManagementView from './ClassManagementView';
 
 const ClassManagementMVC: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use class management controller
+  // Use real class management controller
   const {
-    state,
     classes,
     students,
     loading,
@@ -110,7 +55,6 @@ const ClassManagementMVC: React.FC = () => {
     
     setLoading(true);
     try {
-      // Mock data - in real implementation, you'd fetch from classes table
       const mockClasses: ClassInfo[] = [
         {
           id: 'class_1',
@@ -158,7 +102,7 @@ const ClassManagementMVC: React.FC = () => {
       });
 
       if (teacherStudents) {
-        const studentIds = teacherStudents.map(s => s.student_id);
+        const studentIds = (teacherStudents as any[]).map(s => s.student_id);
         
         const { data: profiles } = await supabase
           .from('profiles')
@@ -178,7 +122,7 @@ const ClassManagementMVC: React.FC = () => {
           
           const lastActivity = studentAttempts.length > 0 ?
             studentAttempts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at :
-            profile.id; // Fallback
+            profile.id;
 
           return {
             id: profile.id,
@@ -186,7 +130,7 @@ const ClassManagementMVC: React.FC = () => {
             email: profile.email || '',
             avg_score: avgScore,
             last_activity: lastActivity,
-            is_in_class: false // This would be determined by class membership
+            is_in_class: false
           };
         }) || [];
 
@@ -303,10 +247,10 @@ const ClassManagementMVC: React.FC = () => {
   return (
     <ClassManagementView
       // State
-      classes={classes}
-      students={students}
+      classes={classes as any}
+      students={students as any}
       loading={loading}
-      selectedClass={selectedClass}
+      selectedClass={selectedClass as any}
       isCreateDialogOpen={isCreateDialogOpen}
       isEditDialogOpen={isEditDialogOpen}
       newClass={newClass}
@@ -316,22 +260,22 @@ const ClassManagementMVC: React.FC = () => {
       onDeleteClass={handleDeleteClass}
       onAddStudentToClass={handleAddStudentToClass}
       onRemoveStudentFromClass={handleRemoveStudentFromClass}
-      onExportClassReport={handleExportClassReport}
-      onSetSelectedClass={setSelectedClass}
+      onExportClassReport={handleExportClassReport as any}
+      onSetSelectedClass={setSelectedClass as any}
       onSetCreateDialogOpen={setCreateDialogOpen}
       onSetEditDialogOpen={setEditDialogOpen}
       onUpdateNewClassField={updateNewClassField}
       onResetForm={resetForm}
 
       // Utility functions
-      getAvailableStudentsForClass={getAvailableStudentsForClass}
-      getClassById={getClassById}
-      getStudentById={getStudentById}
+      getAvailableStudentsForClass={getAvailableStudentsForClass as any}
+      getClassById={getClassById as any}
+      getStudentById={getStudentById as any}
       calculateClassStatistics={calculateClassStatistics}
       getClassAnalytics={getClassAnalytics}
       validateClassForm={validateClassForm}
-      searchClasses={searchClasses}
-      searchStudents={searchStudents}
+      searchClasses={searchClasses as any}
+      searchStudents={searchStudents as any}
       getClassSummaryStatistics={getClassSummaryStatistics}
     />
   );
