@@ -15,7 +15,7 @@ import QuestionManagement from "./pages/QuestionManagement";
 import QuestionGeneratorPage from "./pages/QuestionGeneratorPage";
 import ExamQuestionManagement from "./components/ExamQuestionManagement";
 import ExamResult from "./components/ExamResult";
-import ExamHistory from "./components/ExamHistory";
+import ExamHistoryMVC from "./views/components/ExamHistoryMVC";
 // Legacy ExamSession replaced by ExamSessionMVC
 // Removed debug page: ExamSessionDebug
 import ExamSessionPage from "./pages/ExamSession";
@@ -215,7 +215,7 @@ const AppContent = () => {
         element={
           user ? (
             <Layout>
-              <ExamHistory />
+              <ExamHistoryMVC />
             </Layout>
           ) : (
             <Navigate to="/auth" replace />
