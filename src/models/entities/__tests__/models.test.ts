@@ -1,12 +1,13 @@
 /**
- * Simple tests để verify models hoạt động
- * Không cần jest setup phức tạp
+ * Unit tests cho Model Entities (QuestionModel, PassageModel, ExamSetModel, UserModel)
+ * Sử dụng cú pháp Jest chuẩn: describe, it, expect
  */
 
 import { QuestionModel, PassageModel, ExamSetModel, UserModel } from '../index';
+import type { Question, Passage, ExamSet, Profile } from '@/types';
 
-// Test data
-const mockQuestionData = {
+// Mock test data với strict types
+const mockQuestionData: Question = {
   id: '1',
   part: 1,
   passage_id: null,
@@ -27,14 +28,13 @@ const mockQuestionData = {
   updated_at: '2024-01-01T00:00:00Z'
 };
 
-const mockPassageData = {
+const mockPassageData: Passage = {
   id: '1',
   part: 3,
   passage_type: 'single',
   texts: {
     title: 'Conversation',
-    content: 'This is a sample conversation for TOEIC Part 3. It contains multiple sentences and provides context for the questions.',
-    additional: ''
+    content: 'This is a sample conversation for TOEIC Part 3. It contains multiple sentences and provides context for the questions.'
   },
   audio_url: 'https://example.com/audio.mp3',
   assets: {
@@ -51,7 +51,7 @@ const mockPassageData = {
   updated_at: '2024-01-01T00:00:00Z'
 };
 
-const mockExamSetData = {
+const mockExamSetData: ExamSet = {
   id: '1',
   title: 'TOEIC Practice Test 1',
   description: 'A practice test for TOEIC',
@@ -65,7 +65,7 @@ const mockExamSetData = {
   updated_at: '2024-01-01T00:00:00Z'
 };
 
-const mockUserData = {
+const mockUserData: Profile = {
   id: '1',
   user_id: 'user1',
   name: 'John Doe',
@@ -78,103 +78,73 @@ const mockUserData = {
   updated_at: '2024-01-01T00:00:00Z'
 };
 
-// Test functions
-export function testQuestionModel() {
-  console.log('🧪 Testing QuestionModel...');
-  
-  const question = new QuestionModel(mockQuestionData);
-  
-  // Test validation
-  const errors = question.validate();
-  console.log('Validation errors:', errors);
-  
-  // Test business logic
-  console.log('Needs audio:', question.needsAudio());
-  console.log('Needs image:', question.needsImage());
-  console.log('Part display name:', question.getPartDisplayName());
-  console.log('Estimated time:', question.getEstimatedTime());
-  console.log('Is valid for exam:', question.isValidForExam());
-  
-  return errors.length === 0;
-}
+describe('QuestionModel', () => {
+  it('should validate valid question data without errors', () => {
+    const question = new QuestionModel(mockQuestionData);
+    const errors = question.validate();
+    expect(errors).toHaveLength(0);
+  });
 
-export function testPassageModel() {
-  console.log('🧪 Testing PassageModel...');
-  
-  const passage = new PassageModel(mockPassageData);
-  
-  // Test validation
-  const errors = passage.validate();
-  console.log('Validation errors:', errors);
-  
-  // Test business logic
-  console.log('Needs audio:', passage.needsAudio());
-  console.log('Part display name:', passage.getPartDisplayName());
-  console.log('Word count:', passage.calculateWordCount());
-  console.log('Reading time:', passage.calculateReadingTime());
-  console.log('Is valid for exam:', passage.isValidForExam());
-  
-  return errors.length === 0;
-}
+  it('should detect media requirements for Part 1', () => {
+    const question = new QuestionModel(mockQuestionData);
+    expect(question.needsAudio()).toBe(true);
+    expect(question.needsImage()).toBe(true);
+    expect(question.getPartDisplayName()).toBe('Part 1: Photos');
+    expect(question.isValidForExam()).toBe(true);
+  });
 
-export function testExamSetModel() {
-  console.log('🧪 Testing ExamSetModel...');
-  
-  const examSet = new ExamSetModel(mockExamSetData);
-  
-  // Test validation
-  const errors = examSet.validate();
-  console.log('Validation errors:', errors);
-  
-  // Test business logic
-  console.log('Type display name:', examSet.getTypeDisplayName());
-  console.log('Difficulty display name:', examSet.getDifficultyDisplayName());
-  console.log('Time per question:', examSet.getTimePerQuestion());
-  console.log('Is valid for use:', examSet.isValidForUse());
-  console.log('Is TOEIC type:', examSet.isTOEICType());
-  
-  return errors.length === 0;
-}
+  it('should return error when required fields or media are missing', () => {
+    const invalidData = { ...mockQuestionData, image_url: null };
+    const question = new QuestionModel(invalidData);
+    const errors = question.validate();
+    expect(errors.length).toBeGreaterThan(0);
+  });
+});
 
-export function testUserModel() {
-  console.log('🧪 Testing UserModel...');
-  
-  const user = new UserModel(mockUserData);
-  
-  // Test validation
-  const errors = user.validate();
-  console.log('Validation errors:', errors);
-  
-  // Test business logic
-  console.log('Is student:', user.isStudent());
-  console.log('Is teacher:', user.isTeacher());
-  console.log('Target score level:', user.getTargetScoreLevel());
-  console.log('Days until test:', user.getDaysUntilTest());
-  console.log('Is test coming soon:', user.isTestComingSoon());
-  console.log('Profile completion:', user.getProfileCompletionPercentage() + '%');
-  
-  return errors.length === 0;
-}
+describe('PassageModel', () => {
+  it('should validate valid passage data without errors', () => {
+    const passage = new PassageModel(mockPassageData);
+    const errors = passage.validate();
+    expect(errors).toHaveLength(0);
+  });
 
-// Run all tests
-export function runAllTests() {
-  console.log('🚀 Running all model tests...\n');
-  
-  const results = {
-    question: testQuestionModel(),
-    passage: testPassageModel(),
-    examSet: testExamSetModel(),
-    user: testUserModel()
-  };
-  
-  console.log('\n📊 Test Results:');
-  console.log('Question Model:', results.question ? '✅ PASS' : '❌ FAIL');
-  console.log('Passage Model:', results.passage ? '✅ PASS' : '❌ FAIL');
-  console.log('ExamSet Model:', results.examSet ? '✅ PASS' : '❌ FAIL');
-  console.log('User Model:', results.user ? '✅ PASS' : '❌ FAIL');
-  
-  const allPassed = Object.values(results).every(result => result);
-  console.log('\nOverall:', allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED');
-  
-  return allPassed;
-}
+  it('should calculate word count and reading time correctly', () => {
+    const passage = new PassageModel(mockPassageData);
+    expect(passage.calculateWordCount()).toBeGreaterThan(0);
+    expect(passage.calculateReadingTime()).toBeGreaterThanOrEqual(1);
+    expect(passage.isValidForExam()).toBe(true);
+  });
+});
+
+describe('ExamSetModel', () => {
+  it('should validate valid exam set data without errors', () => {
+    const examSet = new ExamSetModel(mockExamSetData);
+    const errors = examSet.validate();
+    expect(errors).toHaveLength(0);
+  });
+
+  it('should provide correct display names and time calculation', () => {
+    const examSet = new ExamSetModel(mockExamSetData);
+    expect(examSet.getTypeDisplayName()).toBe('Mixed');
+    expect(examSet.getDifficultyDisplayName()).toBe('Medium');
+    expect(examSet.getTimePerQuestion()).toBe(1);
+    expect(examSet.isValidForUse()).toBe(true);
+  });
+});
+
+describe('UserModel', () => {
+  it('should validate valid user profile without errors', () => {
+    const user = new UserModel(mockUserData);
+    const errors = user.validate();
+    expect(errors).toHaveLength(0);
+  });
+
+  it('should evaluate role and target score level properly', () => {
+    const user = new UserModel(mockUserData);
+    expect(user.isStudent()).toBe(true);
+    expect(user.isTeacher()).toBe(false);
+    expect(user.getTargetScoreLevel()).toBe('Intermediate');
+    expect(user.getProfileCompletionPercentage()).toBeGreaterThan(0);
+  });
+});
+
