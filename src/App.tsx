@@ -13,7 +13,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import QuestionManagement from "./pages/QuestionManagement";
 import QuestionGeneratorPage from "./pages/QuestionGeneratorPage";
-import ExamQuestionManagement from "./components/ExamQuestionManagement";
+import ExamQuestionManagementMVC from "./views/components/ExamQuestionManagementMVC";
 import ExamResult from "./components/ExamResult";
 import ExamHistoryMVC from "./views/components/ExamHistoryMVC";
 // Legacy ExamSession replaced by ExamSessionMVC
@@ -155,7 +155,7 @@ const AppContent = () => {
         element={
           user && permissions.canCreateExamSets ? (
             <Layout>
-              <ExamQuestionManagement />
+              <ExamQuestionManagementMVC />
             </Layout>
           ) : (
             <Navigate to="/dashboard" replace />
