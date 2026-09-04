@@ -117,7 +117,7 @@ export class QuestionController {
       }
 
       // Convert to QuestionModel instances
-      const questionModels = (data || []).map(q => new QuestionModel(q));
+      const questionModels = (data || []).map(q => new QuestionModel(q as unknown as Question));
       this.setQuestions(questionModels);
 
     } catch (error) {
@@ -149,7 +149,7 @@ export class QuestionController {
       // Insert into database
       const { data, error } = await supabase
         .from('questions')
-        .insert([questionData])
+        .insert([questionData as any])
         .select()
         .single();
 
@@ -158,7 +158,7 @@ export class QuestionController {
       }
 
       // Create new QuestionModel instance
-      const newQuestion = new QuestionModel(data);
+      const newQuestion = new QuestionModel(data as unknown as Question);
       
       // Add to local state
       this.setQuestions([newQuestion, ...this.questions]);
@@ -203,7 +203,7 @@ export class QuestionController {
       // Update in database
       const { data, error } = await supabase
         .from('questions')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
@@ -213,7 +213,7 @@ export class QuestionController {
       }
 
       // Create updated QuestionModel instance
-      const updatedQuestion = new QuestionModel(data);
+      const updatedQuestion = new QuestionModel(data as unknown as Question);
       
       // Update local state
       const updatedQuestions = this.questions.map(q => 

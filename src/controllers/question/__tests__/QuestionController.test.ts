@@ -1,52 +1,55 @@
 /**
- * Simple tests để verify QuestionController hoạt động
- * Không cần jest setup phức tạp
+ * Unit tests cho QuestionController
+ * Sử dụng cú pháp Jest chuẩn: describe, it, expect
  */
 
 import { QuestionController } from '../QuestionController';
 import { QuestionModel } from '@/models/entities';
+import type { Question } from '@/types';
 
 // Mock Supabase client
-const mockSupabase = {
-  from: jest.fn(() => ({
-    select: jest.fn(() => ({
-      order: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          or: jest.fn(() => ({
-            data: [],
-            error: null
-          }))
-        }))
-      }))
-    })),
-    insert: jest.fn(() => ({
+jest.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: jest.fn(() => ({
       select: jest.fn(() => ({
-        single: jest.fn(() => ({
-          data: mockQuestionData,
-          error: null
-        }))
-      }))
-    })),
-    update: jest.fn(() => ({
-      eq: jest.fn(() => ({
+        order: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            or: jest.fn(() => ({
+              data: [],
+              error: null,
+            })),
+          })),
+        })),
+      })),
+      insert: jest.fn(() => ({
         select: jest.fn(() => ({
           single: jest.fn(() => ({
-            data: mockQuestionData,
-            error: null
-          }))
-        }))
-      }))
+            data: null,
+            error: null,
+          })),
+        })),
+      })),
+      update: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          select: jest.fn(() => ({
+            single: jest.fn(() => ({
+              data: null,
+              error: null,
+            })),
+          })),
+        })),
+      })),
+      delete: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          error: null,
+        })),
+      })),
     })),
-    delete: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        error: null
-      }))
-    }))
-  }))
-};
+  },
+}));
 
-// Mock question data
-const mockQuestionData = {
+// Mock question data with strict types
+const mockQuestionData: Question = {
   id: '1',
   part: 1,
   passage_id: null,
@@ -67,123 +70,108 @@ const mockQuestionData = {
   updated_at: '2024-01-01T00:00:00Z'
 };
 
-// Test functions
-export function testQuestionController() {
-  console.log('🧪 Testing QuestionController...');
-  
-  const controller = new QuestionController();
-  
-  // Test initial state
-  console.log('Initial questions:', controller.getQuestions().length);
-  console.log('Initial loading:', controller.isLoading());
-  console.log('Initial error:', controller.getError());
-  
-  // Test callbacks
-  let questionsChanged = false;
-  let loadingChanged = false;
-  let errorChanged = false;
-  
-  controller.setCallbacks({
-    onQuestionsChange: () => { questionsChanged = true; },
-    onLoadingChange: () => { loadingChanged = true; },
-    onErrorChange: () => { errorChanged = true; }
-  });
-  
-  // Test state changes
-  controller['setLoading'](true);
-  controller['setError']('Test error');
-  controller['setQuestions']([new QuestionModel(mockQuestionData)]);
-  
-  console.log('Callbacks triggered:', {
-    questionsChanged,
-    loadingChanged,
-    errorChanged
-  });
-  
-  // Test getters
-  console.log('Questions after set:', controller.getQuestions().length);
-  console.log('Loading after set:', controller.isLoading());
-  console.log('Error after set:', controller.getError());
-  
-  // Test filtering methods
-  const question = new QuestionModel(mockQuestionData);
-  controller['setQuestions']([question]);
-  
-  console.log('Questions by part 1:', controller.getQuestionsByPart(1).length);
-  console.log('Questions by difficulty easy:', controller.getQuestionsByDifficulty('easy').length);
-  console.log('Questions needing audio:', controller.getQuestionsNeedingAudio().length);
-  console.log('Questions needing images:', controller.getQuestionsNeedingImages().length);
-  console.log('Questions needing passages:', controller.getQuestionsNeedingPassages().length);
-  console.log('Valid questions for exam:', controller.getValidQuestionsForExam().length);
-  
-  // Test search
-  const searchResults = controller.searchQuestions('car');
-  console.log('Search results for "car":', searchResults.length);
-  
-  // Test statistics
-  const stats = controller.getQuestionsStats();
-  console.log('Statistics:', stats);
-  
-  // Test clear
-  controller.clear();
-  console.log('After clear - questions:', controller.getQuestions().length);
-  console.log('After clear - loading:', controller.isLoading());
-  console.log('After clear - error:', controller.getError());
-  
-  return true;
-}
+describe('QuestionController - State & Callbacks', () => {
+  let controller: QuestionController;
 
-export function testQuestionControllerMethods() {
-  console.log('🧪 Testing QuestionController methods...');
-  
-  const controller = new QuestionController();
-  
-  // Test getQuestionById
-  const question = new QuestionModel(mockQuestionData);
-  controller['setQuestions']([question]);
-  
-  const foundQuestion = controller.getQuestionById('1');
-  console.log('Found question by ID:', !!foundQuestion);
-  
-  const notFoundQuestion = controller.getQuestionById('999');
-  console.log('Not found question by ID:', !notFoundQuestion);
-  
-  // Test search with different terms
-  const searchTerms = ['car', 'bus', 'train', 'plane', 'nonexistent'];
-  searchTerms.forEach(term => {
-    const results = controller.searchQuestions(term);
-    console.log(`Search "${term}":`, results.length, 'results');
+  beforeEach(() => {
+    controller = new QuestionController();
   });
-  
-  // Test statistics with multiple questions
-  const questions = [
-    new QuestionModel({ ...mockQuestionData, id: '1', part: 1, difficulty: 'easy' }),
-    new QuestionModel({ ...mockQuestionData, id: '2', part: 2, difficulty: 'medium' }),
-    new QuestionModel({ ...mockQuestionData, id: '3', part: 3, difficulty: 'hard' })
-  ];
-  controller['setQuestions'](questions);
-  
-  const stats = controller.getQuestionsStats();
-  console.log('Multi-question statistics:', stats);
-  
-  return true;
-}
 
-// Run all tests
-export function runQuestionControllerTests() {
-  console.log('🚀 Running QuestionController tests...\n');
-  
-  const results = {
-    basic: testQuestionController(),
-    methods: testQuestionControllerMethods()
-  };
-  
-  console.log('\n📊 Test Results:');
-  console.log('Basic Controller:', results.basic ? '✅ PASS' : '❌ FAIL');
-  console.log('Controller Methods:', results.methods ? '✅ PASS' : '❌ FAIL');
-  
-  const allPassed = Object.values(results).every(result => result);
-  console.log('\nOverall:', allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED');
-  
-  return allPassed;
-}
+  it('should initialize with default state', () => {
+    expect(controller.getQuestions()).toEqual([]);
+    expect(controller.isLoading()).toBe(false);
+    expect(controller.getError()).toBeNull();
+  });
+
+  it('should trigger registered callbacks on state updates', () => {
+    let questionsChanged = false;
+    let loadingChanged = false;
+    let errorChanged = false;
+
+    controller.setCallbacks({
+      onQuestionsChange: () => { questionsChanged = true; },
+      onLoadingChange: () => { loadingChanged = true; },
+      onErrorChange: () => { errorChanged = true; }
+    });
+
+    controller['setLoading'](true);
+    controller['setError']('Test error');
+    controller['setQuestions']([new QuestionModel(mockQuestionData)]);
+
+    expect(questionsChanged).toBe(true);
+    expect(loadingChanged).toBe(true);
+    expect(errorChanged).toBe(true);
+    expect(controller.getQuestions()).toHaveLength(1);
+    expect(controller.isLoading()).toBe(true);
+    expect(controller.getError()).toBe('Test error');
+  });
+
+  it('should clear all data on clear()', () => {
+    controller['setLoading'](true);
+    controller['setError']('Test error');
+    controller['setQuestions']([new QuestionModel(mockQuestionData)]);
+
+    controller.clear();
+
+    expect(controller.getQuestions()).toHaveLength(0);
+    expect(controller.isLoading()).toBe(false);
+    expect(controller.getError()).toBeNull();
+  });
+});
+
+describe('QuestionController - Queries & Filters', () => {
+  let controller: QuestionController;
+
+  beforeEach(() => {
+    controller = new QuestionController();
+    const questions = [
+      new QuestionModel({ ...mockQuestionData, id: '1', part: 1, difficulty: 'easy' }),
+      new QuestionModel({ ...mockQuestionData, id: '2', part: 2, difficulty: 'medium', correct_choice: 'B' }),
+      new QuestionModel({ ...mockQuestionData, id: '3', part: 5, difficulty: 'hard', correct_choice: 'C', audio_url: null, image_url: null })
+    ];
+    controller['setQuestions'](questions);
+  });
+
+  it('should filter questions by part', () => {
+    expect(controller.getQuestionsByPart(1)).toHaveLength(1);
+    expect(controller.getQuestionsByPart(5)).toHaveLength(1);
+    expect(controller.getQuestionsByPart(7)).toHaveLength(0);
+  });
+
+  it('should filter questions by difficulty', () => {
+    expect(controller.getQuestionsByDifficulty('easy')).toHaveLength(1);
+    expect(controller.getQuestionsByDifficulty('medium')).toHaveLength(1);
+    expect(controller.getQuestionsByDifficulty('hard')).toHaveLength(1);
+  });
+
+  it('should find question by ID', () => {
+    const found = controller.getQuestionById('1');
+    expect(found).toBeDefined();
+    expect(found?.id).toBe('1');
+
+    const notFound = controller.getQuestionById('999');
+    expect(notFound).toBeUndefined();
+  });
+
+  it('should search questions by prompt_text and tags', () => {
+    const carResults = controller.searchQuestions('car');
+    expect(carResults.length).toBeGreaterThan(0);
+
+    const tagResults = controller.searchQuestions('listening');
+    expect(tagResults.length).toBe(3);
+
+    const emptyResults = controller.searchQuestions('nonexistent-term-xyz');
+    expect(emptyResults).toHaveLength(0);
+  });
+
+  it('should compute questions statistics correctly', () => {
+    const stats = controller.getQuestionsStats();
+    expect(stats.total).toBe(3);
+    expect(stats.byPart[1]).toBe(1);
+    expect(stats.byPart[2]).toBe(1);
+    expect(stats.byPart[5]).toBe(1);
+    expect(stats.byDifficulty.easy).toBe(1);
+    expect(stats.byDifficulty.medium).toBe(1);
+    expect(stats.byDifficulty.hard).toBe(1);
+  });
+});

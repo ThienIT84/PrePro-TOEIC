@@ -23,6 +23,9 @@ export default {
   coverageReporters: ['text', 'lcov', 'html'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
+      diagnostics: {
+        ignoreCodes: [1343, 2339],
+      },
       tsconfig: {
         jsx: 'react-jsx',
         esModuleInterop: true,
