@@ -7,48 +7,19 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-// Mock controller hook since it might not exist
-const useDataMigrationController = () => {
-  return {
-    state: {},
-    migrating: false,
-    migrationResult: null,
-    setMigrating: () => {},
-    setMigrationResult: () => {},
-    transformItemToQuestion: () => ({}),
-    fetchItemsData: async () => ({}),
-    insertQuestionsData: async () => ({}),
-    migrateData: async (userId: string) => ({ success: true, message: 'Success', originalCount: 0, migratedCount: 0, originalData: [], migratedData: [], error: null }),
-    checkDataStatistics: async () => ({ success: true, statistics: { itemsCount: 0, questionsCount: 0 }, error: null }),
-    validateMigrationPrerequisites: () => ({ isValid: true, errors: [] }),
-    getMigrationProcessSteps: () => ['Step 1', 'Step 2', 'Step 3'],
-    getMigrationResult: () => null,
-    isMigrating: () => false,
-    isMigrationSuccessful: () => false,
-    getMigrationStatistics: () => null,
-    clearMigrationResult: () => {},
-    resetMigrationState: () => {},
-  };
-};
+import { useDataMigrationController } from '@/controllers/migration/useDataMigrationController';
 import DataMigrationView from './DataMigrationView';
 
 const DataMigrationMVC: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use data migration controller
+  // Use real data migration controller
   const {
-    state,
     migrating,
     migrationResult,
-    setMigrating,
-    setMigrationResult,
-    transformItemToQuestion,
-    fetchItemsData,
-    insertQuestionsData,
     migrateData,
     checkDataStatistics,
-    validateMigrationPrerequisites,
     getMigrationProcessSteps,
     getMigrationResult,
     isMigrating,
@@ -94,7 +65,7 @@ const DataMigrationMVC: React.FC = () => {
       const errorResult = {
         success: false,
         message: "Migration thất bại",
-        error: (error as any).message,
+        error: (error as any)?.message || 'Có lỗi xảy ra',
         originalCount: 0,
         migratedCount: 0,
         originalData: [],
@@ -103,7 +74,7 @@ const DataMigrationMVC: React.FC = () => {
 
       toast({
         title: "Migration thất bại",
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
 
@@ -133,13 +104,13 @@ const DataMigrationMVC: React.FC = () => {
     } catch (error: unknown) {
       toast({
         title: "Lỗi kiểm tra",
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
 
       return {
         success: false,
-        error: (error as any).message,
+        error: (error as any)?.message || 'Có lỗi xảy ra',
         originalCount: 0,
         migratedCount: 0,
         originalData: [],
@@ -152,7 +123,7 @@ const DataMigrationMVC: React.FC = () => {
     <DataMigrationView
       // State
       migrating={migrating}
-      migrationResult={migrationResult}
+      migrationResult={migrationResult as any}
 
       // Actions
       onMigrateData={handleMigrateData}
@@ -160,10 +131,10 @@ const DataMigrationMVC: React.FC = () => {
 
       // Utility functions
       getMigrationProcessSteps={getMigrationProcessSteps}
-      getMigrationResult={getMigrationResult}
+      getMigrationResult={getMigrationResult as any}
       isMigrating={isMigrating}
       isMigrationSuccessful={isMigrationSuccessful}
-      getMigrationStatistics={getMigrationStatistics}
+      getMigrationStatistics={getMigrationStatistics as any}
       clearMigrationResult={clearMigrationResult}
       resetMigrationState={resetMigrationState}
     />
