@@ -16,6 +16,7 @@ import QuestionGeneratorPage from "./pages/QuestionGeneratorPage";
 import ExamQuestionManagementMVC from "./views/components/ExamQuestionManagementMVC";
 import ExamResult from "./components/ExamResult";
 import ExamHistoryMVC from "./views/components/ExamHistoryMVC";
+import StudentExamResultsMVC from "./views/components/StudentExamResultsMVC";
 // Legacy ExamSession replaced by ExamSessionMVC
 // Removed debug page: ExamSessionDebug
 import ExamSessionPage from "./pages/ExamSession";
@@ -227,7 +228,7 @@ const AppContent = () => {
         element={
           user && permissions.canManageStudents ? (
             <Layout>
-              <StudentExamResults />
+              <StudentExamResultsMVC />
             </Layout>
           ) : (
             <Navigate to="/dashboard" replace />

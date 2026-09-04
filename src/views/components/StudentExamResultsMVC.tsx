@@ -7,33 +7,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-// Mock controller hook since it might not exist
-const useStudentExamResultsController = () => {
-  return {
-    state: {},
-    examResults: [],
-    studentStats: [],
-    loading: false,
-    error: null,
-    selectedStudent: null,
-    viewingExamId: null,
-    setSelectedStudent: () => {},
-    setViewingExamId: () => {},
-    fetchStudentExamResults: async (params: any) => ({ success: true, error: null }),
-    getFilteredResults: () => [],
-    formatTime: (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`,
-    formatDate: (dateString: string) => new Date(dateString).toLocaleDateString('vi-VN'),
-    getScoreColor: (score: number) => score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600',
-    getScoreBadgeVariant: (score: number) => score >= 80 ? 'default' : score >= 60 ? 'secondary' : 'destructive',
-    getOverviewStatistics: () => ({
-      totalStudents: 0,
-      totalExams: 0,
-      averageScore: 0,
-      highestScore: 0
-    })
-  };
-};
+import { useStudentExamResultsController } from '@/controllers/analytics/useStudentExamResultsController';
 import StudentExamResultsView from './StudentExamResultsView';
 
 const StudentExamResultsMVC: React.FC = () => {
