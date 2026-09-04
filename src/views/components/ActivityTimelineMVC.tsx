@@ -6,32 +6,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-// Mock controller hook since it might not exist
-const useActivityTimelineController = () => {
-  return {
-    state: {},
-    activities: [],
-    loading: false,
-    error: null,
-    filter: 'all',
-    searchTerm: '',
-    autoRefresh: false,
-    lastRefresh: new Date(),
-    setFilter: (filter: string) => {},
-    setSearchTerm: (term: string) => {},
-    setAutoRefresh: (enabled: boolean) => {},
-    fetchActivities: async (params: any) => ({ success: true, error: null }),
-    formatDate: (date: string) => new Date(date).toLocaleDateString(),
-    formatTime: (time: string) => new Date(time).toLocaleTimeString(),
-    getActivityIcon: () => 'Activity',
-    getActivityColor: () => 'blue',
-    getScoreBadgeVariant: (score: number) => 'default' as 'default' | 'destructive' | 'secondary',
-    formatTimestamp: (timestamp: string) => new Date(timestamp).toLocaleString(),
-    getTrendIndicator: () => 'up',
-    getActivityTypeDisplayText: () => 'Activity',
-    getTimeRangeDisplayText: () => 'Today',
-  };
-};
+import { useActivityTimelineController } from '@/controllers/analytics/useActivityTimelineController';
 import ActivityTimelineView from './ActivityTimelineView';
 
 export interface ActivityTimelineMVCProps {
@@ -48,9 +23,8 @@ const ActivityTimelineMVC: React.FC<ActivityTimelineMVCProps> = ({
   const { toast } = useToast();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Use activity timeline controller
+  // Use real activity timeline controller
   const {
-    state,
     activities,
     loading,
     filter,
@@ -124,7 +98,7 @@ const ActivityTimelineMVC: React.FC<ActivityTimelineMVCProps> = ({
       if (!silent) {
         toast({
           title: 'Lỗi',
-          description: (error as any).message,
+          description: (error as any)?.message || 'Có lỗi xảy ra',
           variant: 'destructive'
         });
       }
@@ -133,7 +107,7 @@ const ActivityTimelineMVC: React.FC<ActivityTimelineMVCProps> = ({
 
   // Handle filter change
   const handleSetFilter = (newFilter: Partial<any>) => {
-    setFilter(newFilter as any);
+    setFilter(newFilter);
   };
 
   // Handle search term change
@@ -149,7 +123,7 @@ const ActivityTimelineMVC: React.FC<ActivityTimelineMVCProps> = ({
   return (
     <ActivityTimelineView
       // State
-      activities={activities}
+      activities={activities as any}
       loading={loading}
       filter={filter as any}
       searchTerm={searchTerm}
