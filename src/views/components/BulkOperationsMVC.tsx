@@ -7,41 +7,7 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-// Mock controller hook since it might not exist
-const useBulkOperationsController = () => {
-  return {
-    state: {},
-    activeTab: 'import',
-    questions: [],
-    loading: false,
-    importing: false,
-    progress: 0,
-    setActiveTab: (tab: string) => {},
-    setQuestions: (questions: any[]) => {},
-    setLoading: (loading: boolean) => {},
-    setImporting: (importing: boolean) => {},
-    setProgress: (progress: number) => {},
-    validateQuestion: (question: any) => {},
-    fixQuestion: (index: number, field: string, value: string) => {},
-    removeQuestion: (index: number) => {},
-    processExcelFile: async (file: File) => ({ success: true, questions: [], validCount: 0, invalidCount: 0, error: null }),
-    generateTemplate: () => {},
-    importQuestions: async (userId: string, batchSize: number) => ({ success: true, importedCount: 0, error: null }),
-    exportQuestions: async () => ({ success: true, exportedCount: 0, error: null }),
-    getQuestionCounts: () => ({ total: 0, valid: 0, invalid: 0, imported: 0 }),
-    getValidQuestions: () => [],
-    getInvalidQuestions: () => [],
-    getImportedQuestions: () => [],
-    canImport: () => false,
-    isImporting: () => false,
-    isLoading: () => false,
-    getProgress: () => 0,
-    getActiveTab: () => 'import',
-    getQuestions: () => [],
-    clearQuestions: () => {},
-    resetState: () => {}
-  };
-};
+import { useBulkOperationsController } from '@/controllers/bulk/useBulkOperationsController';
 import BulkOperationsView from './BulkOperationsView';
 
 export interface BulkOperationsMVCProps {
@@ -56,9 +22,8 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use bulk operations controller
+  // Use real bulk operations controller
   const {
-    state,
     activeTab,
     questions,
     loading,
@@ -87,16 +52,20 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
     getActiveTab,
     getQuestions,
     clearQuestions,
-    resetState,
+    resetState
   } = useBulkOperationsController();
 
   // Handle file upload
-  const handleFileUpload = async (file: File) => {
-    if (!user) {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       toast({
-        title: 'Error',
-        description: 'You must be logged in to upload files',
-        variant: 'destructive'
+        title: "Invalid file type",
+        description: "Please upload an Excel file (.xlsx or .xls)",
+        variant: "destructive",
       });
       return;
     }
@@ -123,7 +92,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
     } finally {
@@ -174,7 +143,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
     } catch (error: unknown) {
       toast({
         title: "Import failed",
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
     } finally {
@@ -199,7 +168,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
       if (result.success) {
         toast({
           title: "Export successful",
-          description: `${result.exportedCount} questions exported to Excel file`,
+          description: `${result.exportedCount} questions exported successfully`,
         });
       } else {
         toast({
@@ -211,18 +180,41 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
     } catch (error: unknown) {
       toast({
         title: "Export failed",
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
     }
   };
 
-  // Handle generate template
-  const handleGenerateTemplate = () => {
+  // Handle download template
+  const handleDownloadTemplate = () => {
     generateTemplate();
     toast({
       title: "Template downloaded",
-      description: "Question template has been downloaded",
+      description: "Excel template has been generated and downloaded",
+    });
+  };
+
+  // Handle fix question
+  const handleFixQuestion = (index: number, field: string, value: string) => {
+    fixQuestion(index, field as any, value);
+  };
+
+  // Handle remove question
+  const handleRemoveQuestion = (index: number) => {
+    removeQuestion(index);
+    toast({
+      title: "Question removed",
+      description: "Question has been removed from the list",
+    });
+  };
+
+  // Handle clear questions
+  const handleClearQuestions = () => {
+    clearQuestions();
+    toast({
+      title: "Questions cleared",
+      description: "All questions have been cleared from the list",
     });
   };
 
@@ -230,7 +222,7 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
     <BulkOperationsView
       // State
       activeTab={activeTab}
-      questions={questions}
+      questions={questions as any}
       loading={loading}
       importing={importing}
       progress={progress}
@@ -240,27 +232,17 @@ const BulkOperationsMVC: React.FC<BulkOperationsMVCProps> = ({
       onFileUpload={handleFileUpload}
       onImportQuestions={handleImportQuestions}
       onExportQuestions={handleExportQuestions}
-      onGenerateTemplate={handleGenerateTemplate}
-      onFixQuestion={fixQuestion}
-      onRemoveQuestion={removeQuestion}
-
-      // Data getters
-      getQuestionCounts={getQuestionCounts}
-      getValidQuestions={getValidQuestions}
-      getInvalidQuestions={getInvalidQuestions}
-      getImportedQuestions={getImportedQuestions}
-
-      // State checks
-      canImport={canImport}
-      isImporting={isImporting}
-      isLoading={isLoading}
-      getProgress={getProgress}
-      getActiveTab={getActiveTab}
-      getQuestions={getQuestions}
+      onDownloadTemplate={handleDownloadTemplate}
+      onFixQuestion={handleFixQuestion}
+      onRemoveQuestion={handleRemoveQuestion}
+      onClearQuestions={handleClearQuestions}
 
       // Utility functions
-      clearQuestions={clearQuestions}
-      resetState={resetState}
+      getQuestionCounts={getQuestionCounts}
+      getValidQuestions={getValidQuestions as any}
+      getInvalidQuestions={getInvalidQuestions as any}
+      getImportedQuestions={getImportedQuestions as any}
+      canImport={canImport}
 
       // Props
       className={className}
