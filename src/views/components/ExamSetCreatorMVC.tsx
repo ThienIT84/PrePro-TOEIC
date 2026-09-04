@@ -66,8 +66,7 @@ export const ExamSetCreatorMVC: React.FC<ExamSetCreatorMVCProps> = ({
 
   // Handle part config update
   const handlePartConfigUpdate = (partNumber: number, field: string, value: any) => {
-    // Mock implementation since controller might not exist
-    console.log('Part config update:', partNumber, field, value);
+    updatePartConfig(partNumber, field as any, value);
   };
 
   // Handle add questions to part
