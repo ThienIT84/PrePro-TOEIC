@@ -8,98 +8,20 @@ import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { teacherAnalyticsService, AnalyticsData } from '@/services/teacherAnalytics';
-// Mock controller hook since it might not exist
-const useTeacherAnalyticsController = () => {
-  return {
-    state: {},
-    analyticsData: null,
-    loading: false,
-    selectedStudent: null,
-    activeTab: 'overview',
-    isStudentModalOpen: false,
-    setAnalyticsData: (data: any) => {},
-    setLoading: (loading: boolean) => {},
-    setSelectedStudent: (student: any) => {},
-    setActiveTab: (tab: string) => {},
-    setStudentModalOpen: (open: boolean) => {},
-    getTrendIconType: (trend: number) => 'up' as 'up' | 'down' | 'stable',
-    getTrendColorClass: (trend: number) => 'text-green-600',
-    getAlertIconType: (type: string) => 'info' as 'warning' | 'success' | 'danger' | 'info',
-    getSkillIconType: (skill: string) => 'target' as 'target' | 'vocabulary' | 'grammar' | 'listening' | 'reading',
-    getSafeAnalyticsData: () => ({
-      students: [],
-      classes: [],
-      activities: [],
-      alerts: [],
-      skill_performance: { vocabulary: { avg_score: 0, trend: 0 }, grammar: { avg_score: 0, trend: 0 }, listening: { avg_score: 0, trend: 0 }, reading: { avg_score: 0, trend: 0 } },
-      daily_activity: [],
-      weekly_progress: [],
-      total_students: 0,
-      active_today: 0,
-      avg_score: 0,
-      completion_rate: 0,
-      keyMetrics: { totalStudents: { value: 0, trend: 0, change: 0 }, activeToday: { value: 0, trend: 0, change: 0 }, avgScore: { value: 0, trend: 0, change: 0 }, completionRate: { value: 0, trend: 0, change: 0 } },
-      skillPerformance: { vocabulary: 0, grammar: 0, listening: 0, reading: 0 },
-      dailyActivity: [],
-      weeklyProgress: []
-    }),
-    getKeyMetrics: () => ({
-      totalStudents: { value: 0, trend: 0, change: 0 },
-      activeToday: { value: 0, trend: 0, change: 0 },
-      avgScore: { value: 0, trend: 0, change: 0 },
-      completionRate: { value: 0, trend: 0, change: 0 }
-    }),
-    getSkillPerformanceData: () => ({
-      vocabulary: 0,
-      grammar: 0,
-      listening: 0,
-      reading: 0
-    }),
-    getDailyActivityChartData: () => [],
-    getWeeklyProgressChartData: () => [],
-    getStudentsData: () => [],
-    getClassesData: () => [],
-    getRecentActivitiesData: () => [],
-    getAlertsData: () => [],
-    getStudentById: (id: string) => null,
-    openStudentDetailModal: (student: any) => {},
-    closeStudentDetailModal: () => {},
-    getAnalyticsSummary: () => ({
-      hasData: false,
-      totalStudents: 0,
-      activeToday: 0,
-      avgScore: 0,
-      completionRate: 0,
-      topPerformingSkill: '',
-      strugglingSkill: ''
-    }),
-    exportAnalyticsReport: () => ({ success: true, error: null }),
-    filterAnalyticsData: (filters: any) => true,
-    refreshAnalyticsData: async (userId: string) => ({ success: true, error: null }),
-    getTabConfiguration: () => [],
-    isLoading: () => false,
-    hasAnalyticsData: () => false,
-    getActiveTab: () => 'overview',
-    isStudentModalOpenCheck: false,
-    getSelectedStudent: () => null,
-  };
-};
-
+import { useTeacherAnalyticsController } from '@/controllers/analytics/useTeacherAnalyticsController';
 import TeacherAnalyticsView from './TeacherAnalyticsView';
-// Mock components since they might not exist
-const StudentDetailModal = () => <div>StudentDetailModal</div>;
-const EnhancedActivityTimeline = () => <div>EnhancedActivityTimeline</div>;
-const ClassManagement = () => <div>ClassManagement</div>;
-const AdvancedAlertsSystem = () => <div>AdvancedAlertsSystem</div>;
-const StudentListWithFilters = () => <div>StudentListWithFilters</div>;
+import StudentDetailModal from '@/components/StudentDetailModal';
+import EnhancedActivityTimeline from '@/components/EnhancedActivityTimeline';
+import ClassManagement from '@/components/ClassManagement';
+import AdvancedAlertsSystem from '@/components/AdvancedAlertsSystem';
+import StudentListWithFilters from '@/components/StudentListWithFilters';
 
 const TeacherAnalyticsMVC: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use teacher analytics controller
+  // Use real teacher analytics controller
   const {
-    state,
     analyticsData,
     loading,
     selectedStudent,
@@ -134,7 +56,6 @@ const TeacherAnalyticsMVC: React.FC = () => {
     isLoading,
     hasAnalyticsData,
     getActiveTab,
-    isStudentModalOpen: isStudentModalOpenCheck,
     getSelectedStudent,
   } = useTeacherAnalyticsController();
 
@@ -243,9 +164,9 @@ const TeacherAnalyticsMVC: React.FC = () => {
   return (
     <TeacherAnalyticsView
       // State
-      analyticsData={analyticsData}
+      analyticsData={analyticsData as any}
       loading={loading}
-      selectedStudent={selectedStudent}
+      selectedStudent={selectedStudent as any}
       activeTab={activeTab}
       isStudentModalOpen={isStudentModalOpen}
 
@@ -262,22 +183,22 @@ const TeacherAnalyticsMVC: React.FC = () => {
       getTrendColorClass={getTrendColorClass}
       getAlertIconType={getAlertIconType}
       getSkillIconType={getSkillIconType}
-      getSafeAnalyticsData={getSafeAnalyticsData}
+      getSafeAnalyticsData={getSafeAnalyticsData as any}
       getKeyMetrics={getKeyMetrics}
       getSkillPerformanceData={getSkillPerformanceData}
-      getDailyActivityChartData={getDailyActivityChartData}
-      getWeeklyProgressChartData={getWeeklyProgressChartData}
-      getStudentsData={getStudentsData}
+      getDailyActivityChartData={getDailyActivityChartData as any}
+      getWeeklyProgressChartData={getWeeklyProgressChartData as any}
+      getStudentsData={getStudentsData as any}
       getClassesData={getClassesData}
-      getRecentActivitiesData={getRecentActivitiesData}
-      getAlertsData={getAlertsData}
-      getStudentById={getStudentById}
+      getRecentActivitiesData={getRecentActivitiesData as any}
+      getAlertsData={getAlertsData as any}
+      getStudentById={getStudentById as any}
       getAnalyticsSummary={getAnalyticsSummary}
-      getTabConfiguration={getTabConfiguration}
+      getTabConfiguration={getTabConfiguration as any}
       isLoading={isLoading}
       hasAnalyticsData={hasAnalyticsData}
       getActiveTab={getActiveTab}
-      getSelectedStudent={getSelectedStudent}
+      getSelectedStudent={getSelectedStudent as any}
 
       // Child components
       StudentListWithFilters={StudentListWithFilters}
