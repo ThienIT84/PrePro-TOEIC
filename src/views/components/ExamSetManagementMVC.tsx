@@ -7,40 +7,15 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-// Mock controller since it might not exist
-const useExamSetManagementController = () => ({
-  state: {},
-  examSets: [],
-  loading: false,
-  isCreateDialogOpen: false,
-  isEditDialogOpen: false,
-  editingExamSet: null,
-  formData: { title: '', description: '', time_limit: 120, difficulty: 'medium', status: 'active' },
-  setCreateDialogOpen: () => {},
-  setEditDialogOpen: () => {},
-  setFormData: () => {},
-  fetchExamSets: () => {},
-  createExamSet: (data: any) => ({ success: true, error: null }),
-  updateExamSet: (data: any) => ({ success: true, error: null }),
-  deleteExamSet: (id: string) => ({ success: true, error: null }),
-  openEditDialog: (examSet: any) => {},
-  closeCreateDialog: () => {},
-  closeEditDialog: () => {},
-  getDifficultyColor: () => '',
-  getStatusColor: () => '',
-  getDifficultyDisplayText: () => '',
-  getStatusDisplayText: () => '',
-  validateFormData: () => ({ isValid: true, errors: [] }),
-});
-import ExamSetManagementView from './ExamSetManagementView';
+import { useExamSetManagementController } from '@/controllers/exam/useExamSetManagementController';
+import ExamSetManagementView, { ExamSet as ViewExamSet, ExamSetFormData as ViewFormData } from './ExamSetManagementView';
 
 const ExamSetManagementMVC: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use exam set management controller
+  // Use real exam set management controller
   const {
-    state,
     examSets,
     loading,
     isCreateDialogOpen,
@@ -68,6 +43,36 @@ const ExamSetManagementMVC: React.FC = () => {
   useEffect(() => {
     fetchExamSets();
   }, [fetchExamSets]);
+
+  // Transform controller examSets to view format
+  const viewExamSets: ViewExamSet[] = examSets.map(es => ({
+    id: es.id,
+    title: es.title,
+    description: es.description || '',
+    time_limit: es.time_limit,
+    difficulty: es.difficulty,
+    status: es.is_active ? 'active' : 'inactive',
+    total_questions: es.question_count || 0,
+    created_at: es.created_at,
+    updated_at: es.updated_at
+  }));
+
+  // Transform controller formData to view format
+  const viewFormData: ViewFormData = {
+    title: formData.title,
+    description: formData.description,
+    time_limit: formData.time_limit,
+    difficulty: formData.difficulty,
+    status: formData.is_active ? 'active' : 'inactive'
+  };
+
+  const handleSetFormData = (updates: Partial<ViewFormData>) => {
+    const { status, ...rest } = updates;
+    setFormData({
+      ...rest,
+      ...(status !== undefined ? { is_active: status === 'active' } : {})
+    });
+  };
 
   // Handle create exam set
   const handleCreateExamSet = async () => {
@@ -97,7 +102,7 @@ const ExamSetManagementMVC: React.FC = () => {
         description: formData.description,
         time_limit: formData.time_limit,
         difficulty: formData.difficulty,
-        status: formData.status,
+        is_active: formData.is_active,
         created_by: user.id
       });
 
@@ -119,7 +124,7 @@ const ExamSetManagementMVC: React.FC = () => {
     } catch (error: unknown) {
       toast({
         title: 'Lỗi',
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: 'destructive'
       });
     }
@@ -154,7 +159,7 @@ const ExamSetManagementMVC: React.FC = () => {
         description: formData.description,
         time_limit: formData.time_limit,
         difficulty: formData.difficulty,
-        status: formData.status
+        is_active: formData.is_active
       });
 
       if (result.success) {
@@ -175,7 +180,7 @@ const ExamSetManagementMVC: React.FC = () => {
     } catch (error: unknown) {
       toast({
         title: 'Lỗi',
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: 'destructive'
       });
     }
@@ -193,7 +198,7 @@ const ExamSetManagementMVC: React.FC = () => {
       if (result.success) {
         toast({
           title: 'Thành công',
-          description: 'Đề thi đã được xóa!'
+          description: 'Đề thi đã được xóa thành công!'
         });
 
         await fetchExamSets();
@@ -207,15 +212,18 @@ const ExamSetManagementMVC: React.FC = () => {
     } catch (error: unknown) {
       toast({
         title: 'Lỗi',
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: 'destructive'
       });
     }
   };
 
   // Handle open edit dialog
-  const handleOpenEditDialog = (examSet: any) => {
-    openEditDialog(examSet);
+  const handleOpenEditDialog = (examSet: ViewExamSet) => {
+    const matched = examSets.find(es => es.id === examSet.id);
+    if (matched) {
+      openEditDialog(matched);
+    }
   };
 
   // Handle close create dialog
@@ -231,17 +239,27 @@ const ExamSetManagementMVC: React.FC = () => {
   return (
     <ExamSetManagementView
       // State
-      examSets={examSets}
+      examSets={viewExamSets}
       loading={loading}
       isCreateDialogOpen={isCreateDialogOpen}
       isEditDialogOpen={isEditDialogOpen}
-      editingExamSet={editingExamSet}
-      formData={formData}
+      editingExamSet={editingExamSet ? {
+        id: editingExamSet.id,
+        title: editingExamSet.title,
+        description: editingExamSet.description || '',
+        time_limit: editingExamSet.time_limit,
+        difficulty: editingExamSet.difficulty,
+        status: editingExamSet.is_active ? 'active' : 'inactive',
+        total_questions: editingExamSet.question_count || 0,
+        created_at: editingExamSet.created_at,
+        updated_at: editingExamSet.updated_at
+      } : null}
+      formData={viewFormData}
 
       // Actions
       onSetCreateDialogOpen={setCreateDialogOpen}
       onSetEditDialogOpen={setEditDialogOpen}
-      onSetFormData={setFormData}
+      onSetFormData={handleSetFormData}
       onCreateExamSet={handleCreateExamSet}
       onUpdateExamSet={handleUpdateExamSet}
       onDeleteExamSet={handleDeleteExamSet}
@@ -251,9 +269,9 @@ const ExamSetManagementMVC: React.FC = () => {
 
       // Utility functions
       getDifficultyColor={getDifficultyColor}
-      getStatusColor={getStatusColor}
+      getStatusColor={(status: string) => getStatusColor(status === 'active')}
       getDifficultyDisplayText={getDifficultyDisplayText}
-      getStatusDisplayText={getStatusDisplayText}
+      getStatusDisplayText={(status: string) => getStatusDisplayText(status === 'active')}
     />
   );
 };
