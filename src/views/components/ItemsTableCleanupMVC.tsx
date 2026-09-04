@@ -7,59 +7,17 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-// Mock controller hook since it might not exist
-const useItemsTableCleanupController = () => {
-  return {
-    state: {},
-    items: [],
-    loading: false,
-    error: null,
-    cleaning: false,
-    cleanupResult: null,
-    setCleaning: () => {},
-    setCleanupResult: () => {},
-    checkDependencies: async () => ({ success: true, error: null }),
-    backupItemsData: async () => ({ success: true, error: null }),
-    migrateRemainingData: async () => ({ success: true, error: null }),
-    dropItemsTable: async () => ({ success: true, error: null }),
-    performCleanup: async (userId: string) => ({ 
-      success: true, 
-      message: 'Cleanup completed', 
-      error: null,
-      itemsDeleted: 0,
-      dataMigrated: 0,
-      backupCreated: false
-    }),
-    getCleanupProcessSteps: () => ['Step 1', 'Step 2', 'Step 3'],
-    getCleanupBenefits: () => ['Benefit 1', 'Benefit 2'],
-    getCleanupWarnings: () => ['Warning 1', 'Warning 2'],
-    getCleanupResult: () => null,
-    isCleaning: () => false,
-    isCleanupSuccessful: () => false,
-    clearCleanupResult: () => {},
-    resetCleanupState: () => {},
-    fetchItems: async () => ({ success: true, error: null }),
-    deleteItem: async () => ({ success: true, error: null }),
-    cleanupItems: async () => ({ success: true, error: null }),
-  };
-};
+import { useItemsTableCleanupController } from '@/controllers/cleanup/useItemsTableCleanupController';
 import ItemsTableCleanupView from './ItemsTableCleanupView';
 
 const ItemsTableCleanupMVC: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Use items table cleanup controller
+  // Use real items table cleanup controller
   const {
-    state,
     cleaning,
     cleanupResult,
-    setCleaning,
-    setCleanupResult,
-    checkDependencies,
-    backupItemsData,
-    migrateRemainingData,
-    dropItemsTable,
     performCleanup,
     getCleanupProcessSteps,
     getCleanupBenefits,
@@ -110,7 +68,7 @@ const ItemsTableCleanupMVC: React.FC = () => {
       const errorResult = {
         success: false,
         message: "Cleanup thất bại",
-        error: (error as any).message,
+        error: (error as any)?.message || 'Có lỗi xảy ra',
         itemsDeleted: 0,
         dataMigrated: 0,
         backupCreated: false
@@ -118,7 +76,7 @@ const ItemsTableCleanupMVC: React.FC = () => {
 
       toast({
         title: "Cleanup thất bại",
-        description: (error as any).message,
+        description: (error as any)?.message || 'Có lỗi xảy ra',
         variant: "destructive",
       });
 
@@ -130,7 +88,7 @@ const ItemsTableCleanupMVC: React.FC = () => {
     <ItemsTableCleanupView
       // State
       cleaning={cleaning}
-      cleanupResult={cleanupResult}
+      cleanupResult={cleanupResult as any}
 
       // Actions
       onPerformCleanup={handlePerformCleanup}
@@ -139,7 +97,7 @@ const ItemsTableCleanupMVC: React.FC = () => {
       getCleanupProcessSteps={getCleanupProcessSteps}
       getCleanupBenefits={getCleanupBenefits}
       getCleanupWarnings={getCleanupWarnings}
-      getCleanupResult={getCleanupResult}
+      getCleanupResult={getCleanupResult as any}
       isCleaning={isCleaning}
       isCleanupSuccessful={isCleanupSuccessful}
       clearCleanupResult={clearCleanupResult}
